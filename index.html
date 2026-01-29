@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bananas Heroes</title>
+    <style>
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background-color: #4caf50;
+            color: white;
+            overflow: hidden;
+        }
+
+        #menu {
+            text-align: center;
+            margin-top: 60px;
+        }
+
+        #menu h1 {
+            font-size: 36px;
+        }
+
+        #menu .characters {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+        }
+
+        .char {
+            cursor: pointer;
+            font-size: 24px;
+            padding: 15px;
+            border-radius: 10px;
+            background: #ffcc00;
+        }
+
+        #modes {
+            margin-top: 20px;
+            display: none;
+        }
+
+        #modes button {
+            font-size: 18px;
+            padding: 10px 20px;
+            margin: 10px;
+            cursor: pointer;
+            border: none;
+            background-color: #ff9800;
+            color: white;
+        }
+
+        #game {
+            display: none;
+        }
+
+        canvas {
+            display: block;
+            background-color: #2e7d32;
+        }
+
+        #hud {
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            font-size: 18px;
+        }
+    </style>
+</head>
+<body>
+
+<div id="menu">
+    <h1>🍌 Bananas Heroes 🍺</h1>
+    <div class="characters">
+        <div class="char" data-char="max">
+            Макс
+        </div>
+        <div class="char" data-char="dron">
+            Дрон
+        </div>
+        <div class="char" data-char="kuzy">
+            Кузя
+        </div>
+    </div>
+    <div id="modes">
+        <button class="mode" data-mode="normal">Обычный режим</button>
+        <button class="mode" data-mode="survival">Выживание</button>
+    </div>
+</div>
+
+<div id="game">
+    <canvas id="canvas"></canvas>
+    <div id="hud"></div>
+</div>
+
+<script src="js/main.js"></script>
+</body>
+</html>
