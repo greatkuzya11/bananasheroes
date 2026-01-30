@@ -72,7 +72,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 this.shootTimer += 0.016;
                 if(this.shootTimer > 0.15){
                     this.shooting = false;
-                    this.frame = 0;
+                    this.frame = 5;
                 }
             }
             else if(moving){
@@ -107,6 +107,9 @@ document.addEventListener('DOMContentLoaded', () => {
     // ---------- BULLETS ----------
     function shootPlayerBullet(p){
         let r = 8, speed = 8, color="#222";
+        p.shooting = true;
+        p.shootTimer = 0;
+        p.frame = SHOOT_FRAME;
 
         if(p.type==="dron"){ r=14; speed=9; color="#66ccff"; }
         if(p.type==="max"){ r=8; speed=8; color="#222"; }
