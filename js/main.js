@@ -1,95 +1,403 @@
+// Главная точка входа: инициализация игры после загрузки DOM
 document.addEventListener('DOMContentLoaded', () => {
+    // ==== BACKGROUND IMAGE ====
+    const bgImg = new Image();
+    let bgReady = false;
+    bgImg.onload = () => bgReady = true;
+    bgImg.src = "img/forest.png";
+
+    // ==== CONSTANTS ====
+    const FRAME_W = 256;
+    const FRAME_H = 256;
+    const WALK_START = 1;
+    const WALK_END = 4;
+    const SHOOT_FRAME = 5;
+    const PLAYER_SPEED = 7;
+    const ENEMY_ROWS = 3;
+    const ENEMY_COLS = 7;
+    const ENEMY_WIDTH_RATIO = 0.1;
+    const ENEMY_HEIGHT_RATIO = 0.1;
+    const ENEMY_START_Y = 60;
+    const ENEMY_X_SPACING = 120;
+    const ENEMY_Y_SPACING = 100;
+    const PLAYER_LIVES = 5;
+    const INVULN_TIME = 3;
+    const BONUS_SHOTS_PER_BOTTLE = 3;
+
+    // ==== CANVAS SETUP ====
     const canvas = document.getElementById('canvas');
     const ctx = canvas.getContext('2d');
-
-    function resize(){
+    /**
+     * Изменяет размер canvas под размер окна браузера
+     */
+    function resizeCanvas() {
         canvas.width = window.innerWidth;
-        canvas.height = window.innerHeight * 0.75;
+        canvas.height = window.innerHeight * 0.9;
     }
-    window.addEventListener('resize', resize);
-    resize();
 
+    // Показываем модальное окно завершения уровня с двумя кнопками
+    function showLevelComplete() {
+        // hide gameplay and show menu (per UX requirement)
+        running = false;
+        document.getElementById('game').style.display = 'none';
+        document.getElementById('menu').style.display = 'block';
+        updateBestScoresDisplay();
+
+        // Если уже есть — удалим старое
+        const existing = document.getElementById('level-complete-overlay');
+        if (existing) existing.remove();
+
+        const overlay = document.createElement('div');
+        overlay.id = 'level-complete-overlay';
+        Object.assign(overlay.style, {
+            position: 'fixed', left: '0', top: '0', width: '100%', height: '100%',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            pointerEvents: 'auto'
+        });
+
+        const box = document.createElement('div');
+        Object.assign(box.style, {
+            background: 'rgba(255,255,255,0.95)', borderRadius: '12px', padding: '24px',
+            boxShadow: '0 8px 24px rgba(0,0,0,0.3)', textAlign: 'center', minWidth: '380px'
+        });
+
+        // Icons row (beer + bananas)
+        const iconsRow = document.createElement('div');
+        Object.assign(iconsRow.style, { fontSize: '28px', marginBottom: '12px' });
+        const beer = document.createElement('span');
+        beer.innerText = '🍺';
+        const bananas = document.createElement('span');
+        bananas.innerText = '🍌';
+        Object.assign(beer.style, { marginRight: '10px', display: 'inline-block' });
+        Object.assign(bananas.style, { marginLeft: '10px', display: 'inline-block' });
+        iconsRow.appendChild(beer);
+        iconsRow.appendChild(bananas);
+
+        const msg = document.createElement('div');
+        msg.innerText = 'Поздравляем, уровень пройден. Букин освобождён.';
+        Object.assign(msg.style, { fontSize: '20px', marginBottom: '18px', color: '#222', opacity: '0', transform: 'translateY(12px)' });
+
+        // Add simple CSS animations via a style tag for pop-in and small icon bounce
+        const styleTag = document.createElement('style');
+        styleTag.innerHTML = `
+            @keyframes popIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+            @keyframes bounceIcon { 0% { transform: translateY(-6px); } 50% { transform: translateY(0); } 100% { transform: translateY(-3px); } }
+        `;
+        document.head.appendChild(styleTag);
+
+        const buttons = document.createElement('div');
+        Object.assign(buttons.style, { display: 'flex', gap: '12px', justifyContent: 'center' });
+
+        const btnMain = document.createElement('button');
+        btnMain.innerText = 'Главный экран';
+        Object.assign(btnMain.style, { padding: '8px 14px', fontSize: '16px', cursor: 'pointer' });
+        btnMain.onclick = () => {
+            // Вернуться в меню
+            running = false;
+            levelCompleteShown = false;
+            // очистим состояние игры
+            enemies = [];
+            bullets = [];
+            enemyBullets = [];
+            bottles = [];
+            boss = null;
+            bukinTablet = null;
+            document.getElementById('game').style.display = 'none';
+            document.getElementById('menu').style.display = 'block';
+            overlay.remove();
+        };
+
+        const btnNext = document.createElement('button');
+        btnNext.innerText = 'Следующий уровень';
+        btnNext.disabled = true;
+        Object.assign(btnNext.style, { padding: '8px 14px', fontSize: '16px', opacity: '0.6', cursor: 'not-allowed' });
+
+        buttons.appendChild(btnMain);
+        buttons.appendChild(btnNext);
+
+        box.appendChild(iconsRow);
+        box.appendChild(msg);
+        box.appendChild(buttons);
+        overlay.appendChild(box);
+        document.body.appendChild(overlay);
+
+        // Trigger animations after appended
+        requestAnimationFrame(() => {
+            msg.style.transition = 'opacity 520ms ease-out, transform 520ms ease-out';
+            msg.style.opacity = '1';
+            msg.style.transform = 'translateY(0)';
+            // small icon bounce
+            beer.style.animation = 'bounceIcon 900ms ease-in-out 1';
+            bananas.style.animation = 'bounceIcon 900ms ease-in-out 1';
+        });
+    }
+
+    // ==== GAME OVER HANDLERS ====
+    const charNames = { max: 'Макс', dron: 'Дрон', kuzy: 'Кузя' };
+    function updateBestScoresDisplay() {
+        const el = document.getElementById('best-scores');
+        if (!el) return;
+        const charsList = [
+            { id: 'max', name: 'Макс' },
+            { id: 'dron', name: 'Дрон' },
+            { id: 'kuzy', name: 'Кузя' }
+        ];
+        el.innerHTML = charsList.map(c => {
+            const best = parseInt(localStorage.getItem('bh_bestScore_' + c.id) || '0', 10) || 0;
+            return `<div style="display:inline-block; margin:6px 12px; color:#fff">${c.name}: <b>${best}</b></div>`;
+        }).join('');
+    }
+
+    function showGameOver() {
+        if (gameOverShown) return;
+        gameOverShown = true;
+        running = false;
+
+        const key = 'bh_bestScore_' + (selectedChar || 'kuzy');
+        const best = parseInt(localStorage.getItem(key) || '0', 10) || 0;
+        let isNew = false;
+        if (score > best) {
+            localStorage.setItem(key, String(score));
+            isNew = true;
+        }
+        updateBestScoresDisplay();
+
+        // play sound (no confetti)
+        playGameOverSound(isNew);
+
+        const existing = document.getElementById('game-over-overlay');
+        if (existing) existing.remove();
+
+        const overlay = document.createElement('div');
+        overlay.id = 'game-over-overlay';
+        Object.assign(overlay.style, {
+            position: 'fixed', left: '0', top: '0', width: '100%', height: '100%',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'auto'
+        });
+
+        const box = document.createElement('div');
+        Object.assign(box.style, {
+            background: 'rgba(0,0,0,0.85)', color: '#fff', borderRadius: '12px', padding: '28px',
+            boxShadow: '0 8px 24px rgba(0,0,0,0.5)', textAlign: 'center', minWidth: '420px'
+        });
+
+        const iconsRow = document.createElement('div');
+        Object.assign(iconsRow.style, { fontSize: '34px', marginBottom: '8px' });
+        iconsRow.innerText = '💀  🍌  🍺';
+
+        const title = document.createElement('div');
+        title.innerText = 'Game Over';
+        Object.assign(title.style, { fontSize: '34px', fontWeight: '700', marginBottom: '12px' });
+
+        const scoreLine = document.createElement('div');
+        scoreLine.innerText = `Очки: ${score}`;
+        Object.assign(scoreLine.style, { fontSize: '20px', marginBottom: '6px' });
+
+        const bestLine = document.createElement('div');
+        const bestVal = parseInt(localStorage.getItem(key) || '0', 10) || 0;
+        const displayName = (charNames && charNames[selectedChar]) ? charNames[selectedChar] : selectedChar;
+        bestLine.innerText = `Рекорд (${displayName}): ${bestVal}` + (isNew ? ' — Новый рекорд!' : '');
+        Object.assign(bestLine.style, { fontSize: '16px', marginBottom: '18px', color: isNew ? '#ffd54f' : '#ddd' });
+
+        const buttons = document.createElement('div');
+        Object.assign(buttons.style, { display: 'flex', gap: '12px', justifyContent: 'center' });
+
+        const btnRetry = document.createElement('button');
+        btnRetry.innerText = 'Повторить';
+        Object.assign(btnRetry.style, { padding: '10px 16px', fontSize: '16px', cursor: 'pointer' });
+        btnRetry.onclick = () => {
+            enemies = [];
+            bullets = [];
+            enemyBullets = [];
+            bottles = [];
+            boss = null;
+            bukinTablet = null;
+            score = 0;
+            combo = 0;
+            bonusShots = 0;
+            lives = PLAYER_LIVES;
+            invuln = INVULN_TIME;
+            levelCompleteShown = false;
+            gameOverShown = false;
+            player = new Player(selectedChar);
+            spawnEnemies();
+            document.getElementById('menu').style.display = 'none';
+            document.getElementById('game').style.display = 'block';
+            overlay.remove();
+            running = true;
+            last = performance.now();
+            requestAnimationFrame(loop);
+        };
+
+        const btnMain = document.createElement('button');
+        btnMain.innerText = 'Главный экран';
+        Object.assign(btnMain.style, { padding: '10px 16px', fontSize: '16px', cursor: 'pointer' });
+        btnMain.onclick = () => {
+            enemies = [];
+            bullets = [];
+            enemyBullets = [];
+            bottles = [];
+            boss = null;
+            bukinTablet = null;
+            score = 0;
+            combo = 0;
+            bonusShots = 0;
+            lives = PLAYER_LIVES;
+            invuln = INVULN_TIME;
+            levelCompleteShown = false;
+            gameOverShown = false;
+            running = false;
+            document.getElementById('game').style.display = 'none';
+            document.getElementById('menu').style.display = 'block';
+            updateBestScoresDisplay();
+            overlay.remove();
+        };
+
+        buttons.appendChild(btnRetry);
+        buttons.appendChild(btnMain);
+
+        box.appendChild(iconsRow);
+        box.appendChild(title);
+        box.appendChild(scoreLine);
+        box.appendChild(bestLine);
+        box.appendChild(buttons);
+        overlay.appendChild(box);
+        document.body.appendChild(overlay);
+    }
+
+    // ==== AUDIO ====
+    function playGameOverSound(isNew) {
+        try {
+            const ctx = new (window.AudioContext || window.webkitAudioContext)();
+            const now = ctx.currentTime;
+            const gain = ctx.createGain();
+            gain.connect(ctx.destination);
+            gain.gain.setValueAtTime(0.0001, now);
+            gain.gain.exponentialRampToValueAtTime(0.25, now + 0.02);
+            const osc = ctx.createOscillator();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(isNew ? 520 : 220, now);
+            osc.connect(gain);
+            osc.start(now);
+            // short envelope
+            gain.gain.exponentialRampToValueAtTime(0.001, now + (isNew ? 0.45 : 0.33));
+            osc.stop(now + (isNew ? 0.5 : 0.36));
+            // if new record, play a second higher note
+            if (isNew) {
+                const osc2 = ctx.createOscillator();
+                const g2 = ctx.createGain();
+                g2.connect(ctx.destination);
+                osc2.type = 'sine';
+                osc2.frequency.setValueAtTime(760, now + 0.12);
+                g2.gain.setValueAtTime(0.0001, now + 0.12);
+                g2.gain.exponentialRampToValueAtTime(0.18, now + 0.14);
+                osc2.connect(g2);
+                osc2.start(now + 0.12);
+                g2.gain.exponentialRampToValueAtTime(0.001, now + 0.6);
+                osc2.stop(now + 0.65);
+            }
+        } catch (e) {
+            // ignore audio errors (browser restrictions)
+            console.warn('Audio not available', e);
+        }
+    }
+    window.addEventListener('resize', resizeCanvas);
+    resizeCanvas();
+
+    // ==== GAME STATE ====
     let keys = {};
     let bullets = [];
     let enemyBullets = [];
     let enemies = [];
     let bottles = [];
     let player;
-
     let score = 0;
     let combo = 0;
-    let lives = 5;
-    let invuln = 3;
+    let lives = PLAYER_LIVES;
+    let invuln = INVULN_TIME;
     let bonusShots = 0;
     let bonusMode = false;
+    // game mode: 'normal' or 'survival'
+    let gameMode = 'normal';
+    // survival counters
+    let killCount = 0;
+    let survivalEnemySpeedIncrease = 0;
+    let survivalBulletSpeedIncrease = 0;
+    let survivalSpeedUps = 0; // up to 10
 
-    // ===== KUZY SPRITE =====
+    // ==== BOSS STATE ====
+    let boss = null;
+
+    // ==== PLAYER SPEECH BALLOON ====
+    let speechBalloons = [];
+    const SPEECH_BALLOON_DURATION = 1.0;
+
+    // ==== EXPLOSION ANIMATION ====
+    let explosions = [];
+
+    // ==== SPRITES ====
     const kuzyImg = new Image();
     let spriteReady = false;
-
     kuzyImg.onload = () => spriteReady = true;
     kuzyImg.src = "img/kuzy.png";
 
-    const FRAME_W = 256;
-    const FRAME_H = 256;
-
-    const WALK_START = 1;
-    const WALK_END = 4;
-    const SHOOT_FRAME = 5;
-
     // ---------- PLAYER ----------
-    class Player{
-        constructor(type){
+
+    // ==== PLAYER CLASS ====
+    /**
+     * Класс игрока: хранит состояние, управляет движением, анимацией и отрисовкой
+     */
+    class Player {
+        constructor(type) {
             this.type = type;
             this.w = canvas.height * 0.2;
             this.h = this.w;
-            this.x = canvas.width/2 - this.w/2;
+            this.x = canvas.width / 2 - this.w / 2;
             this.y = canvas.height - this.h - 20;
-            this.speed = 7;
+            this.speed = PLAYER_SPEED;
             this.lastShot = 0;
             this.frame = 0;
             this.timer = 0;
             this.shooting = false;
             this.shootTimer = 0;
         }
-        update(){
-            if(keys["ArrowLeft"]) this.x -= this.speed;
-            if(keys["ArrowRight"]) this.x += this.speed;
-            this.x = Math.max(10, Math.min(canvas.width-this.w-10, this.x));
+        /**
+         * Обновляет положение, анимацию и обработку выстрелов игрока
+         */
+        update() {
+            if (keys["ArrowLeft"]) this.x -= this.speed;
+            if (keys["ArrowRight"]) this.x += this.speed;
+            this.x = Math.max(10, Math.min(canvas.width - this.w - 10, this.x));
 
-            if(keys[" "] && performance.now()-this.lastShot>333){
+            if (keys[" "] && performance.now() - this.lastShot > 333) {
                 this.lastShot = performance.now();
                 shootPlayerBullet(this);
             }
 
-            let moving = false;
+            const moving = keys["ArrowLeft"] || keys["ArrowRight"];
 
-            if(keys["ArrowLeft"] || keys["ArrowRight"]){
-                moving = true;
-            }
-
-            if(this.shooting){
+            if (this.shooting) {
                 this.shootTimer += 0.016;
-                if(this.shootTimer > 0.15){
+                if (this.shootTimer > 0.15) {
                     this.shooting = false;
-                    this.frame = 5;
+                    this.frame = SHOOT_FRAME;
                 }
-            }
-            else if(moving){
+            } else if (moving) {
                 this.timer += 0.016;
-                if(this.timer > 0.12){
+                if (this.timer > 0.12) {
                     this.frame++;
-                    if(this.frame > WALK_END) this.frame = WALK_START;
+                    if (this.frame > WALK_END) this.frame = WALK_START;
                     this.timer = 0;
                 }
-            }
-            else{
+            } else {
                 this.frame = 0;
             }
         }
-        draw(){
-            if(!spriteReady) return;
-
+        /**
+         * Отрисовывает спрайт игрока на canvas
+         */
+        draw() {
+            if (!spriteReady) return;
             ctx.drawImage(
                 kuzyImg,
                 this.frame * FRAME_W,
@@ -105,210 +413,733 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // ---------- BULLETS ----------
-    function shootPlayerBullet(p){
-        let r = 8, speed = 8, color="#222";
+
+    // ==== BULLET LOGIC ====
+    /**
+     * Создаёт пулю игрока с параметрами в зависимости от типа персонажа и бонусов
+     * @param {Player} p - объект игрока
+     */
+    function shootPlayerBullet(p) {
+        let r = 8, speed = 8, color = "#222";
         p.shooting = true;
         p.shootTimer = 0;
         p.frame = SHOOT_FRAME;
 
-        if(p.type==="dron"){ r=14; speed=9; color="#66ccff"; }
-        if(p.type==="max"){ r=8; speed=8; color="#222"; }
-        if(p.type==="kuzy"){ r=18; speed=5; color="#333"; }
+        switch (p.type) {
+            case "dron":
+                r = 14; speed = 9; color = "#66ccff";
+                break;
+            case "max":
+                r = 8; speed = 8; color = "#222";
+                break;
+            case "kuzy":
+                r = 18; speed = 5; color = "#333";
+                break;
+        }
 
-        if(bonusMode && bonusShots>0){
+        if (bonusMode && bonusShots > 0) {
             r *= 1.8;
             speed *= 1.8;
             color = "gold";
             bonusShots--;
         }
 
-        bullets.push({x:p.x+p.w/2,y:p.y,r,speed,color});
+        bullets.push({ x: p.x + p.w / 2, y: p.y, r, speed, color });
     }
 
     // ---------- ENEMIES ----------
-    function spawnEnemies(){
-        enemies=[];
-        for(let r=0;r<3;r++){
-            for(let c=0;c<7;c++){
+
+    // ==== ENEMY LOGIC ====
+    /**
+     * Генерирует массив врагов в виде сетки
+     */
+    function spawnEnemies() {
+        const lilacColors = ["#b57edc", "#c084fc", "#a855f7", "#e1bee7", "#ede7f6"];
+        enemies = [];
+        for (let r = 0; r < ENEMY_ROWS; r++) {
+            for (let c = 0; c < ENEMY_COLS; c++) {
+                // Генерируем массив кружков для грозди сирени
+                const flowers = [];
+                for (let i = 0; i < 18; i++) {
+                    const angle = Math.PI * 2 * Math.random();
+                    const rad = 0.18 + Math.random() * 0.18;
+                    const relX = Math.cos(angle) * 0.22 * (0.7 + Math.random()*0.7);
+                    const relY = 0.18 + Math.sin(angle) * 0.22 * (0.7 + Math.random()*0.7);
+                    const sizeK = 0.5 + Math.random()*0.5;
+                    const color = lilacColors[Math.floor(Math.random() * lilacColors.length)];
+                    flowers.push({relX, relY, rad, sizeK, color});
+                }
                 enemies.push({
-                    x:100+c*120,
-                    y:60+r*100,
-                    w:canvas.height*0.1,
-                    h:canvas.height*0.1,
-                    dir:1,
-                    diving:false,
-                    targetX:0,
-                    shootTimer:0
+                    x: 100 + c * ENEMY_X_SPACING,
+                    y: ENEMY_START_Y + r * ENEMY_Y_SPACING,
+                    w: canvas.height * ENEMY_WIDTH_RATIO,
+                    h: canvas.height * ENEMY_HEIGHT_RATIO,
+                    dir: 1,
+                    diving: false,
+                    targetX: 0,
+                    shootTimer: 0,
+                    flowers
                 });
             }
         }
     }
 
-    function drawLilac(x,y,size){
-        for(let i=0;i<6;i++){
-            ctx.fillStyle = ["#b57edc","#c084fc","#a855f7"][i%3];
+
+    // ==== ENEMY DRAWING ====
+    /**
+     * Рисует врага в виде цветка сирени
+     * @param {number} x - координата X центра
+     * @param {number} y - координата Y центра
+     * @param {number} size - размер врага
+     */
+    /**
+     * Рисует врага в виде детализированной ветки сирени
+     * @param {number} x - координата X центра
+     * @param {number} y - координата Y центра
+     * @param {number} size - размер врага
+     */
+    function drawLilac(x, y, size, flowers) {
+        // Стебель
+        ctx.save();
+        ctx.strokeStyle = "#388e3c";
+        ctx.lineWidth = size * 0.08;
+        ctx.beginPath();
+        ctx.moveTo(x, y + size * 0.1);
+        ctx.lineTo(x, y + size * 0.6);
+        ctx.stroke();
+
+        // Веточки
+        ctx.lineWidth = size * 0.04;
+        for (let a = -0.7; a <= 0.7; a += 0.7) {
             ctx.beginPath();
-            ctx.arc(x + Math.cos(i)*size*0.3, y + Math.sin(i)*size*0.3, size*0.25, 0, Math.PI*2);
+            ctx.moveTo(x, y + size * 0.3);
+            ctx.lineTo(x + Math.sin(a) * size * 0.25, y + size * 0.5);
+            ctx.stroke();
+        }
+
+        // Гроздь сирени (кружки из массива flowers)
+        for (const f of flowers) {
+            ctx.beginPath();
+            ctx.arc(x + f.relX * size, y + f.relY * size, f.rad * size * f.sizeK, 0, Math.PI * 2);
+            ctx.fillStyle = f.color;
+            ctx.globalAlpha = 0.85;
             ctx.fill();
         }
+        ctx.globalAlpha = 1;
+        ctx.restore();
     }
 
     // ---------- HELPERS ----------
-    function rect(a,b){
-        return a.x < b.x+b.w &&
-            a.x+a.w > b.x &&
-            a.y < b.y+b.h &&
-            a.y+a.h > b.y;
+
+    // ==== COLLISION DETECTION ====
+    /**
+     * Проверяет пересечение двух прямоугольников (коллизия)
+     * @param {object} a - первый объект с x, y, w, h
+     * @param {object} b - второй объект с x, y, w, h
+     * @returns {boolean} true если объекты пересекаются
+     */
+    function rect(a, b) {
+        return a.x < b.x + b.w &&
+            a.x + a.w > b.x &&
+            a.y < b.y + b.h &&
+            a.y + a.h > b.y;
     }
 
     // ---------- GAME LOOP ----------
-    function update(dt){
-        if(invuln>0) invuln-=dt;
 
+    // ==== GAME UPDATE ====
+    /**
+     * Главная функция обновления состояния игры: движение, столкновения, очки, бонусы
+     * @param {number} dt - дельта времени в секундах
+     */
+    function update(dt) {
+        if (invuln > 0) invuln -= dt;
         player.update(dt);
 
-        bullets.forEach(b=>b.y-=b.speed);
-        enemyBullets.forEach(b=>b.y+=4);
-        bottles.forEach(b=>{
-            b.y+=2;
-            b.x += Math.sin(b.y/20)*1.5;
+        // Обновляем падение таблички Букин (если есть)
+        if (bukinTablet && !bukinTablet.landed) {
+            // вычисляем текущие размеры с сохранением пропорций, если изображение загружено
+            let curW = bukinTablet.desiredW;
+            let curH = bukinTablet.desiredW; // запасной вариант
+            if (bukinImgReady && bukinImg.width > 0) {
+                curH = curW * (bukinImg.height / bukinImg.width);
+            }
+            // Падаем вниз (изменяем центр Y)
+            bukinTablet.cy += 8;
+            // Сдвигаемся по горизонтали к целевому центру
+            bukinTablet.cx += (bukinTablet.targetCx - bukinTablet.cx) * 0.12;
+            // Останавливаем падение на уровне игрока (на той же высоте)
+            const landCy = player.y + player.h - 10 - curH / 2;
+            if (bukinTablet.cy >= landCy) {
+                bukinTablet.cy = landCy;
+                bukinTablet.cx = bukinTablet.targetCx;
+                bukinTablet.landed = true;
+                // Показываем экран завершения уровня, если ещё не показан
+                if (!levelCompleteShown) {
+                    showLevelComplete();
+                    levelCompleteShown = true;
+                }
+            }
+        }
+
+        // Обновляем падение таблички Букин (если есть)
+        if (bukinTablet && !bukinTablet.landed) {
+            // Падаем вниз
+            bukinTablet.y += 8;
+            // Сдвигаемся по горизонтали к цели (рядом с игроком)
+            bukinTablet.x += (bukinTablet.targetX - bukinTablet.x) * 0.12;
+            // Останавливаем падение на уровне игрока (на той же высоте)
+            const landY = player.y + player.h - 10 - bukinTablet.h;
+            if (bukinTablet.y >= landY) {
+                bukinTablet.y = landY;
+                bukinTablet.x = bukinTablet.targetX;
+                bukinTablet.landed = true;
+            }
+        }
+
+        // Обновляем облачки с текстом
+        speechBalloons = speechBalloons.filter(sb => {
+            sb.timer += dt;
+            return sb.timer < SPEECH_BALLOON_DURATION;
         });
 
-        bullets = bullets.filter(b=>b.y>0);
-        enemyBullets = enemyBullets.filter(b=>b.y<canvas.height);
-        bottles = bottles.filter(b=>b.y<canvas.height);
+        // Обновляем анимации взрывов
+        explosions = explosions.filter(ex => {
+            ex.timer += dt;
+            return ex.timer < 0.5;
+        });
 
-        enemies.forEach(e=>{
-            if(!e.diving){
-                e.x += e.dir*1.2;
-                if(e.x<0 || e.x+e.w>canvas.width){
-                    e.dir*=-1;
-                    e.y+=20;
-                }
-                if(Math.random()<0.002){
-                    e.diving=true;
-                    e.targetX = player.x + player.w/2;
+        bullets.forEach(b => b.y -= b.speed);
+        // Move enemy bullets using their velocity if provided (supports homing)
+        enemyBullets.forEach(b => {
+            if (typeof b.vx === 'number' && typeof b.vy === 'number') {
+                b.x += b.vx;
+                b.y += b.vy;
+            } else {
+                b.y += 4;
+            }
+        });
+        bottles.forEach(b => {
+            b.y += 2;
+            b.x += Math.sin(b.y / 20) * 1.5;
+        });
+
+        bullets = bullets.filter(b => b.y > 0);
+        enemyBullets = enemyBullets.filter(b => b.y < canvas.height);
+        bottles = bottles.filter(b => b.y < canvas.height);
+
+        const leafEmojis = ["🍃", "🍂", "🍁", "🌿", "🌱"];
+
+        // BOSS LOGIC
+        if (gameMode !== 'survival' && !boss && enemies.length === 1) {
+            // Превращаем последнего врага в босса-сосиску
+            const e = enemies[0];
+            boss = {
+                x: e.x,
+                y: e.y,
+                w: e.w * 5,
+                h: e.h * 5,
+                dir: 1,
+                shootTimer: 0,
+                hp: 11,
+                angle: 0,
+                angleSpeed: 0.04 + Math.random()*0.04,
+                centered: false
+            };
+            enemies = [];
+        }
+
+        if (boss) {
+            // Если босс ещё не в центре — плавно двигаем его туда и не выполняем активную логику
+            if (!boss.centered) {
+                const targetX = canvas.width / 2 - boss.w / 2;
+                const targetY = 60;
+                boss.x += (targetX - boss.x) * 0.08;
+                boss.y += (targetY - boss.y) * 0.08;
+                if (Math.abs(boss.x - targetX) < 2 && Math.abs(boss.y - targetY) < 2) {
+                    boss.x = targetX;
+                    boss.y = targetY;
+                    boss.centered = true;
                 }
             } else {
-                e.y+=4;
-                e.x += (e.targetX-e.x)*0.02;
-                if(e.y > player.y - e.h){
-                    e.diving=false;
-                    e.y=60;
+                // Покачивание
+                boss.angle += boss.angleSpeed;
+                boss.x += Math.sin(boss.angle) * 2;
+                // Движение по экрану
+                boss.x += boss.dir * 1.2;
+                if (boss.x < 0 || boss.x + boss.w > canvas.width) {
+                    boss.dir *= -1;
                 }
-            }
-
-            e.shootTimer+=dt;
-
-            // Рандомная стрельба врагов с вероятностью 1/3
-            if(Math.random() < 0.005 && e.shootTimer > 1){  
-                e.shootTimer = 0;
-                enemyBullets.push({x:e.x + e.w / 2, y:e.y + e.h, w:8, h:12});
-            }
-        });
-
-        // hits
-        bullets.forEach((b,bi)=>{
-            enemies.forEach((e,ei)=>{
-                if(b.x>e.x && b.x<e.x+e.w &&
-                   b.y>e.y && b.y<e.y+e.h){
-                    enemies.splice(ei,1);
-                    bullets.splice(bi,1);
-                    score++;
-                    combo++;
-                    if(Math.random()<0.1){
-                        bottles.push({x:e.x,y:e.y,w:18,h:36});
+                // Стрельба в 3 раза чаще
+                boss.shootTimer += dt;
+                // Increase firing frequency (approx. 2x) and make bullets slightly home towards player
+                if (Math.random() < 0.03 && boss.shootTimer > 0.16) {
+                    boss.shootTimer = 0;
+                    for (let i = 0; i < 3; i++) {
+                        const emojiIdx = Math.floor(Math.random() * leafEmojis.length);
+                        const bx = boss.x + boss.w / 2 + (i - 1) * 30;
+                        const by = boss.y + boss.h;
+                        const px = player.x + player.w / 2;
+                        const py = player.y + player.h / 2;
+                        const dx = px - bx;
+                        const dy = py - by;
+                        const dist = Math.max(1, Math.hypot(dx, dy));
+                        const speed = 5.0;
+                        // Homing: stronger for boss bullets
+                        const homing = 0.45;
+                        const vx = (dx / dist) * speed * homing;
+                        const vy = (dy / dist) * speed * 0.95;
+                        enemyBullets.push({ x: bx, y: by, w: 16, h: 24, emoji: leafEmojis[emojiIdx], vx, vy });
                     }
                 }
-            });
-        });
+            }
+        }
+        enemies.forEach(e => {
+            if (!e.diving) {
+                e.x += e.dir * (1.2 + survivalEnemySpeedIncrease);
+                if (e.x < 0 || e.x + e.w > canvas.width) {
+                    e.dir *= -1;
+                    e.y += 20;
+                }
+                if (Math.random() < 0.002) {
+                    e.diving = true;
+                    e.targetX = player.x + player.w / 2;
+                }
+            } else {
+                e.y += 4;
+                e.x += (e.targetX - e.x) * 0.02;
+                // Теперь враг летит чуть ниже игрока, чтобы мог столкнуться
+                if (e.y > player.y + player.h * 0.5) {
+                    e.diving = false;
+                    e.y = ENEMY_START_Y;
+                }
+            }
 
-        bottles.forEach((b,bi)=>{
-            if(rect(b,player)){
-                bonusShots += 3;
-                bottles.splice(bi,1);
+            e.shootTimer += dt;
+            if (Math.random() < 0.008 && e.shootTimer > 0.9) {
+                e.shootTimer = 0;
+                // Назначаем случайный эмодзи-листик при создании пули
+                const emojiIdx = Math.floor(Math.random() * leafEmojis.length);
+                const bx = e.x + e.w / 2;
+                const by = e.y + e.h;
+                const px = player.x + player.w / 2;
+                const py = player.y + player.h / 2;
+                const dx = px - bx;
+                const dy = py - by;
+                const dist = Math.max(1, Math.hypot(dx, dy));
+                const speed = 4.0 + survivalBulletSpeedIncrease;
+                const homing = 0.18; // gentle homing for normal enemies
+                const vx = (dx / dist) * speed * homing;
+                const vy = (dy / dist) * speed * 0.9;
+                enemyBullets.push({ x: bx, y: by, w: 8, h: 12, emoji: leafEmojis[emojiIdx], vx, vy });
             }
         });
 
-        enemyBullets.forEach((eb,ei)=>{
-            if(rect(eb,player) && invuln<=0){
+        // Bullet vs enemy/boss bullets collisions: player bullets can destroy enemy bullets
+        for (let bi = bullets.length - 1; bi >= 0; bi--) {
+            const b = bullets[bi];
+            for (let ebi = enemyBullets.length - 1; ebi >= 0; ebi--) {
+                const eb = enemyBullets[ebi];
+                const ew = eb.w || 8;
+                const eh = eb.h || 12;
+                // simple circle-rect overlap check (approx)
+                if (b.x > eb.x - b.r && b.x < eb.x + ew + b.r && b.y > eb.y - b.r && b.y < eb.y + eh + b.r) {
+                    // smaller explosion when bullets collide
+                    const cx = (b.x + (eb.x + ew / 2)) / 2;
+                    const cy = (b.y + (eb.y + eh / 2)) / 2;
+                    explosions.push({ x: cx, y: cy, timer: 0, scale: 0.5 });
+                    bullets.splice(bi, 1);
+                    enemyBullets.splice(ebi, 1);
+                    // +1 point for destroying an enemy bullet with player's bullet
+                    score += 1;
+                    break;
+                }
+            }
+        }
+
+        // Bullet hits enemy
+        /**
+         * Проверяет попадание пули по врагу и вызывает выпадение бонуса через trySpawnBonus
+         */
+        bullets.forEach((b, bi) => {
+            if (!boss) {
+                enemies.forEach((e, ei) => {
+                    if (b.x > e.x && b.x < e.x + e.w && b.y > e.y && b.y < e.y + e.h) {
+                        // Взрыв на месте врага
+                        explosions.push({ x: e.x + e.w / 2, y: e.y + e.h / 2, timer: 0 });
+                        enemies.splice(ei, 1);
+                        // survival: increment kill count and trigger waves/speedups
+                        if (gameMode === 'survival') {
+                            killCount++;
+                            // every 12 kills spawn a wave of 7 enemies at this spot (one per second)
+                            if (killCount % 12 === 0) {
+                                scheduleWave(e.x + e.w/2, e.y + e.h/2, 12, 1000);
+                            }
+                            // every 30 kills increase enemy/bullet speed up to 10 times
+                            if (killCount % 30 === 0 && survivalSpeedUps < 10) {
+                                survivalEnemySpeedIncrease += 1;
+                                survivalBulletSpeedIncrease += 1;
+                                survivalSpeedUps += 1;
+                            }
+                        }
+                        bullets.splice(bi, 1);
+                            score += 2;
+                        combo++;
+                        // Выпадение бонуса по обычному шансу
+                        trySpawnBonus(e.x, e.y);
+                        // Гарантированное выпадение бонуса при 5 комбо подряд
+                        if (combo > 0 && combo % 5 === 0) {
+                            bottles.push({ x: e.x, y: e.y, w: 18, h: 36 });
+                        }
+                    }
+                });
+            } else {
+                // Попадание по боссу-сосиске
+                if (b.x > boss.x && b.x < boss.x + boss.w && b.y > boss.y && b.y < boss.y + boss.h && boss.hp > 0) {
+                    boss.hp--;
+                    // +3 points per hit on boss
+                    score += 3;
+                    explosions.push({ x: boss.x + boss.w / 2, y: boss.y + boss.h / 2, timer: 0 });
+                    bullets.splice(bi, 1);
+                    if (boss.hp <= 0) {
+                        // Boss death bonus
+                        score += 20;
+                        combo++;
+                            // Взрыв босса
+                            explosions.push({ x: boss.x + boss.w / 2, y: boss.y + boss.h / 2, timer: 0 });
+                            // Создаём табличку Букин, она упадёт рядом с игроком (сохраняем центр и желаемую ширину)
+                            const desiredW = boss.w / 2;
+                            // Выбираем сторону (лево/право) по доступному месту
+                            const leftCenter = player.x - desiredW - 10 + desiredW / 2;
+                            const rightCenter = player.x + player.w + 10 + desiredW / 2;
+                            let targetCx = leftCenter;
+                            if (leftCenter < desiredW / 2 && rightCenter + desiredW / 2 <= canvas.width) {
+                                targetCx = rightCenter;
+                            } else if (rightCenter + desiredW / 2 > canvas.width && leftCenter >= desiredW / 2) {
+                                targetCx = leftCenter;
+                            }
+                            bukinTablet = {
+                                cx: boss.x + boss.w / 2,
+                                cy: boss.y + boss.h / 2,
+                                desiredW,
+                                targetCx,
+                                landed: false
+                            };
+                            boss = null;
+                    }
+                }
+            }
+        });
+
+        /**
+         * Пытается создать бонус (бутылку) с определённым шансом
+         * @param {number} x - координата X врага
+         * @param {number} y - координата Y врага
+         */
+        function trySpawnBonus(x, y) {
+            const BONUS_CHANCE = 0.1; // 10% шанс
+            if (Math.random() < BONUS_CHANCE) {
+                bottles.push({ x, y, w: 18, h: 36 });
+            }
+        }
+
+        // Spawn a single enemy at approx given center coordinates
+        function spawnEnemyAt(cx, cy) {
+            const lilacColors = ["#b57edc", "#c084fc", "#a855f7", "#e1bee7", "#ede7f6"];
+            const flowers = [];
+            for (let i = 0; i < 18; i++) {
+                const angle = Math.PI * 2 * Math.random();
+                const rad = 0.18 + Math.random() * 0.18;
+                const relX = Math.cos(angle) * 0.22 * (0.7 + Math.random()*0.7);
+                const relY = 0.18 + Math.sin(angle) * 0.22 * (0.7 + Math.random()*0.7);
+                const sizeK = 0.5 + Math.random()*0.5;
+                const color = lilacColors[Math.floor(Math.random() * lilacColors.length)];
+                flowers.push({relX, relY, rad, sizeK, color});
+            }
+            const w = canvas.height * ENEMY_WIDTH_RATIO;
+            const h = canvas.height * ENEMY_HEIGHT_RATIO;
+            enemies.push({ x: cx - w/2, y: cy - h/2, w, h, dir: 1, diving: false, targetX: 0, shootTimer: 0, flowers });
+        }
+
+        function scheduleWave(cx, cy, count, intervalMs) {
+            // If it's a large wave (e.g., 12), spawn them in a horizontal formation across the playfield
+            if (count >= 12) {
+                const spacing = canvas.width / (count + 1);
+                for (let i = 0; i < count; i++) {
+                    setTimeout(() => {
+                        const rx = spacing * (i + 1);
+                        const ry = ENEMY_START_Y + (Math.random() - 0.5) * 20;
+                        spawnEnemyAt(rx, ry);
+                    }, i * intervalMs);
+                }
+                return;
+            }
+            for (let i = 0; i < count; i++) {
+                setTimeout(() => {
+                    // slight random offset so they don't stack exactly
+                    const rx = cx + (Math.random() - 0.5) * 60;
+                    const ry = cy + (Math.random() - 0.5) * 40;
+                    spawnEnemyAt(rx, ry);
+                }, i * intervalMs);
+            }
+        }
+
+        // Player collects bottle
+        bottles.forEach((b, bi) => {
+            if (rect(b, player)) {
+                bonusShots += BONUS_SHOTS_PER_BOTTLE;
+                bottles.splice(bi, 1);
+            }
+        });
+
+
+        // Enemy bullet hits player
+        enemyBullets.forEach((eb, ei) => {
+            if (rect(eb, player) && invuln <= 0) {
                 lives--;
-                combo=0;
-                invuln=2;
-                enemyBullets.splice(ei,1);
+                combo = 0;
+                invuln = 2;
+                // Добавляем взрыв
+                explosions.push({ x: player.x + player.w / 2, y: player.y + player.h / 2, timer: 0 });
+                // Добавляем облачко с текстом
+                // Облачко слева от игрока
+                speechBalloons.push({ x: player.x - player.w * 0.25, y: player.y + player.h * 0.25, timer: 0 });
+                enemyBullets.splice(ei, 1);
+                if (lives <= 0) {
+                    showGameOver();
+                }
+            }
+        });
+
+        // Enemy collides with player
+        enemies.forEach((e) => {
+            // Проверяем столкновение по прямоугольникам
+            if (
+                rect(
+                    { x: e.x, y: e.y, w: e.w, h: e.h },
+                    { x: player.x, y: player.y, w: player.w, h: player.h }
+                ) && invuln <= 0
+            ) {
+                lives--;
+                combo = 0;
+                invuln = 2;
+                // Добавляем взрыв
+                explosions.push({ x: player.x + player.w / 2, y: player.y + player.h / 2, timer: 0 });
+                // Добавляем облачко с текстом
+                // Облачко слева от игрока
+                speechBalloons.push({ x: player.x - player.w * 0.25, y: player.y + player.h * 0.25, timer: 0 });
+                    if (lives <= 0) {
+                        showGameOver();
+                    }
             }
         });
 
         document.getElementById('hud').innerText =
-            `Жизни: ${"❤️".repeat(lives)}   Очки: ${score}   Комбо: ${combo}   Бонус: ${bonusShots}`;
+            `Жизни: ${"❤️".repeat(lives)}\nОчки: ${score}   Комбо: ${combo}   Бонус: ${bonusShots}`;
     }
 
-    function draw(){
-        ctx.fillStyle = "#a2c9e2";  // Нежно голубой фон
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    // ==== GAME DRAW ====
+    /**
+     * Главная функция отрисовки всех игровых объектов и фона
+     */
+    function draw() {
+        // Рисуем адаптивный фон
+        if (bgReady) {
+            ctx.drawImage(bgImg, 0, 0, canvas.width, canvas.height);
+        } else {
+            ctx.fillStyle = "#a2c9e2"; // Нежно голубой фон
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+        }
+
+        // Рисуем табличку Букин позади игрока (если есть)
+        if (bukinTablet) {
+            if (bukinImgReady && bukinImg.width > 0) {
+                const curW = bukinTablet.desiredW;
+                const curH = curW * (bukinImg.height / bukinImg.width);
+                const drawX = bukinTablet.cx - curW / 2;
+                const drawY = bukinTablet.cy - curH / 2;
+                ctx.save();
+                ctx.drawImage(bukinImg, drawX, drawY, curW, curH);
+                ctx.restore();
+            } else {
+                // Пока картинка не загружена — рисуем серый прямоугольник
+                const curW = bukinTablet.desiredW;
+                const curH = boss ? boss.h / 3 : curW;
+                const drawX = bukinTablet.cx - curW / 2;
+                const drawY = bukinTablet.cy - curH / 2;
+                ctx.save();
+                ctx.fillStyle = '#888';
+                ctx.fillRect(drawX, drawY, curW, curH);
+                ctx.restore();
+            }
+        }
 
         player.draw();
 
-        bullets.forEach(b=>{
-            ctx.fillStyle=b.color;
+        bullets.forEach(b => {
+            ctx.fillStyle = b.color;
             ctx.beginPath();
-            ctx.arc(b.x,b.y,b.r,0,Math.PI*2);
+            ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
             ctx.fill();
         });
 
-        enemyBullets.forEach(b=>{
-            ctx.fillStyle="green";
-            ctx.fillRect(b.x,b.y,b.w,b.h);
+        // Отрисовываем пули врагов с их индивидуальным эмодзи-листиком
+        enemyBullets.forEach(b => {
+            ctx.font = `${b.h * 2.4}px serif`;
+            ctx.textAlign = "left";
+            ctx.textBaseline = "top";
+            ctx.fillText(b.emoji || "🍃", b.x, b.y);
         });
 
-        bottles.forEach(b=>{
-            ctx.fillStyle="#6b3e26";
-            ctx.fillRect(b.x,b.y,b.w,b.h);
-            ctx.fillStyle="#eee";
-            ctx.fillRect(b.x+4,b.y+6,6,10);
+        bottles.forEach(b => {
+            ctx.font = `${b.h}px serif`;
+            ctx.textAlign = "left";
+            ctx.textBaseline = "top";
+            ctx.fillText("🍺", b.x, b.y);
         });
 
-        enemies.forEach(e=>{
-            drawLilac(e.x+e.w/2, e.y+e.h/2, e.w);
+        enemies.forEach(e => {
+            drawLilac(e.x + e.w / 2, e.y + e.h / 2, e.w, e.flowers);
         });
+
+        // Рисуем босса-сосиску
+        if (boss) {
+            ctx.save();
+            ctx.font = `${boss.h}px serif`;
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            ctx.globalAlpha = 1;
+            ctx.fillText("🌭", boss.x + boss.w / 2, boss.y + boss.h / 2);
+            // HP bar
+            ctx.fillStyle = "#fff";
+            ctx.fillRect(boss.x, boss.y - 18, boss.w, 12);
+            ctx.fillStyle = "#e53935";
+            ctx.fillRect(boss.x, boss.y - 18, boss.w * (boss.hp / 11), 12);
+            ctx.strokeStyle = "#222";
+            ctx.strokeRect(boss.x, boss.y - 18, boss.w, 12);
+            ctx.restore();
+        }
+
+        // Рисуем взрывы
+        explosions.forEach(ex => {
+            ctx.save();
+            const scale = ex.scale || 1;
+            ctx.font = `${(60 + ex.timer * 60) * scale}px serif`;
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            ctx.globalAlpha = 1 - ex.timer * 2;
+            ctx.fillText("💥", ex.x, ex.y);
+            ctx.restore();
+        });
+
+        // Рисуем облачки с текстом
+        speechBalloons.forEach(sb => {
+            ctx.save();
+            ctx.globalAlpha = 1 - sb.timer / SPEECH_BALLOON_DURATION;
+            // Овальное облачко
+            ctx.beginPath();
+            ctx.ellipse(sb.x, sb.y, 70, 40, Math.PI * 0.05, 0, Math.PI * 2);
+            ctx.moveTo(sb.x + 40, sb.y + 10);
+            ctx.ellipse(sb.x + 40, sb.y + 10, 18, 12, Math.PI * 0.1, 0, Math.PI * 2);
+            ctx.moveTo(sb.x - 40, sb.y + 10);
+            ctx.ellipse(sb.x - 40, sb.y + 10, 18, 12, Math.PI * 0.1, 0, Math.PI * 2);
+            ctx.closePath();
+            ctx.fillStyle = "#fff";
+            ctx.strokeStyle = "#bbb";
+            ctx.lineWidth = 3;
+            ctx.fill();
+            ctx.stroke();
+            // Текст
+            ctx.font = "bold 32px Comic Sans MS, Arial";
+            ctx.fillStyle = "#222";
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            ctx.fillText("Сука", sb.x, sb.y);
+            ctx.restore();
+        });
+
+        // (табличка теперь рисуется позади игрока)
     }
 
-    let last=0;
-    function loop(ts){
-        const dt=(ts-last)/1000;
-        last=ts;
 
+    // ==== MAIN GAME LOOP ====
+    let last = 0;
+    let running = false;
+    let levelCompleteShown = false;
+    let gameOverShown = false;
+    /**
+     * Главный игровой цикл: обновляет и рисует игру, вызывает сам себя через requestAnimationFrame
+     * @param {number} ts - текущее время (timestamp)
+     */
+    function loop(ts) {
+        if (!running) return;
+        const dt = (ts - last) / 1000;
+        last = ts;
         update(dt);
         draw();
         requestAnimationFrame(loop);
     }
 
-    document.addEventListener('keydown',e=>{
-        keys[e.key]=true;
-        if(e.key==="Shift") bonusMode=!bonusMode;
-    });
-    document.addEventListener('keyup',e=>keys[e.key]=false);
 
-    // MENU
+    // ==== INPUT HANDLING ====
+    /**
+     * Обработчик нажатия клавиш: управление движением, стрельбой и бонус-режимом
+     */
+    document.addEventListener('keydown', e => {
+        keys[e.key] = true;
+        if (e.key === "Shift") bonusMode = !bonusMode;
+    });
+    /**
+     * Обработчик отпускания клавиш: сбрасывает состояние нажатия
+     */
+    document.addEventListener('keyup', e => keys[e.key] = false);
+
+
+    // ==== MENU LOGIC ====
     const chars = document.querySelectorAll('.char');
     const modes = document.getElementById('modes');
-
     let selectedChar = "kuzy";
 
-    chars.forEach(c=>{
-        c.onclick=()=>{
+    /**
+     * Обработчик выбора персонажа в меню
+     */
+    chars.forEach(c => {
+        c.onclick = () => {
             selectedChar = c.dataset.char;
-            modes.style.display = 'block'; // Открыть выбор режима после выбора персонажа
+            modes.style.display = 'block';
         };
     });
 
-    document.querySelectorAll('.mode').forEach(m=>{
-        m.onclick=()=>{
+    // show best scores in menu
+    updateBestScoresDisplay();
+
+    /**
+     * Обработчик выбора режима игры в меню
+     */
+    document.querySelectorAll('.mode').forEach(m => {
+        m.onclick = () => {
             document.getElementById('menu').style.display = 'none';
             document.getElementById('game').style.display = 'block';
+            // set game mode
+            gameMode = m.dataset.mode || 'normal';
+            // reset survival counters
+            killCount = 0;
+            survivalEnemySpeedIncrease = 0;
+            survivalBulletSpeedIncrease = 0;
+            survivalSpeedUps = 0;
             player = new Player(selectedChar);
             spawnEnemies();
+            levelCompleteShown = false;
+            running = true;
             requestAnimationFrame(loop);
         };
     });
 });
+
+// ==== BUKIN TABLET DROP ====
+let bukinTablet = null;
+const bukinImg = new Image();
+let bukinImgReady = false;
+bukinImg.onload = () => bukinImgReady = true;
+bukinImg.src = "img/bukintablet.png";

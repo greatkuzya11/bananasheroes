@@ -15,8 +15,30 @@
 
         #menu {
             text-align: center;
-            margin-top: 60px;
+            margin: 0;
+            min-height: 100vh;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+            padding-top: 40px;
+            background-image: url('img/mainmenu.png');
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            color: white;
         }
+        /* darken background so menu text stays readable on top */
+        #menu::before {
+            content: '';
+            position: absolute;
+            left: 0; top: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.36);
+            pointer-events: none;
+            z-index: 1;
+        }
+        .menu-inner { position: relative; z-index: 2; }
 
         #menu h1 {
             font-size: 36px;
@@ -53,6 +75,7 @@
 
         #game {
             display: none;
+            position: relative;
         }
 
         canvas {
@@ -71,21 +94,24 @@
 <body>
 
 <div id="menu">
-    <h1>🍌 Bananas Heroes 🍺</h1>
-    <div class="characters">
-        <div class="char" data-char="max">
-            Макс
+    <div class="menu-inner">
+        <h1>🍌 Bananas Heroes 🍺</h1>
+        <div class="characters">
+            <div class="char" data-char="max">
+                Макс
+            </div>
+            <div class="char" data-char="dron">
+                Дрон
+            </div>
+            <div class="char" data-char="kuzy">
+                Кузя
+            </div>
         </div>
-        <div class="char" data-char="dron">
-            Дрон
+        <div id="best-scores" style="margin-top:18px; font-size:16px; color:#fff;"></div>
+        <div id="modes">
+            <button class="mode" data-mode="normal">Обычный режим</button>
+            <button class="mode" data-mode="survival">Выживание</button>
         </div>
-        <div class="char" data-char="kuzy">
-            Кузя
-        </div>
-    </div>
-    <div id="modes">
-        <button class="mode" data-mode="normal">Обычный режим</button>
-        <button class="mode" data-mode="survival">Выживание</button>
     </div>
 </div>
 
