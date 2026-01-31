@@ -370,21 +370,38 @@ document.addEventListener('DOMContentLoaded', () => {
             this.timer = 0;
             this.shooting = false;
             this.shootTimer = 0;
+            // Jump state
+            this.isJumping = false;
+            this.jumpTimer = 0;
+            this.jumpDuration = 2.0; // total time up+down in seconds
+            this.jumpBaseY = this.y;
+            this.jumpHeight = 1.5 * this.h; // peak displacement
         }
         /**
          * Обновляет положение, анимацию и обработку выстрелов игрока
          */
         update() {
+            // Horizontal movement (allowed during jump)
             if (keys["ArrowLeft"]) this.x -= this.speed;
             if (keys["ArrowRight"]) this.x += this.speed;
             this.x = Math.max(10, Math.min(canvas.width - this.w - 10, this.x));
+
+            // Jump initiation (only when not already jumping)
+            if (keys["ArrowUp"] && !this.isJumping) {
+                this.isJumping = true;
+                this.jumpTimer = 0;
+                this.jumpBaseY = this.y;
+                // ensure jumpHeight matches current size in case of resize
+                this.jumpHeight = 1.5 * this.h;
+            }
 
             if (keys[" "] && performance.now() - this.lastShot > 333) {
                 this.lastShot = performance.now();
                 shootPlayerBullet(this);
             }
 
-            const moving = keys["ArrowLeft"] || keys["ArrowRight"];
+            // Consider jumping as movement for animation purposes
+            const moving = keys["ArrowLeft"] || keys["ArrowRight"] || this.isJumping;
 
             if (this.shooting) {
                 this.shootTimer += 0.016;
@@ -401,6 +418,26 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             } else {
                 this.frame = 0;
+            }
+
+            // Update vertical position when jumping: linear up then down over jumpDuration
+            if (this.isJumping) {
+                this.jumpTimer += 1/60; // approximate dt in update loop (update called without dt param here)
+                // If update ever receives dt, this can be switched to dt; keep current behaviour consistent
+                const half = this.jumpDuration / 2;
+                if (this.jumpTimer <= half) {
+                    // moving up
+                    const t = this.jumpTimer / half; // 0..1
+                    this.y = this.jumpBaseY - this.jumpHeight * t;
+                } else if (this.jumpTimer <= this.jumpDuration) {
+                    const t = (this.jumpTimer - half) / half; // 0..1
+                    this.y = this.jumpBaseY - this.jumpHeight * (1 - t);
+                } else {
+                    // landed
+                    this.isJumping = false;
+                    this.jumpTimer = 0;
+                    this.y = this.jumpBaseY;
+                }
             }
         }
         /**
