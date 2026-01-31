@@ -90,6 +90,18 @@
             left: 10px;
             font-size: 18px;
         }
+        #dir-button {
+            position: absolute;
+            bottom: 10px;
+            right: 10px;
+            font-size: 20px;
+            padding: 8px 12px;
+            border-radius: 8px;
+            border: none;
+            background: rgba(255,255,255,0.95);
+            color: #222;
+            cursor: pointer;
+        }
     </style>
 </head>
 <body>
@@ -119,6 +131,7 @@
 <div id="game">
     <canvas id="canvas"></canvas>
     <div id="hud"></div>
+    <button id="dir-button" title="Сменить направление пуль">↑</button>
 </div>
 
 <script src="js/main.js"></script>

@@ -327,6 +327,9 @@ document.addEventListener('DOMContentLoaded', () => {
     let invuln = INVULN_TIME;
     let bonusShots = 0;
     let bonusMode = false;
+    // player bullet firing direction: 'up'|'left'|'right'
+    let playerBulletDir = 'up';
+    let dirSwitchHeld = false;
     // game mode: 'normal' or 'survival'
     let gameMode = 'normal';
     // survival counters
@@ -530,15 +533,19 @@ document.addEventListener('DOMContentLoaded', () => {
         p.shootTimer = 0;
         p.frame = SHOOT_FRAME;
 
+        let emoji;
         switch (p.type) {
             case "dron":
                 r = 14; speed = 9; color = "#66ccff";
+                emoji = '🌀';
                 break;
             case "max":
                 r = 8; speed = 8; color = "#222";
+                emoji = '💩';
                 break;
             case "kuzy":
                 r = 18; speed = 5; color = "#333";
+                emoji = '💦';
                 break;
         }
 
@@ -554,7 +561,21 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
 
-        bullets.push({ x: p.x + p.w / 2, y: p.y, r, speed, color });
+        // Determine initial position and velocity based on current bullet direction
+        let bx = p.x + p.w / 2;
+        let by = p.y;
+        let vx = 0, vy = 0;
+        if (playerBulletDir === 'up') {
+            bx = p.x + p.w / 2;
+            by = p.y;
+            vx = 0; vy = -speed;
+        } else if (playerBulletDir === 'left') {
+            bx = p.x; by = p.y + p.h / 2; vx = -speed; vy = 0;
+        } else { // 'right'
+            bx = p.x + p.w; by = p.y + p.h / 2; vx = speed; vy = 0;
+        }
+
+        bullets.push({ x: bx, y: by, r, speed, color, vx, vy, emoji, dir: playerBulletDir });
     }
 
     // ---------- ENEMIES ----------
@@ -678,8 +699,9 @@ document.addEventListener('DOMContentLoaded', () => {
             bukinTablet.cy += 8;
             // Сдвигаемся по горизонтали к целевому центру
             bukinTablet.cx += (bukinTablet.targetCx - bukinTablet.cx) * 0.12;
-            // Останавливаем падение на уровне игрока (на той же высоте)
-            const landCy = player.y + player.h - 10 - curH / 2;
+            // Останавливаем падение на уровне, рассчитанном по самой нижней точке, которой может достичь игрок
+            const playerMaxBottom = canvas.height - 20; // player's lowest bottom (initial spawn bottom)
+            const landCy = playerMaxBottom - 10 - curH / 2; // center Y so bottom is ~10px above player's lowest bottom
             if (bukinTablet.cy >= landCy) {
                 bukinTablet.cy = landCy;
                 bukinTablet.cx = bukinTablet.targetCx;
@@ -698,8 +720,9 @@ document.addEventListener('DOMContentLoaded', () => {
             bukinTablet.y += 8;
             // Сдвигаемся по горизонтали к цели (рядом с игроком)
             bukinTablet.x += (bukinTablet.targetX - bukinTablet.x) * 0.12;
-            // Останавливаем падение на уровне игрока (на той же высоте)
-            const landY = player.y + player.h - 10 - bukinTablet.h;
+            // Останавливаем падение на уровне, рассчитанном по самой нижней точке, которой может достичь игрок
+            const playerMaxBottom2 = canvas.height - 20;
+            const landY = playerMaxBottom2 - 10 - bukinTablet.h; // top Y so bottom is ~10px above player's lowest bottom
             if (bukinTablet.y >= landY) {
                 bukinTablet.y = landY;
                 bukinTablet.x = bukinTablet.targetX;
@@ -720,7 +743,14 @@ document.addEventListener('DOMContentLoaded', () => {
             return ex.timer < 0.5;
         });
 
-        bullets.forEach(b => b.y -= b.speed);
+        bullets.forEach(b => {
+            if (typeof b.vx === 'number' && typeof b.vy === 'number') {
+                b.x += b.vx;
+                b.y += b.vy;
+            } else {
+                b.y -= b.speed;
+            }
+        });
         // Move enemy bullets using their velocity if provided (supports homing)
         enemyBullets.forEach(b => {
             if (typeof b.vx === 'number' && typeof b.vy === 'number') {
@@ -735,7 +765,8 @@ document.addEventListener('DOMContentLoaded', () => {
             b.x += Math.sin(b.y / 20) * 1.5;
         });
 
-        bullets = bullets.filter(b => b.y > 0);
+        // Keep bullets while within a reasonable extended bounds
+        bullets = bullets.filter(b => b.x >= -100 && b.x <= canvas.width + 100 && b.y >= -100 && b.y <= canvas.height + 100);
         enemyBullets = enemyBullets.filter(b => b.y < canvas.height);
         bottles = bottles.filter(b => b.y < canvas.height);
 
@@ -1062,10 +1093,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const hudEl = document.getElementById('hud');
         if (hudEl) {
+            const dirIcon = playerBulletDir === 'up' ? '↑' : (playerBulletDir === 'left' ? '←' : '→');
             if (bonusMode && bonusShots > 0) {
-                hudEl.innerHTML = `Жизни: ${"❤️".repeat(lives)}<br>Очки: ${score}   Комбо: ${combo}   <span style="color:black">Бонус: ${bonusShots}</span>`;
+                hudEl.innerHTML = `Жизни: ${"❤️".repeat(lives)}<br>Очки: ${score}   Комбо: ${combo}   <span style="color:black">Бонус: ${bonusShots}</span>   Пули: ${dirIcon}`;
             } else {
-                hudEl.innerHTML = `Жизни: ${"❤️".repeat(lives)}<br>Очки: ${score}   Комбо: ${combo}   Бонус: ${bonusShots}`;
+                hudEl.innerHTML = `Жизни: ${"❤️".repeat(lives)}<br>Очки: ${score}   Комбо: ${combo}   Бонус: ${bonusShots}   Пули: ${dirIcon}`;
             }
         }
     }
@@ -1110,10 +1142,27 @@ document.addEventListener('DOMContentLoaded', () => {
         player.draw();
 
         bullets.forEach(b => {
-            ctx.fillStyle = b.color;
-            ctx.beginPath();
-            ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
-            ctx.fill();
+            if (b.emoji) {
+                ctx.save();
+                const size = Math.max(16, b.r * 2);
+                ctx.font = `${size}px serif`;
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                // rotate according to bullet direction
+                let angle = 0;
+                if (b.dir === 'up') angle = -Math.PI / 2;
+                else if (b.dir === 'left') angle = Math.PI;
+                else angle = 0; // right
+                ctx.translate(b.x, b.y);
+                ctx.rotate(angle);
+                ctx.fillText(b.emoji, 0, 0);
+                ctx.restore();
+            } else {
+                ctx.fillStyle = b.color;
+                ctx.beginPath();
+                ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
+                ctx.fill();
+            }
         });
 
         // Отрисовываем пули врагов с их индивидуальным эмодзи-листиком
@@ -1289,11 +1338,23 @@ document.addEventListener('DOMContentLoaded', () => {
                 bonusMode = true;
             }
         }
+        if (e.key === "ArrowDown") {
+            // cycle bullet direction once per key press
+            if (!dirSwitchHeld) {
+                dirSwitchHeld = true;
+                if (playerBulletDir === 'up') playerBulletDir = 'left';
+                else if (playerBulletDir === 'left') playerBulletDir = 'right';
+                else playerBulletDir = 'up';
+            }
+        }
     });
     /**
      * Обработчик отпускания клавиш: сбрасывает состояние нажатия
      */
-    document.addEventListener('keyup', e => keys[e.key] = false);
+    document.addEventListener('keyup', e => {
+        keys[e.key] = false;
+        if (e.key === 'ArrowDown') dirSwitchHeld = false;
+    });
 
 
     // ==== MENU LOGIC ====
