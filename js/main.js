@@ -367,20 +367,27 @@ document.addEventListener('DOMContentLoaded', () => {
             this.speed = PLAYER_SPEED;
             this.lastShot = 0;
             this.frame = 0;
-            this.timer = 0;
-            this.shooting = false;
             this.shootTimer = 0;
             // Jump state
             this.isJumping = false;
             this.jumpTimer = 0;
-            this.jumpDuration = 2.0; // total time up+down in seconds
+            this.jumpDuration = 2.0; // target total time up+down (used for feel)
             this.jumpBaseY = this.y;
-            this.jumpHeight = 1.5 * this.h; // peak displacement
+            this.vy = 0; // vertical velocity (px/s), positive = down
+            this.gravity = 0; // will be set on jump start for physics styles
+            // Variable-height jump parameters
+            this.jumpMinHeight = 0.6 * this.h;
+            this.jumpMaxHeight = 1.5 * this.h;
+            this.jumpHoldTimer = 0;
+            this.jumpHoldMax = 0.6; // seconds of hold-to-increase height while ascending
+            // Character-specific jump style: 'max' = linear, 'dron' = physics instant boost, 'kuzy' = physics with smooth vy ramp
+            this.jumpStyle = (type === 'max') ? 'max' : (type === 'dron') ? 'dron' : 'kuzy';
+            this.jumpRampFactor = (type === 'kuzy') ? 4.0 : 6.0; // lower = smoother for 'kuzy'
         }
         /**
          * Обновляет положение, анимацию и обработку выстрелов игрока
          */
-        update() {
+        update(dt) {
             // Horizontal movement (allowed during jump)
             if (keys["ArrowLeft"]) this.x -= this.speed;
             if (keys["ArrowRight"]) this.x += this.speed;
@@ -391,8 +398,19 @@ document.addEventListener('DOMContentLoaded', () => {
                 this.isJumping = true;
                 this.jumpTimer = 0;
                 this.jumpBaseY = this.y;
-                // ensure jumpHeight matches current size in case of resize
-                this.jumpHeight = 1.5 * this.h;
+                this.jumpHoldTimer = 0;
+                // recalc min/max based on current size
+                this.jumpMinHeight = 0.6 * this.h;
+                this.jumpMaxHeight = 1.5 * this.h;
+                if (this.jumpStyle === 'max') {
+                    // linear fixed-height jump (no charge)
+                    this.jumpHeight = this.jumpMaxHeight;
+                } else {
+                    // physics styles: set gravity and initial upward velocity based on min height
+                    this.gravity = 2 * this.jumpMaxHeight;
+                    const v0 = 2 * this.jumpMinHeight;
+                    this.vy = -v0;
+                }
             }
 
             if (keys[" "] && performance.now() - this.lastShot > 333) {
@@ -404,13 +422,13 @@ document.addEventListener('DOMContentLoaded', () => {
             const moving = keys["ArrowLeft"] || keys["ArrowRight"] || this.isJumping;
 
             if (this.shooting) {
-                this.shootTimer += 0.016;
+                this.shootTimer += dt;
                 if (this.shootTimer > 0.15) {
                     this.shooting = false;
                     this.frame = SHOOT_FRAME;
                 }
             } else if (moving) {
-                this.timer += 0.016;
+                this.timer += dt;
                 if (this.timer > 0.12) {
                     this.frame++;
                     if (this.frame > WALK_END) this.frame = WALK_START;
@@ -420,23 +438,63 @@ document.addEventListener('DOMContentLoaded', () => {
                 this.frame = 0;
             }
 
-            // Update vertical position when jumping: linear up then down over jumpDuration
+            // Update vertical behavior when jumping according to style
             if (this.isJumping) {
-                this.jumpTimer += 1/60; // approximate dt in update loop (update called without dt param here)
-                // If update ever receives dt, this can be switched to dt; keep current behaviour consistent
-                const half = this.jumpDuration / 2;
-                if (this.jumpTimer <= half) {
-                    // moving up
-                    const t = this.jumpTimer / half; // 0..1
-                    this.y = this.jumpBaseY - this.jumpHeight * t;
-                } else if (this.jumpTimer <= this.jumpDuration) {
-                    const t = (this.jumpTimer - half) / half; // 0..1
-                    this.y = this.jumpBaseY - this.jumpHeight * (1 - t);
+                this.jumpTimer += dt;
+                if (this.jumpStyle === 'max') {
+                    // Linear up then down over jumpDuration, fixed peak
+                    const half = this.jumpDuration / 2;
+                    if (this.jumpTimer <= half) {
+                        const t = this.jumpTimer / half;
+                        this.y = this.jumpBaseY - this.jumpHeight * t;
+                    } else if (this.jumpTimer <= this.jumpDuration) {
+                        const t = (this.jumpTimer - half) / half;
+                        this.y = this.jumpBaseY - this.jumpHeight * (1 - t);
+                    } else {
+                        this.isJumping = false;
+                        this.jumpTimer = 0;
+                        this.y = this.jumpBaseY;
+                    }
+                } else if (this.jumpStyle === 'dron') {
+                    // Physics with immediate boost when holding
+                    const half = this.jumpDuration / 2;
+                    if (this.jumpTimer <= half && keys["ArrowUp"]) {
+                        this.jumpHoldTimer = Math.min(this.jumpHoldMax, this.jumpHoldTimer + dt);
+                        const k = this.jumpHoldTimer / this.jumpHoldMax;
+                        const desiredPeak = this.jumpMinHeight + (this.jumpMaxHeight - this.jumpMinHeight) * k;
+                        const desiredV0 = 2 * desiredPeak;
+                        if (-this.vy < desiredV0) this.vy = -desiredV0;
+                    }
+                    this.vy += this.gravity * dt;
+                    this.y += this.vy * dt;
+                    if (this.y >= this.jumpBaseY) {
+                        this.y = this.jumpBaseY;
+                        this.vy = 0;
+                        this.isJumping = false;
+                        this.jumpTimer = 0;
+                        this.jumpHoldTimer = 0;
+                    }
                 } else {
-                    // landed
-                    this.isJumping = false;
-                    this.jumpTimer = 0;
-                    this.y = this.jumpBaseY;
+                    // 'kuzy' smooth ramp: approach desired vy gradually for a natural feel
+                    const half = this.jumpDuration / 2;
+                    if (this.jumpTimer <= half && keys["ArrowUp"]) {
+                        this.jumpHoldTimer = Math.min(this.jumpHoldMax, this.jumpHoldTimer + dt);
+                        const k = this.jumpHoldTimer / this.jumpHoldMax;
+                        const desiredPeak = this.jumpMinHeight + (this.jumpMaxHeight - this.jumpMinHeight) * k;
+                        const desiredV0 = 2 * desiredPeak;
+                        const desiredVy = -desiredV0;
+                        // Smoothly approach desiredVy
+                        this.vy += (desiredVy - this.vy) * Math.min(1, this.jumpRampFactor * dt);
+                    }
+                    this.vy += this.gravity * dt;
+                    this.y += this.vy * dt;
+                    if (this.y >= this.jumpBaseY) {
+                        this.y = this.jumpBaseY;
+                        this.vy = 0;
+                        this.isJumping = false;
+                        this.jumpTimer = 0;
+                        this.jumpHoldTimer = 0;
+                    }
                 }
             }
         }
