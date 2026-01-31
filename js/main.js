@@ -109,6 +109,8 @@ document.addEventListener('DOMContentLoaded', () => {
             bukinTablet = null;
             document.getElementById('game').style.display = 'none';
             document.getElementById('menu').style.display = 'block';
+            // Show character selection (hide mode choices)
+            if (modes) modes.style.display = 'none';
             overlay.remove();
         };
 
@@ -254,6 +256,8 @@ document.addEventListener('DOMContentLoaded', () => {
             running = false;
             document.getElementById('game').style.display = 'none';
             document.getElementById('menu').style.display = 'block';
+            // Show character selection (hide mode choices)
+            if (modes) modes.style.display = 'none';
             updateBestScoresDisplay();
             overlay.remove();
         };
@@ -448,6 +452,11 @@ document.addEventListener('DOMContentLoaded', () => {
             speed *= 1.8;
             color = "gold";
             bonusShots--;
+            // If we've just used the last bonus shot, automatically switch back to main weapon
+            if (bonusShots <= 0) {
+                bonusShots = 0;
+                bonusMode = false;
+            }
         }
 
         bullets.push({ x: p.x + p.w / 2, y: p.y, r, speed, color });
@@ -956,8 +965,14 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
 
-        document.getElementById('hud').innerText =
-            `Жизни: ${"❤️".repeat(lives)}\nОчки: ${score}   Комбо: ${combo}   Бонус: ${bonusShots}`;
+        const hudEl = document.getElementById('hud');
+        if (hudEl) {
+            if (bonusMode && bonusShots > 0) {
+                hudEl.innerHTML = `Жизни: ${"❤️".repeat(lives)}<br>Очки: ${score}   Комбо: ${combo}   <span style="color:black">Бонус: ${bonusShots}</span>`;
+            } else {
+                hudEl.innerHTML = `Жизни: ${"❤️".repeat(lives)}<br>Очки: ${score}   Комбо: ${combo}   Бонус: ${bonusShots}`;
+            }
+        }
     }
 
 
@@ -1171,7 +1186,14 @@ document.addEventListener('DOMContentLoaded', () => {
      */
     document.addEventListener('keydown', e => {
         keys[e.key] = true;
-        if (e.key === "Shift") bonusMode = !bonusMode;
+        if (e.key === "Shift") {
+            // If currently in bonus mode, toggle off; otherwise only toggle on when we have bonus shots
+            if (bonusMode) {
+                bonusMode = false;
+            } else if (bonusShots > 0) {
+                bonusMode = true;
+            }
+        }
     });
     /**
      * Обработчик отпускания клавиш: сбрасывает состояние нажатия
