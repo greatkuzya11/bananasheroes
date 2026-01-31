@@ -20,7 +20,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const ENEMY_START_Y = 60;
     const ENEMY_X_SPACING = 120;
     const ENEMY_Y_SPACING = 100;
-    const PLAYER_LIVES = 5;
+    const PLAYER_LIVES = 15;
     const INVULN_TIME = 3;
     const BONUS_SHOTS_PER_BOTTLE = 3;
 
@@ -37,10 +37,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Показываем модальное окно завершения уровня с двумя кнопками
     function showLevelComplete() {
-        // hide gameplay and show menu (per UX requirement)
-        running = false;
-        document.getElementById('game').style.display = 'none';
-        document.getElementById('menu').style.display = 'block';
+        // Show overlay — keep game running so player can still move; damage disabled after boss death.
+        // Save best score if this run produced a new record and reflect it in the message
+        const key = 'bh_bestScore_' + (selectedChar || 'kuzy');
+        const best = parseInt(localStorage.getItem(key) || '0', 10) || 0;
+        let isNew = false;
+        if (score > best) {
+            localStorage.setItem(key, String(score));
+            isNew = true;
+        }
         updateBestScoresDisplay();
 
         // Если уже есть — удалим старое
@@ -74,7 +79,7 @@ document.addEventListener('DOMContentLoaded', () => {
         iconsRow.appendChild(bananas);
 
         const msg = document.createElement('div');
-        msg.innerText = 'Поздравляем, уровень пройден. Букин освобождён.';
+        msg.innerText = 'Поздравляем, уровень пройден. Букин освобождён.' + (isNew ? ' — Новый рекорд!' : '');
         Object.assign(msg.style, { fontSize: '20px', marginBottom: '18px', color: '#222', opacity: '0', transform: 'translateY(12px)' });
 
         // Add simple CSS animations via a style tag for pop-in and small icon bounce
@@ -311,6 +316,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let enemies = [];
     let bottles = [];
     let player;
+    let bossDefeated = false;
     let score = 0;
     let combo = 0;
     let lives = PLAYER_LIVES;
@@ -600,7 +606,8 @@ document.addEventListener('DOMContentLoaded', () => {
         // Обновляем облачки с текстом
         speechBalloons = speechBalloons.filter(sb => {
             sb.timer += dt;
-            return sb.timer < SPEECH_BALLOON_DURATION;
+            const dur = (typeof sb.duration === 'number') ? sb.duration : SPEECH_BALLOON_DURATION;
+            return sb.timer < dur;
         });
 
         // Обновляем анимации взрывов
@@ -646,6 +653,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 angleSpeed: 0.04 + Math.random()*0.04,
                 centered: false
             };
+            // Ensure player is not considered immune until boss is actually defeated
+            bossDefeated = false;
             enemies = [];
         }
 
@@ -803,6 +812,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     bullets.splice(bi, 1);
                     if (boss.hp <= 0) {
                         // Boss death bonus
+                        // Mark boss as defeated so remaining enemy bullets no longer damage the player
+                        bossDefeated = true;
                         score += 20;
                         combo++;
                             // Взрыв босса
@@ -825,6 +836,15 @@ document.addEventListener('DOMContentLoaded', () => {
                                 targetCx,
                                 landed: false
                             };
+                            // Добавляем облачко у игрока: не блокирует падение таблички, длится 5 секунд
+                            speechBalloons.push({
+                                x: player.x + player.w / 2,
+                                y: player.y - player.h * 0.15,
+                                timer: 0,
+                                duration: 5.0,
+                                text: "Хуем Пам-Пам!!",
+                                type: 'buk'
+                            });
                             boss = null;
                     }
                 }
@@ -895,6 +915,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Enemy bullet hits player
         enemyBullets.forEach((eb, ei) => {
+            // After boss is defeated, remaining enemy bullets no longer damage the player
+            if (bossDefeated) return;
             if (rect(eb, player) && invuln <= 0) {
                 lives--;
                 combo = 0;
@@ -1036,26 +1058,87 @@ document.addEventListener('DOMContentLoaded', () => {
         // Рисуем облачки с текстом
         speechBalloons.forEach(sb => {
             ctx.save();
-            ctx.globalAlpha = 1 - sb.timer / SPEECH_BALLOON_DURATION;
-            // Овальное облачко
-            ctx.beginPath();
-            ctx.ellipse(sb.x, sb.y, 70, 40, Math.PI * 0.05, 0, Math.PI * 2);
-            ctx.moveTo(sb.x + 40, sb.y + 10);
-            ctx.ellipse(sb.x + 40, sb.y + 10, 18, 12, Math.PI * 0.1, 0, Math.PI * 2);
-            ctx.moveTo(sb.x - 40, sb.y + 10);
-            ctx.ellipse(sb.x - 40, sb.y + 10, 18, 12, Math.PI * 0.1, 0, Math.PI * 2);
-            ctx.closePath();
-            ctx.fillStyle = "#fff";
-            ctx.strokeStyle = "#bbb";
-            ctx.lineWidth = 3;
-            ctx.fill();
-            ctx.stroke();
-            // Текст
-            ctx.font = "bold 32px Comic Sans MS, Arial";
-            ctx.fillStyle = "#222";
-            ctx.textAlign = "center";
-            ctx.textBaseline = "middle";
-            ctx.fillText("Сука", sb.x, sb.y);
+            const dur = (typeof sb.duration === 'number') ? sb.duration : SPEECH_BALLOON_DURATION;
+            ctx.globalAlpha = Math.max(0, 1 - sb.timer / dur);
+            const text = (typeof sb.text === 'string') ? sb.text : 'Сука';
+
+            if (sb.type === 'buk') {
+                // Adaptive rectangular bubble with tail (different style)
+                let fontSize = 36 * (sb.scale || 1);
+                ctx.font = `bold ${fontSize}px Comic Sans MS, Arial`;
+                const maxWidth = canvas.width * 0.5;
+                let textWidth = ctx.measureText(text).width;
+                while (textWidth > maxWidth && fontSize > 10) {
+                    fontSize -= 2;
+                    ctx.font = `bold ${fontSize}px Comic Sans MS, Arial`;
+                    textWidth = ctx.measureText(text).width;
+                }
+
+                const paddingX = 18 * (sb.scale || 1);
+                const paddingY = 10 * (sb.scale || 1);
+                const boxW = Math.ceil(textWidth + paddingX * 2);
+                const boxH = Math.ceil(fontSize + paddingY * 2);
+                const left = sb.x - boxW / 2;
+                const top = sb.y - boxH / 2;
+                const r = Math.min(14, boxH / 2);
+
+                // Rounded rect
+                ctx.beginPath();
+                ctx.moveTo(left + r, top);
+                ctx.lineTo(left + boxW - r, top);
+                ctx.quadraticCurveTo(left + boxW, top, left + boxW, top + r);
+                ctx.lineTo(left + boxW, top + boxH - r);
+                ctx.quadraticCurveTo(left + boxW, top + boxH, left + boxW - r, top + boxH);
+                ctx.lineTo(left + r, top + boxH);
+                ctx.quadraticCurveTo(left, top + boxH, left, top + boxH - r);
+                ctx.lineTo(left, top + r);
+                ctx.quadraticCurveTo(left, top, left + r, top);
+
+                // Tail pointing down towards player
+                const tailW = Math.min(28, boxW * 0.28);
+                const tailX = sb.x; // center tail at sb.x
+                const tailY = top + boxH;
+                ctx.moveTo(tailX - tailW / 2, tailY);
+                ctx.lineTo(tailX, tailY + 18 * (sb.scale || 1));
+                ctx.lineTo(tailX + tailW / 2, tailY);
+
+                ctx.closePath();
+                ctx.fillStyle = '#fff';
+                ctx.strokeStyle = '#bbb';
+                ctx.lineWidth = 3;
+                ctx.fill();
+                ctx.stroke();
+
+                // Text
+                ctx.fillStyle = '#222';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.font = `bold ${fontSize}px Comic Sans MS, Arial`;
+                ctx.fillText(text, sb.x, sb.y - 2);
+
+            } else {
+                // Original 'Сука' oval style, but use sb.text if provided
+                // sizes are fixed for this style
+                ctx.beginPath();
+                ctx.ellipse(sb.x, sb.y, 70, 40, Math.PI * 0.05, 0, Math.PI * 2);
+                ctx.moveTo(sb.x + 40, sb.y + 10);
+                ctx.ellipse(sb.x + 40, sb.y + 10, 18, 12, Math.PI * 0.1, 0, Math.PI * 2);
+                ctx.moveTo(sb.x - 40, sb.y + 10);
+                ctx.ellipse(sb.x - 40, sb.y + 10, 18, 12, Math.PI * 0.1, 0, Math.PI * 2);
+                ctx.closePath();
+                ctx.fillStyle = '#fff';
+                ctx.strokeStyle = '#bbb';
+                ctx.lineWidth = 3;
+                ctx.fill();
+                ctx.stroke();
+                // Text
+                ctx.font = 'bold 32px Comic Sans MS, Arial';
+                ctx.fillStyle = '#222';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(text, sb.x, sb.y);
+            }
+
             ctx.restore();
         });
 
@@ -1119,6 +1202,23 @@ document.addEventListener('DOMContentLoaded', () => {
      */
     document.querySelectorAll('.mode').forEach(m => {
         m.onclick = () => {
+            // Reset full game state for a fresh run
+            enemies = [];
+            bullets = [];
+            enemyBullets = [];
+            bottles = [];
+            boss = null;
+            bukinTablet = null;
+            speechBalloons = [];
+            explosions = [];
+            bossDefeated = false;
+            // reset scores and player state
+            score = 0;
+            combo = 0;
+            bonusShots = 0;
+            lives = PLAYER_LIVES;
+            invuln = INVULN_TIME;
+
             document.getElementById('menu').style.display = 'none';
             document.getElementById('game').style.display = 'block';
             // set game mode
@@ -1131,7 +1231,9 @@ document.addEventListener('DOMContentLoaded', () => {
             player = new Player(selectedChar);
             spawnEnemies();
             levelCompleteShown = false;
+            gameOverShown = false;
             running = true;
+            last = performance.now();
             requestAnimationFrame(loop);
         };
     });
