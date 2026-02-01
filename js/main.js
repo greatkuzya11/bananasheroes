@@ -1,8 +1,7 @@
 // Главная точка входа: инициализация игры после загрузки DOM
 document.addEventListener('DOMContentLoaded', () => {
     // ==== BACKGROUND IMAGE ====
-    const bgImg = new Image();
-    let bgReady = false;
+    const bgImg = new Image();         
     bgImg.onload = () => bgReady = true;
     bgImg.src = "img/forest.png";
 
@@ -20,7 +19,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const ENEMY_START_Y = 60;
     const ENEMY_X_SPACING = 120;
     const ENEMY_Y_SPACING = 100;
-    const PLAYER_LIVES = 15;
+    const PLAYER_LIVES = 5;
     const INVULN_TIME = 0.5;
     const BONUS_SHOTS_PER_BOTTLE = 3;
 
@@ -1656,10 +1655,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     // +3 points per hit on boss
                     score += 3;
                     explosions.push({ x: boss.x + boss.w / 2, y: boss.y + boss.h / 2, timer: 0 });
-                    // Бонусная пуля Дрона не исчезает и продолжает лететь
-                    if (!(b.isBonus && player.type === 'dron')) {
-                        bullets.splice(bi, 1);
-                    }
+                    // Удаляем пулю после попадания (даже бонусную пулю Дрона, чтобы избежать множественных ударов)
+                    bullets.splice(bi, 1);
                     if (boss.hp <= 0) {
                         // Boss death bonus
                         // Mark boss as defeated so remaining enemy bullets no longer damage the player
