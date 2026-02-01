@@ -235,6 +235,7 @@ document.addEventListener('DOMContentLoaded', () => {
             bullets = [];
             enemyBullets = [];
             bottles = [];
+            hearts = [];
             boss = null;
             bukinTablet = null;
             score = 0;
@@ -398,6 +399,7 @@ document.addEventListener('DOMContentLoaded', () => {
             bullets = [];
             enemyBullets = [];
             bottles = [];
+            hearts = [];
             boss = null;
             bukinTablet = null;
             score = 0;
@@ -470,6 +472,7 @@ document.addEventListener('DOMContentLoaded', () => {
             bullets = [];
             enemyBullets = [];
             bottles = [];
+            hearts = [];
             boss = null;
             bukinTablet = null;
             score = 0;
@@ -546,6 +549,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let enemyBullets = [];
     let enemies = [];
     let bottles = [];
+    let hearts = []; // сердечки жизни
     let player;
     let bossDefeated = false;
     let score = 0;
@@ -1349,6 +1353,11 @@ document.addEventListener('DOMContentLoaded', () => {
         bullets = bullets.filter(b => b.x >= -100 && b.x <= canvas.width + 100 && b.y >= -100 && b.y <= canvas.height + 100);
         enemyBullets = enemyBullets.filter(b => b.y < canvas.height);
         bottles = bottles.filter(b => b.y < canvas.height);
+        hearts.forEach(h => {
+            h.y += 2;
+            h.x += Math.sin(h.y / 20) * 1.5;
+        });
+        hearts = hearts.filter(h => h.y < canvas.height);
 
         const leafEmojis = ["🍃", "🍂", "🍁", "🌿", "🌱"];
 
@@ -1601,6 +1610,8 @@ document.addEventListener('DOMContentLoaded', () => {
                         combo++;
                         // Выпадение бонуса по обычному шансу
                         trySpawnBonus(e.x, e.y);
+                        // Выпадение сердечка по обычному шансу
+                        trySpawnHeart(e.x, e.y);
                         // Гарантированное выпадение бонуса при 5 комбо подряд
                         if (combo > 0 && combo % 5 === 0) {
                             bottles.push({ x: e.x, y: e.y, w: 18, h: 36 });
@@ -1631,6 +1642,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                 score += 2;
                                 combo++;
                                 trySpawnBonus(ne.x, ne.y);
+                                trySpawnHeart(ne.x, ne.y);
                             }
                         }
                     }
@@ -1701,6 +1713,18 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
 
+        /**
+         * Пытается создать сердечко с определённым шансом
+         * @param {number} x - координата X врага
+         * @param {number} y - координата Y врага
+         */
+        function trySpawnHeart(x, y) {
+            const HEART_CHANCE = 0.08; // 8% шанс
+            if (Math.random() < HEART_CHANCE) {
+                hearts.push({ x, y, w: 48, h: 48 });
+            }
+        }
+
         // Spawn a single enemy at approx given center coordinates
         function spawnEnemyAt(cx, cy) {
             const lilacColors = ["#b57edc", "#c084fc", "#a855f7", "#e1bee7", "#ede7f6"];
@@ -1750,6 +1774,17 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
 
+        // Player collects heart
+        hearts.forEach((h, hi) => {
+            if (rect(h, player)) {
+                if (lives < PLAYER_LIVES) {
+                    lives++; // +1 жизнь если не максимум
+                } else {
+                    bonusShots += 5; // +5 бонусных выстрелов если максимум жизней
+                }
+                hearts.splice(hi, 1);
+            }
+        });
 
         // Enemy bullet hits player
         enemyBullets.forEach((eb, ei) => {
@@ -1797,10 +1832,11 @@ document.addEventListener('DOMContentLoaded', () => {
         const hudEl = document.getElementById('hud');
         if (hudEl) {
             const dirIcon = playerBulletDir === 'up' ? '↑' : (playerBulletDir === 'left' ? '←' : '→');
+            const playerName = charNames[selectedChar] || selectedChar;
             if (bonusMode && bonusShots > 0) {
-                hudEl.innerHTML = `Жизни: ${"❤️".repeat(lives)}<br>Очки: ${score}   Комбо: ${combo}   <span style="color:black">Бонус: ${bonusShots}</span>   Пули: ${dirIcon}`;
+                hudEl.innerHTML = `${playerName} | Жизни: ${"❤️".repeat(lives)}<br>Очки: ${score}   Комбо: ${combo}   <span style="color:black">Бонус: ${bonusShots}</span>   Пули: ${dirIcon}`;
             } else {
-                hudEl.innerHTML = `Жизни: ${"❤️".repeat(lives)}<br>Очки: ${score}   Комбо: ${combo}   Бонус: ${bonusShots}   Пули: ${dirIcon}`;
+                hudEl.innerHTML = `${playerName} | Жизни: ${"❤️".repeat(lives)}<br>Очки: ${score}   Комбо: ${combo}   Бонус: ${bonusShots}   Пули: ${dirIcon}`;
             }
         }
     }
@@ -1892,6 +1928,13 @@ document.addEventListener('DOMContentLoaded', () => {
             ctx.textAlign = "left";
             ctx.textBaseline = "top";
             ctx.fillText("🍺", b.x, b.y);
+        });
+
+        hearts.forEach(h => {
+            ctx.font = `${h.h}px serif`;
+            ctx.textAlign = "left";
+            ctx.textBaseline = "top";
+            ctx.fillText("❤️", h.x, h.y);
         });
 
         enemies.forEach(e => {
