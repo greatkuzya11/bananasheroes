@@ -879,11 +879,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 break;
         }
 
+        let isBonus = false;
         if (bonusMode && bonusShots > 0) {
             r *= 1.8;
             speed *= 1.8;
             color = "gold";
             bonusShots--;
+            isBonus = true;
             // If we've just used the last bonus shot, automatically switch back to main weapon
             if (bonusShots <= 0) {
                 bonusShots = 0;
@@ -905,7 +907,7 @@ document.addEventListener('DOMContentLoaded', () => {
             bx = p.x + p.w; by = p.y + p.h / 2; vx = speed; vy = 0;
         }
 
-        bullets.push({ x: bx, y: by, r, speed, color, vx, vy, emoji, dir: playerBulletDir });
+        bullets.push({ x: bx, y: by, r, speed, color, vx, vy, emoji, dir: playerBulletDir, isBonus });
     }
 
     // ---------- ENEMIES ----------
@@ -1231,6 +1233,35 @@ document.addEventListener('DOMContentLoaded', () => {
                     enemyBullets.splice(ebi, 1);
                     // +1 point for destroying an enemy bullet with player's bullet
                     score += 1;
+                    
+                    // Бонусный выстрел Кузи уничтожает 3 ближайших пули врагов
+                    if (b.isBonus && player.type === 'kuzy' && enemyBullets.length > 0) {
+                        const hitX = cx;
+                        const hitY = cy;
+                        
+                        // Создаем массив пуль с расстояниями
+                        const bulletsWithDist = enemyBullets.map((bullet, idx) => {
+                            const bulletCx = bullet.x + (bullet.w || 8) / 2;
+                            const bulletCy = bullet.y + (bullet.h || 12) / 2;
+                            const dx = bulletCx - hitX;
+                            const dy = bulletCy - hitY;
+                            const dist = Math.sqrt(dx * dx + dy * dy);
+                            return { bullet, idx, dist, cx: bulletCx, cy: bulletCy };
+                        });
+                        
+                        // Сортируем по расстоянию и берем 3 ближайших
+                        bulletsWithDist.sort((a, b) => a.dist - b.dist);
+                        const toDestroy = bulletsWithDist.slice(0, 3);
+                        
+                        // Уничтожаем от конца к началу чтобы индексы не сбивались
+                        toDestroy.sort((a, b) => b.idx - a.idx);
+                        toDestroy.forEach(item => {
+                            explosions.push({ x: item.cx, y: item.cy, timer: 0, scale: 0.5 });
+                            enemyBullets.splice(item.idx, 1);
+                            score += 1;
+                        });
+                    }
+                    
                     break;
                 }
             }
@@ -1244,7 +1275,9 @@ document.addEventListener('DOMContentLoaded', () => {
             // Проверка попадания по enemy67
             if (enemy67 && enemy67.hp > 0) {
                 if (b.x > enemy67.x && b.x < enemy67.x + enemy67.w && b.y > enemy67.y && b.y < enemy67.y + enemy67.h) {
-                    enemy67.hp--;
+                    // Бонусный выстрел Кузи наносит 2 урона
+                    const damage = (b.isBonus && player.type === 'kuzy') ? 2 : 1;
+                    enemy67.hp -= damage;
                     bullets.splice(bi, 1);
                     score += 5;
                     // Маленький взрыв при попадании
@@ -1298,12 +1331,42 @@ document.addEventListener('DOMContentLoaded', () => {
                         if (combo > 0 && combo % 5 === 0) {
                             bottles.push({ x: e.x, y: e.y, w: 18, h: 36 });
                         }
+                        
+                        // Бонусный выстрел Кузи убивает еще одного ближайшего врага
+                        if (b.isBonus && player.type === 'kuzy' && enemies.length > 0) {
+                            let nearestEnemy = null;
+                            let nearestDist = Infinity;
+                            const hitX = e.x + e.w / 2;
+                            const hitY = e.y + e.h / 2;
+                            
+                            enemies.forEach((enemy, idx) => {
+                                const dx = (enemy.x + enemy.w / 2) - hitX;
+                                const dy = (enemy.y + enemy.h / 2) - hitY;
+                                const dist = Math.sqrt(dx * dx + dy * dy);
+                                if (dist < nearestDist) {
+                                    nearestDist = dist;
+                                    nearestEnemy = { enemy, idx };
+                                }
+                            });
+                            
+                            if (nearestEnemy) {
+                                const ne = nearestEnemy.enemy;
+                                // Взрыв на месте второго врага
+                                explosions.push({ x: ne.x + ne.w / 2, y: ne.y + ne.h / 2, timer: 0 });
+                                enemies.splice(nearestEnemy.idx, 1);
+                                score += 2;
+                                combo++;
+                                trySpawnBonus(ne.x, ne.y);
+                            }
+                        }
                     }
                 });
             } else {
                 // Попадание по боссу-сосиске
                 if (b.x > boss.x && b.x < boss.x + boss.w && b.y > boss.y && b.y < boss.y + boss.h && boss.hp > 0) {
-                    boss.hp--;
+                    // Бонусный выстрел Кузи наносит 2 урона
+                    const damage = (b.isBonus && player.type === 'kuzy') ? 2 : 1;
+                    boss.hp -= damage;
                     // +3 points per hit on boss
                     score += 3;
                     explosions.push({ x: boss.x + boss.w / 2, y: boss.y + boss.h / 2, timer: 0 });
