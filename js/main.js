@@ -298,6 +298,209 @@ document.addEventListener('DOMContentLoaded', () => {
         document.body.appendChild(overlay);
     }
 
+    /**
+     * Показывает меню паузы
+     */
+    function pauseGame() {
+        paused = true;
+        const overlay = document.createElement('div');
+        overlay.id = 'pauseOverlay';
+        Object.assign(overlay.style, {
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            width: '100%',
+            height: '100%',
+            background: 'rgba(0,0,0,0.7)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            flexDirection: 'column',
+            color: 'white',
+            fontFamily: 'Arial, sans-serif',
+            zIndex: 1000
+        });
+
+        const title = document.createElement('div');
+        title.innerHTML = '⏸️ ПАУЗА ⏸️';
+        title.style.fontSize = '48px';
+        title.style.marginBottom = '30px';
+        title.style.fontWeight = 'bold';
+        overlay.appendChild(title);
+
+        const btnResume = document.createElement('button');
+        btnResume.innerText = '▶️ Продолжить';
+        Object.assign(btnResume.style, { 
+            padding: '15px', 
+            fontSize: '24px', 
+            cursor: 'pointer', 
+            marginBottom: '10px',
+            borderRadius: '10px',
+            background: '#ffcc00',
+            border: '3px solid transparent',
+            transition: 'all 0.2s ease',
+            color: '#000',
+            minWidth: '300px'
+        });
+        btnResume.onmouseover = () => {
+            btnResume.style.transform = 'scale(1.05)';
+            btnResume.style.boxShadow = '0 4px 8px rgba(0,0,0,0.3)';
+        };
+        btnResume.onmouseout = () => {
+            btnResume.style.transform = 'scale(1)';
+            btnResume.style.boxShadow = 'none';
+        };
+        btnResume.onmousedown = () => {
+            btnResume.style.transform = 'scale(0.95)';
+        };
+        btnResume.onmouseup = () => {
+            btnResume.style.transform = 'scale(1.05)';
+        };
+        btnResume.onclick = () => {
+            resumeGame();
+        };
+        overlay.appendChild(btnResume);
+
+        const btnRestart = document.createElement('button');
+        btnRestart.innerText = '🔄 Начать заново';
+        Object.assign(btnRestart.style, { 
+            padding: '15px', 
+            fontSize: '24px', 
+            cursor: 'pointer', 
+            marginBottom: '10px',
+            borderRadius: '10px',
+            background: '#ffcc00',
+            border: '3px solid transparent',
+            transition: 'all 0.2s ease',
+            color: '#000',
+            minWidth: '300px'
+        });
+        btnRestart.onmouseover = () => {
+            btnRestart.style.transform = 'scale(1.05)';
+            btnRestart.style.boxShadow = '0 4px 8px rgba(0,0,0,0.3)';
+        };
+        btnRestart.onmouseout = () => {
+            btnRestart.style.transform = 'scale(1)';
+            btnRestart.style.boxShadow = 'none';
+        };
+        btnRestart.onmousedown = () => {
+            btnRestart.style.transform = 'scale(0.95)';
+        };
+        btnRestart.onmouseup = () => {
+            btnRestart.style.transform = 'scale(1.05)';
+        };
+        btnRestart.onclick = () => {
+            const pauseOverlay = document.getElementById('pauseOverlay');
+            if (pauseOverlay) pauseOverlay.remove();
+            paused = false;
+            
+            enemies = [];
+            bullets = [];
+            enemyBullets = [];
+            bottles = [];
+            boss = null;
+            bukinTablet = null;
+            score = 0;
+            combo = 0;
+            bonusShots = 0;
+            lives = PLAYER_LIVES;
+            invuln = INVULN_TIME;
+            levelCompleteShown = false;
+            gameOverShown = false;
+            bossDefeated = false;
+            // reset survival counters
+            killCount = 0;
+            survivalEnemySpeedIncrease = 0;
+            survivalBulletSpeedIncrease = 0;
+            survivalSpeedUps = 0;
+            survivalBulletMultiplier = 1;
+            survivalWaveSpawning = false;
+            player = new Player(selectedChar);
+            // Спавним врагов только если не режим 67
+            if (gameMode !== '67') {
+                spawnEnemies();
+                playerBulletDir = 'up';
+            } else {
+                enemies = [];
+                // Позиция игрока почти с левого угла для режима 67
+                player.x = 20;
+                // Направление пуль по умолчанию направо для режима 67
+                playerBulletDir = 'right';
+                enemy67 = new Enemy67(player.x, player.y);
+            }
+            // Не нужно запускать requestAnimationFrame - loop уже работает
+            // running уже true, просто сбрасываем last
+            last = performance.now();
+        };
+        overlay.appendChild(btnRestart);
+
+        const btnMain = document.createElement('button');
+        btnMain.innerText = '🏠 Главный экран';
+        Object.assign(btnMain.style, { 
+            padding: '15px', 
+            fontSize: '24px', 
+            cursor: 'pointer',
+            borderRadius: '10px',
+            background: '#ffcc00',
+            border: '3px solid transparent',
+            transition: 'all 0.2s ease',
+            color: '#000',
+            minWidth: '300px'
+        });
+        btnMain.onmouseover = () => {
+            btnMain.style.transform = 'scale(1.05)';
+            btnMain.style.boxShadow = '0 4px 8px rgba(0,0,0,0.3)';
+        };
+        btnMain.onmouseout = () => {
+            btnMain.style.transform = 'scale(1)';
+            btnMain.style.boxShadow = 'none';
+        };
+        btnMain.onmousedown = () => {
+            btnMain.style.transform = 'scale(0.95)';
+        };
+        btnMain.onmouseup = () => {
+            btnMain.style.transform = 'scale(1.05)';
+        };
+        btnMain.onclick = () => {
+            const pauseOverlay = document.getElementById('pauseOverlay');
+            if (pauseOverlay) pauseOverlay.remove();
+            paused = false;
+            
+            enemies = [];
+            bullets = [];
+            enemyBullets = [];
+            bottles = [];
+            boss = null;
+            bukinTablet = null;
+            score = 0;
+            combo = 0;
+            bonusShots = 0;
+            lives = PLAYER_LIVES;
+            invuln = INVULN_TIME;
+            levelCompleteShown = false;
+            gameOverShown = false;
+            running = false;
+            document.getElementById('game').style.display = 'none';
+            document.getElementById('menu').style.display = 'block';
+            updateBestScoresDisplay();
+        };
+        overlay.appendChild(btnMain);
+
+        document.body.appendChild(overlay);
+    }
+
+    /**
+     * Возобновляет игру после паузы
+     */
+    function resumeGame() {
+        const pauseOverlay = document.getElementById('pauseOverlay');
+        if (pauseOverlay) {
+            pauseOverlay.remove();
+        }
+        paused = false;
+        last = performance.now(); // сбрасываем время чтобы не было скачка
+    }
+
     // ==== AUDIO ====
     function playGameOverSound(isNew) {
         try {
@@ -1826,6 +2029,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // ==== MAIN GAME LOOP ====
     let last = 0;
     let running = false;
+    let paused = false;
     let levelCompleteShown = false;
     let gameOverShown = false;
     /**
@@ -1834,9 +2038,11 @@ document.addEventListener('DOMContentLoaded', () => {
      */
     function loop(ts) {
         if (!running) return;
-        const dt = (ts - last) / 1000;
-        last = ts;
-        update(dt);
+        if (!paused) {
+            const dt = (ts - last) / 1000;
+            last = ts;
+            update(dt);
+        }
         draw();
         requestAnimationFrame(loop);
     }
@@ -1848,6 +2054,15 @@ document.addEventListener('DOMContentLoaded', () => {
      */
     document.addEventListener('keydown', e => {
         keys[e.key] = true;
+        if (e.key === "Escape") {
+            if (running && !levelCompleteShown && !gameOverShown) {
+                if (paused) {
+                    resumeGame();
+                } else {
+                    pauseGame();
+                }
+            }
+        }
         if (e.key === "Shift") {
             // If currently in bonus mode, toggle off; otherwise only toggle on when we have bonus shots
             if (bonusMode) {
