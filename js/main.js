@@ -396,6 +396,7 @@ document.addEventListener('DOMContentLoaded', () => {
             this.speed = PLAYER_SPEED;
             this.lastShot = 0;
             this.frame = 0;
+            this.timer = 0;
             this.shootTimer = 0;
             // Jump state
             this.isJumping = false;
@@ -532,17 +533,41 @@ document.addEventListener('DOMContentLoaded', () => {
          */
         draw() {
             if (!spriteReady) return;
-            ctx.drawImage(
-                kuzyImg,
-                this.frame * FRAME_W,
-                0,
-                FRAME_W,
-                FRAME_H,
-                this.x,
-                this.y,
-                this.w,
-                this.h
-            );
+            
+            ctx.save();
+            
+            // Если направление пуль влево - отображаем спрайт зеркально
+            if (playerBulletDir === 'left') {
+                // Переворачиваем по горизонтали
+                ctx.translate(this.x + this.w, this.y);
+                ctx.scale(-1, 1);
+                ctx.drawImage(
+                    kuzyImg,
+                    this.frame * FRAME_W,
+                    0,
+                    FRAME_W,
+                    FRAME_H,
+                    0,
+                    0,
+                    this.w,
+                    this.h
+                );
+            } else {
+                // Обычное отображение (вправо или вверх)
+                ctx.drawImage(
+                    kuzyImg,
+                    this.frame * FRAME_W,
+                    0,
+                    FRAME_W,
+                    FRAME_H,
+                    this.x,
+                    this.y,
+                    this.w,
+                    this.h
+                );
+            }
+            
+            ctx.restore();
         }
     }
 
