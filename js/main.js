@@ -79,7 +79,10 @@ document.addEventListener('DOMContentLoaded', () => {
         iconsRow.appendChild(bananas);
 
         const msg = document.createElement('div');
-        msg.innerText = 'Поздравляем, уровень пройден. Букин освобождён.' + (isNew ? ' — Новый рекорд!' : '');
+        // Отдельная победная фраза для режима 67
+        const victoryText67 = 'Поздравляю, вы победили 67!';
+        const victoryTextDefault = 'Поздравляем, уровень пройден. Букин освобождён.';
+        msg.innerText = (gameMode === '67' ? victoryText67 : victoryTextDefault) + (isNew ? ' — Новый рекорд!' : '');
         Object.assign(msg.style, { fontSize: '20px', marginBottom: '18px', color: '#222', opacity: '0', transform: 'translateY(12px)' });
 
         // Add simple CSS animations via a style tag for pop-in and small icon bounce
@@ -354,6 +357,14 @@ document.addEventListener('DOMContentLoaded', () => {
     kuzyImg.onload = () => spriteReady = true;
     kuzyImg.src = "img/kuzy.png";
 
+    // Sprite for Enemy 67
+    const FRAME_67_W = 326;
+    const FRAME_67_H = 326;
+    const enemy67Img = new Image();
+    let enemy67SpriteReady = false;
+    enemy67Img.onload = () => enemy67SpriteReady = true;
+    enemy67Img.src = "img/67.png";
+
     // ---------- PLAYER ----------
 
     // ==== PLAYER CLASS ====
@@ -516,6 +527,134 @@ document.addEventListener('DOMContentLoaded', () => {
                 this.y,
                 this.w,
                 this.h
+            );
+        }
+    }
+
+    // ==== ENEMY 67 CLASS ====
+    /**
+     * Враг "67": декоративный враг с анимированным спрайтом и покачиванием
+     */
+    class Enemy67 {
+        constructor(playerX, playerY) {
+            // Размер: высота = 1/2 экрана
+            this.h = canvas.height * 0.5;
+            this.w = this.h; // квадратный спрайт
+            // Позиция: почти с правого угла
+            this.x = canvas.width - this.w - 20;
+            this.y = canvas.height - this.h - 20;
+            // Анимация: 2 кадра, 0.3 сек на кадр
+            this.frame = 0;
+            this.timer = 0;
+            this.animInterval = 0.3;
+            // Покачивание: сохраняем базовую позицию
+            this.baseX = this.x;
+            this.baseY = this.y;
+            this.swayTime = 0;
+            // Амплитуда и скорость покачивания
+            this.swayAmplitudeX = 15;
+            this.swayAmplitudeY = 10;
+            this.swaySpeedX = 1.2;
+            this.swaySpeedY = 1.5;
+            // HP и атака
+            this.hp = 20;
+            this.attackTimer = 0;
+            this.attackDelay = 5.0; // начинает атаковать через 5 секунд
+            this.shootTimer = 0;
+            this.shootInterval = 0.8; // в 3 раза быстрее сирени (~1 сек)
+            this.bulletEmojis = ['🪳', '🧨', '7️⃣', '6️⃣', '💩'];
+            // Движение к игроку
+            this.moveSpeed = 50; // скорость 10 пикселей в секунду
+            this.sizeIncreaseTimer = 0; // таймер для увеличения размера каждую секунду
+        }
+
+        update(dt) {
+            // Анимация кадров
+            this.timer += dt;
+            if (this.timer >= this.animInterval) {
+                this.frame = (this.frame + 1) % 2; // 0 -> 1 -> 0 -> 1...
+                this.timer = 0;
+            }
+            
+            // Атака
+            this.attackTimer += dt;
+            if (this.attackTimer >= this.attackDelay) {
+                // После начала атаки увеличиваем размер каждую секунду на 5%
+                this.sizeIncreaseTimer += dt;
+                if (this.sizeIncreaseTimer >= 1.0) {
+                    // Проверяем, не достиг ли размер 90% от экрана
+                    const maxSize = Math.min(canvas.width, canvas.height) * 0.9;
+                    if (this.w < maxSize && this.h < maxSize) {
+                        // Каждую секунду увеличиваем размер на 5%
+                        this.w *= 1.05;
+                        this.h *= 1.05;
+                    }
+                    this.sizeIncreaseTimer = 0;
+                }
+                
+                // Движение к игроку
+                const dx = player.x + player.w / 2 - (this.baseX + this.w / 2);
+                const dy = player.y + player.h / 2 - (this.baseY + this.h / 2);
+                const dist = Math.sqrt(dx * dx + dy * dy);
+                if (dist > 5) { // двигаемся только если не слишком близко
+                    this.baseX += (dx / dist) * this.moveSpeed * dt;
+                    this.baseY += (dy / dist) * this.moveSpeed * dt;
+                }
+                
+                // Ограничиваем позицию в границах экрана
+                this.baseX = Math.max(0, Math.min(canvas.width - this.w, this.baseX));
+                this.baseY = Math.max(0, Math.min(canvas.height - this.h, this.baseY));
+                
+                // Стрельба
+                this.shootTimer += dt;
+                if (this.shootTimer >= this.shootInterval) {
+                    this.shoot();
+                    this.shootTimer = 0;
+                }
+            }
+            
+            // Покачивание относительно базовой позиции (с меньшей амплитудой чтобы не выходить за границы)
+            this.swayTime += dt;
+            const swayX = Math.sin(this.swayTime * this.swaySpeedX) * this.swayAmplitudeX;
+            const swayY = Math.sin(this.swayTime * this.swaySpeedY) * this.swayAmplitudeY;
+            
+            // Применяем покачивание и проверяем границы
+            this.x = Math.max(0, Math.min(canvas.width - this.w, this.baseX + swayX));
+            this.y = Math.max(0, Math.min(canvas.height - this.h, this.baseY + swayY));
+        }
+        
+        shoot() {
+            // Выбираем случайное эмодзи для пули
+            const emoji = this.bulletEmojis[Math.floor(Math.random() * this.bulletEmojis.length)];
+            // Пуля появляется из случайной части врага
+            const offsetX = this.w * (0.2 + Math.random() * 0.6);
+            const offsetY = this.h * (0.2 + Math.random() * 0.6);
+            const bx = this.x + offsetX;
+            const by = this.y + offsetY;
+            
+            // Наводим на игрока
+            const dx = player.x + player.w / 2 - bx;
+            const dy = player.y + player.h / 2 - by;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            const speed = 10; // в 5 раз медленнее начальной скорости (350/5=70)
+            const vx = (dx / dist) * speed;
+            const vy = (dy / dist) * speed;
+            
+            enemyBullets.push({ x: bx, y: by, w: 16, h: 24, emoji, vx, vy });
+        }
+
+        draw() {
+            if (!enemy67SpriteReady) return;
+            ctx.drawImage(
+                enemy67Img,
+                this.frame * FRAME_67_W, // srcX: 0 или 326
+                0,                         // srcY
+                FRAME_67_W,               // srcWidth: 326
+                FRAME_67_H,               // srcHeight: 326
+                this.x,                   // destX
+                this.y,                   // destY
+                this.w,                   // destWidth
+                this.h                    // destHeight
             );
         }
     }
@@ -686,6 +825,11 @@ document.addEventListener('DOMContentLoaded', () => {
     function update(dt) {
         if (invuln > 0) invuln -= dt;
         player.update(dt);
+
+        // Обновляем врага 67 (если есть)
+        if (enemy67) {
+            enemy67.update(dt);
+        }
 
         // Обновляем падение таблички Букин (если есть)
         if (bukinTablet && !bukinTablet.landed) {
@@ -906,6 +1050,34 @@ document.addEventListener('DOMContentLoaded', () => {
          * Проверяет попадание пули по врагу и вызывает выпадение бонуса через trySpawnBonus
          */
         bullets.forEach((b, bi) => {
+            // Проверка попадания по enemy67
+            if (enemy67 && enemy67.hp > 0) {
+                if (b.x > enemy67.x && b.x < enemy67.x + enemy67.w && b.y > enemy67.y && b.y < enemy67.y + enemy67.h) {
+                    enemy67.hp--;
+                    bullets.splice(bi, 1);
+                    score += 5;
+                    // Маленький взрыв при попадании
+                    explosions.push({ x: b.x, y: b.y, timer: 0 });
+                    
+                    if (enemy67.hp <= 0) {
+                        // Большой взрыв размером с врага
+                        explosions.push({ 
+                            x: enemy67.x + enemy67.w / 2, 
+                            y: enemy67.y + enemy67.h / 2, 
+                            timer: 0,
+                            size: enemy67.w * 0.8 // размер взрыва как размер врага
+                        });
+                        // Показываем экран победы по аналогии с боссом
+                        enemy67 = null;
+                        if (!levelCompleteShown) {
+                            showLevelComplete();
+                            levelCompleteShown = true;
+                        }
+                    }
+                    return;
+                }
+            }
+            
             if (!boss) {
                 enemies.forEach((e, ei) => {
                     if (b.x > e.x && b.x < e.x + e.w && b.y > e.y && b.y < e.y + e.h) {
@@ -1184,6 +1356,11 @@ document.addEventListener('DOMContentLoaded', () => {
             drawLilac(e.x + e.w / 2, e.y + e.h / 2, e.w, e.flowers);
         });
 
+        // Отрисовываем врага 67
+        if (enemy67) {
+            enemy67.draw();
+        }
+
         // Рисуем босса-сосиску
         if (boss) {
             ctx.save();
@@ -1206,7 +1383,9 @@ document.addEventListener('DOMContentLoaded', () => {
         explosions.forEach(ex => {
             ctx.save();
             const scale = ex.scale || 1;
-            ctx.font = `${(60 + ex.timer * 60) * scale}px serif`;
+            // Если указан размер, используем его, иначе стандартный
+            const baseSize = ex.size || 60;
+            ctx.font = `${(baseSize + ex.timer * baseSize) * scale}px serif`;
             ctx.textAlign = "center";
             ctx.textBaseline = "middle";
             ctx.globalAlpha = 1 - ex.timer * 2;
@@ -1407,7 +1586,25 @@ document.addEventListener('DOMContentLoaded', () => {
             survivalBulletSpeedIncrease = 0;
             survivalSpeedUps = 0;
             player = new Player(selectedChar);
-            spawnEnemies();
+            // Mode-specific setup
+            if (gameMode === '67') {
+                // Mode 67: no enemies and alternate background
+                enemies = [];
+                bgImg.src = 'img/forest2.png';
+                // Позиция игрока почти с левого угла
+                player.x = 20;
+                // Направление пуль по умолчанию направо
+                playerBulletDir = 'right';
+                // Create Enemy 67
+                enemy67 = new Enemy67(player.x, player.y);
+            } else {
+                enemy67 = null;
+                // В других режимах направление по умолчанию вверх
+                playerBulletDir = 'up';
+                // Normal/survival modes: standard background and spawn enemies
+                bgImg.src = 'img/forest.png';
+                spawnEnemies();
+            }
             levelCompleteShown = false;
             gameOverShown = false;
             running = true;

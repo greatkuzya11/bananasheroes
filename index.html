@@ -90,18 +90,6 @@
             left: 10px;
             font-size: 18px;
         }
-        #dir-button {
-            position: absolute;
-            bottom: 10px;
-            right: 10px;
-            font-size: 20px;
-            padding: 8px 12px;
-            border-radius: 8px;
-            border: none;
-            background: rgba(255,255,255,0.95);
-            color: #222;
-            cursor: pointer;
-        }
     </style>
 </head>
 <body>
@@ -124,6 +112,7 @@
         <div id="modes">
             <button class="mode" data-mode="normal">Обычный режим</button>
             <button class="mode" data-mode="survival">Выживание</button>
+            <button class="mode" data-mode="67">Режим 67</button>
         </div>
     </div>
 </div>
@@ -131,7 +120,7 @@
 <div id="game">
     <canvas id="canvas"></canvas>
     <div id="hud"></div>
-    <button id="dir-button" title="Сменить направление пуль">↑</button>
+    <div id="overlay" style="display:none; position:absolute; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); color:white; text-align:center; padding:50px; box-sizing:border-box; flex-direction:column; align-items:center; justify-content:center;"></div>
 </div>
 
 <script src="js/main.js"></script>
