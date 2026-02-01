@@ -21,7 +21,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const ENEMY_X_SPACING = 120;
     const ENEMY_Y_SPACING = 100;
     const PLAYER_LIVES = 15;
-    const INVULN_TIME = 3;
+    const INVULN_TIME = 2;
     const BONUS_SHOTS_PER_BOTTLE = 3;
 
     // ==== CANVAS SETUP ====
@@ -1793,7 +1793,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (rect(eb, player) && invuln <= 0) {
                 lives--;
                 combo = 0;
-                invuln = 2;
+                invuln = 1;
                 // Добавляем взрыв
                 explosions.push({ x: player.x + player.w / 2, y: player.y + player.h / 2, timer: 0 });
                 // Добавляем облачко с текстом
@@ -1817,7 +1817,7 @@ document.addEventListener('DOMContentLoaded', () => {
             ) {
                 lives--;
                 combo = 0;
-                invuln = 2;
+                invuln = 1;
                 // Добавляем взрыв
                 explosions.push({ x: player.x + player.w / 2, y: player.y + player.h / 2, timer: 0 });
                 // Добавляем облачко с текстом
@@ -1878,7 +1878,15 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
 
+        // Визуальная индикация неуязвимости (мигание)
+        if (invuln > 0) {
+            const blinkSpeed = 16; // 8 миганий в секунду
+            if (Math.floor(invuln * blinkSpeed) % 2 === 0) {
+                ctx.globalAlpha = 0.3; // Полупрозрачный
+            }
+        }
         player.draw();
+        ctx.globalAlpha = 1; // Восстановить прозрачность
 
         bullets.forEach(b => {
             if (b.emoji) {
