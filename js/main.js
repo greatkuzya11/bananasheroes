@@ -355,6 +355,8 @@ document.addEventListener('DOMContentLoaded', () => {
     let survivalEnemySpeedIncrease = 0;
     let survivalBulletSpeedIncrease = 0;
     let survivalSpeedUps = 0; // up to 10
+    let survivalBulletMultiplier = 1; // количество пуль за выстрел, увеличивается каждые 20 убийств, максимум 1024 (2^10)
+    let survivalWaveSpawning = false; // флаг для предотвращения множественного спавна
 
     // ==== BOSS STATE ====
     let boss = null;
@@ -907,7 +909,31 @@ document.addEventListener('DOMContentLoaded', () => {
             bx = p.x + p.w; by = p.y + p.h / 2; vx = speed; vy = 0;
         }
 
-        bullets.push({ x: bx, y: by, r, speed, color, vx, vy, emoji, dir: playerBulletDir, isBonus });
+        // Бонусный выстрел Макса выпускает 3 пули с разными углами
+        if (isBonus && p.type === 'max') {
+            const angleSpread = 15 * Math.PI / 180; // 15 градусов в радианах
+            const angles = [-angleSpread, 0, angleSpread]; // -15°, 0°, +15°
+            
+            angles.forEach(angle => {
+                let vx_angled, vy_angled;
+                if (playerBulletDir === 'up') {
+                    // Для направления вверх: применяем угол относительно вертикали
+                    vx_angled = speed * Math.sin(angle);
+                    vy_angled = -speed * Math.cos(angle);
+                } else if (playerBulletDir === 'left') {
+                    // Для направления влево: применяем угол относительно горизонтали
+                    vx_angled = -speed * Math.cos(angle);
+                    vy_angled = -speed * Math.sin(angle);
+                } else { // 'right'
+                    // Для направления вправо: применяем угол относительно горизонтали
+                    vx_angled = speed * Math.cos(angle);
+                    vy_angled = speed * Math.sin(angle);
+                }
+                bullets.push({ x: bx, y: by, r, speed, color, vx: vx_angled, vy: vy_angled, emoji, dir: playerBulletDir, isBonus, rotation: 0, playerType: p.type, hitRadius: r * 2 });
+            });
+        } else {
+            bullets.push({ x: bx, y: by, r, speed, color, vx, vy, emoji, dir: playerBulletDir, isBonus, rotation: 0, playerType: p.type, hitRadius: r * 2 });
+        }
     }
 
     // ---------- ENEMIES ----------
@@ -1087,6 +1113,14 @@ document.addEventListener('DOMContentLoaded', () => {
             } else {
                 b.y -= b.speed;
             }
+            // Вращаем пулю Дрона
+            if (b.playerType === 'dron' && typeof b.rotation === 'number') {
+                b.rotation += 0.3; // скорость вращения
+            }
+            // Вращаем пулю Макса
+            if (b.playerType === 'max' && typeof b.rotation === 'number') {
+                b.rotation += 0.3; // скорость вращения
+            }
         });
         // Move enemy bullets using their velocity if provided (supports homing)
         enemyBullets.forEach(b => {
@@ -1109,15 +1143,25 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const leafEmojis = ["🍃", "🍂", "🍁", "🌿", "🌱"];
 
+        // SURVIVAL MODE: spawn new wave if enemies < 12
+        if (gameMode === 'survival' && enemies.length < 12 && !survivalWaveSpawning) {
+            survivalWaveSpawning = true;
+            scheduleWave(canvas.width / 2, ENEMY_START_Y, 12, 1000);
+            // Сбросим флаг через 12 секунд (время появления всех врагов)
+            setTimeout(() => {
+                survivalWaveSpawning = false;
+            }, 12000);
+        }
+
         // BOSS LOGIC
-        if (gameMode !== 'survival' && !boss && enemies.length === 1) {
-            // Превращаем последнего врага в босса-сосиску
-            const e = enemies[0];
+        if (gameMode !== 'survival' && gameMode !== '67' && !boss && !bossDefeated && enemies.length === 0) {
+            // Создаем босса-сосиску после уничтожения всех врагов
+            const baseSize = canvas.height * 0.08;
             boss = {
-                x: e.x,
-                y: e.y,
-                w: e.w * 5,
-                h: e.h * 5,
+                x: canvas.width / 2,
+                y: -baseSize * 5,
+                w: baseSize * 5,
+                h: baseSize * 5,
                 dir: 1,
                 shootTimer: 0,
                 hp: 11,
@@ -1127,7 +1171,6 @@ document.addEventListener('DOMContentLoaded', () => {
             };
             // Ensure player is not considered immune until boss is actually defeated
             bossDefeated = false;
-            enemies = [];
         }
 
         if (boss) {
@@ -1197,10 +1240,8 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             e.shootTimer += dt;
-            if (Math.random() < 0.008 && e.shootTimer > 0.9) {
+            if (Math.random() < 0.004 && e.shootTimer > 0.9) {
                 e.shootTimer = 0;
-                // Назначаем случайный эмодзи-листик при создании пули
-                const emojiIdx = Math.floor(Math.random() * leafEmojis.length);
                 const bx = e.x + e.w / 2;
                 const by = e.y + e.h;
                 const px = player.x + player.w / 2;
@@ -1210,9 +1251,18 @@ document.addEventListener('DOMContentLoaded', () => {
                 const dist = Math.max(1, Math.hypot(dx, dy));
                 const speed = 4.0 + survivalBulletSpeedIncrease;
                 const homing = 0.18; // gentle homing for normal enemies
-                const vx = (dx / dist) * speed * homing;
-                const vy = (dy / dist) * speed * 0.9;
-                enemyBullets.push({ x: bx, y: by, w: 8, h: 12, emoji: leafEmojis[emojiIdx], vx, vy });
+                
+                // Выпускаем несколько пуль в зависимости от survivalBulletMultiplier
+                for (let i = 0; i < survivalBulletMultiplier; i++) {
+                    // Назначаем случайный эмодзи-листик при создании пули
+                    const emojiIdx = Math.floor(Math.random() * leafEmojis.length);
+                    // Небольшой разброс для множественных пуль
+                    const spreadAngle = (i - (survivalBulletMultiplier - 1) / 2) * 0.15;
+                    const angle = Math.atan2(dy, dx) + spreadAngle;
+                    const vx = Math.cos(angle) * speed * homing;
+                    const vy = Math.sin(angle) * speed * 0.9;
+                    enemyBullets.push({ x: bx, y: by, w: 8, h: 12, emoji: leafEmojis[emojiIdx], vx, vy });
+                }
             }
         });
 
@@ -1223,13 +1273,17 @@ document.addEventListener('DOMContentLoaded', () => {
                 const eb = enemyBullets[ebi];
                 const ew = eb.w || 8;
                 const eh = eb.h || 12;
+                const hr = b.hitRadius || (b.r * 2);
                 // simple circle-rect overlap check (approx)
-                if (b.x > eb.x - b.r && b.x < eb.x + ew + b.r && b.y > eb.y - b.r && b.y < eb.y + eh + b.r) {
+                if (b.x > eb.x - hr && b.x < eb.x + ew + hr && b.y > eb.y - hr && b.y < eb.y + eh + hr) {
                     // smaller explosion when bullets collide
                     const cx = (b.x + (eb.x + ew / 2)) / 2;
                     const cy = (b.y + (eb.y + eh / 2)) / 2;
                     explosions.push({ x: cx, y: cy, timer: 0, scale: 0.5 });
-                    bullets.splice(bi, 1);
+                    // Бонусная пуля Дрона не исчезает и продолжает лететь
+                    if (!(b.isBonus && player.type === 'dron')) {
+                        bullets.splice(bi, 1);
+                    }
                     enemyBullets.splice(ebi, 1);
                     // +1 point for destroying an enemy bullet with player's bullet
                     score += 1;
@@ -1262,6 +1316,11 @@ document.addEventListener('DOMContentLoaded', () => {
                         });
                     }
                     
+                    // Бонусная пуля Дрона продолжает лететь, не прерываем цикл
+                    if (b.isBonus && player.type === 'dron') {
+                        continue;
+                    }
+                    
                     break;
                 }
             }
@@ -1278,7 +1337,10 @@ document.addEventListener('DOMContentLoaded', () => {
                     // Бонусный выстрел Кузи наносит 2 урона
                     const damage = (b.isBonus && player.type === 'kuzy') ? 2 : 1;
                     enemy67.hp -= damage;
-                    bullets.splice(bi, 1);
+                    // Бонусная пуля Дрона не исчезает и продолжает лететь
+                    if (!(b.isBonus && player.type === 'dron')) {
+                        bullets.splice(bi, 1);
+                    }
                     score += 5;
                     // Маленький взрыв при попадании
                     explosions.push({ x: b.x, y: b.y, timer: 0 });
@@ -1308,12 +1370,12 @@ document.addEventListener('DOMContentLoaded', () => {
                         // Взрыв на месте врага
                         explosions.push({ x: e.x + e.w / 2, y: e.y + e.h / 2, timer: 0 });
                         enemies.splice(ei, 1);
-                        // survival: increment kill count and trigger waves/speedups
+                        // survival: increment kill count and trigger speedups
                         if (gameMode === 'survival') {
                             killCount++;
-                            // every 12 kills spawn a wave of 7 enemies at this spot (one per second)
-                            if (killCount % 12 === 0) {
-                                scheduleWave(e.x + e.w/2, e.y + e.h/2, 12, 1000);
+                            // every 20 kills double the bullet count up to 10 times (max 1024 bullets)
+                            if (killCount % 20 === 0 && survivalBulletMultiplier < 1024) {
+                                survivalBulletMultiplier *= 1.2;
                             }
                             // every 30 kills increase enemy/bullet speed up to 10 times
                             if (killCount % 30 === 0 && survivalSpeedUps < 10) {
@@ -1322,7 +1384,10 @@ document.addEventListener('DOMContentLoaded', () => {
                                 survivalSpeedUps += 1;
                             }
                         }
-                        bullets.splice(bi, 1);
+                        // Бонусная пуля Дрона не исчезает и продолжает лететь
+                        if (!(b.isBonus && player.type === 'dron')) {
+                            bullets.splice(bi, 1);
+                        }
                             score += 2;
                         combo++;
                         // Выпадение бонуса по обычному шансу
@@ -1370,7 +1435,10 @@ document.addEventListener('DOMContentLoaded', () => {
                     // +3 points per hit on boss
                     score += 3;
                     explosions.push({ x: boss.x + boss.w / 2, y: boss.y + boss.h / 2, timer: 0 });
-                    bullets.splice(bi, 1);
+                    // Бонусная пуля Дрона не исчезает и продолжает лететь
+                    if (!(b.isBonus && player.type === 'dron')) {
+                        bullets.splice(bi, 1);
+                    }
                     if (boss.hp <= 0) {
                         // Boss death bonus
                         // Mark boss as defeated so remaining enemy bullets no longer damage the player
@@ -1579,8 +1647,19 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (b.dir === 'up') angle = -Math.PI / 2;
                 else if (b.dir === 'left') angle = Math.PI;
                 else angle = 0; // right
+                
                 ctx.translate(b.x, b.y);
                 ctx.rotate(angle);
+                
+                // Дополнительное вращение для пули Дрона
+                if (b.playerType === 'dron' && typeof b.rotation === 'number') {
+                    ctx.rotate(b.rotation);
+                }
+                // Дополнительное вращение для пули Макса
+                if (b.playerType === 'max' && typeof b.rotation === 'number') {
+                    ctx.rotate(b.rotation);
+                }
+                
                 ctx.fillText(b.emoji, 0, 0);
                 ctx.restore();
             } else {
@@ -1850,6 +1929,8 @@ document.addEventListener('DOMContentLoaded', () => {
             survivalEnemySpeedIncrease = 0;
             survivalBulletSpeedIncrease = 0;
             survivalSpeedUps = 0;
+            survivalBulletMultiplier = 1;
+            survivalWaveSpawning = false;
             player = new Player(selectedChar);
             // Mode-specific setup
             if (gameMode === '67') {
