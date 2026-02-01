@@ -371,6 +371,29 @@ document.addEventListener('DOMContentLoaded', () => {
     let spriteReady = false;
     kuzyImg.onload = () => spriteReady = true;
     kuzyImg.src = "img/kuzy.png";
+    
+    // Спрайты для стрельбы - 5 отдельных файлов
+    const kuzyShootImgs = [];
+    let shootSpritesReady = 0;
+    for (let i = 0; i < 5; i++) {
+        kuzyShootImgs[i] = new Image();
+        kuzyShootImgs[i].onload = () => shootSpritesReady++;
+        kuzyShootImgs[i].src = `img/shoot/${i}.png`;
+    }
+    
+    // Спрайты для стрельбы вверх - 7 отдельных файлов (0-4 для стрельбы, 5-6 для прыжка со стрельбой)
+    const kuzyShootUpImgs = [];
+    let shootUpSpritesReady = 0;
+    for (let i = 0; i < 7; i++) {
+        kuzyShootUpImgs[i] = new Image();
+        kuzyShootUpImgs[i].onload = () => shootUpSpritesReady++;
+        kuzyShootUpImgs[i].src = `img/shoot/up/${i}.png`;
+    }
+    
+    const kuzyJumpImg = new Image();
+    let jumpSpriteReady = false;
+    kuzyJumpImg.onload = () => jumpSpriteReady = true;
+    kuzyJumpImg.src = "img/kuzy_jump.png";
 
     // Sprite for Enemy 67
     const FRAME_67_W = 326;
@@ -447,17 +470,53 @@ document.addEventListener('DOMContentLoaded', () => {
                 this.lastShot = performance.now();
                 shootPlayerBullet(this);
             }
+            
+            // Выключаем режим стрельбы, если клавиша не нажата
+            if (!keys[" "]) {
+                this.shooting = false;
+            }
 
             // Consider jumping as movement for animation purposes
             const moving = keys["ArrowLeft"] || keys["ArrowRight"] || this.isJumping;
 
-            if (this.shooting) {
-                this.shootTimer += dt;
-                if (this.shootTimer > 0.15) {
-                    this.shooting = false;
-                    this.frame = SHOOT_FRAME;
+            // Логика анимации в зависимости от состояния
+            if (this.isJumping && this.shooting) {
+                // Прыжок со стрельбой
+                if (playerBulletDir === 'up') {
+                    // Стрельба вверх в прыжке: кадры 5-6 из img/shoot/up
+                    this.timer += dt;
+                    if (this.timer > 0.12) {
+                        this.frame++;
+                        if (this.frame < 5 || this.frame > 6) this.frame = 5; // циклируем 5-6
+                        this.timer = 0;
+                    }
+                } else {
+                    // Стрельба влево/вправо в прыжке: кадры 4-5 из kuzy_jump.png
+                    this.timer += dt;
+                    if (this.timer > 0.12) {
+                        this.frame++;
+                        if (this.frame < 4 || this.frame > 5) this.frame = 4; // циклируем 4-5
+                        this.timer = 0;
+                    }
+                }
+            } else if (this.isJumping && !this.shooting) {
+                // Прыжок без стрельбы: кадры 0-3 из kuzy_jump.png
+                this.timer += dt;
+                if (this.timer > 0.12) {
+                    this.frame++;
+                    if (this.frame > 3) this.frame = 0; // циклируем 0-3
+                    this.timer = 0;
+                }
+            } else if (!this.isJumping && this.shooting) {
+                // Стрельба без прыжка: кадры 0-4 из отдельных файлов
+                this.timer += dt;
+                if (this.timer > 0.12) {
+                    this.frame++;
+                    if (this.frame > 4) this.frame = 0; // циклируем 0-4 (5 кадров)
+                    this.timer = 0;
                 }
             } else if (moving) {
+                // Обычная ходьба: кадры из kuzy.png
                 this.timer += dt;
                 if (this.timer > 0.12) {
                     this.frame++;
@@ -532,7 +591,42 @@ document.addEventListener('DOMContentLoaded', () => {
          * Отрисовывает спрайт игрока на canvas
          */
         draw() {
-            if (!spriteReady) return;
+            // Определяем какой спрайт использовать
+            let useShootFiles = false; // флаг для использования отдельных файлов стрельбы
+            let useShootUpFiles = false; // флаг для использования отдельных файлов стрельбы вверх
+            let currentSprite = kuzyImg;
+            let spriteIsReady = spriteReady;
+            
+            if (this.isJumping && this.shooting) {
+                // Прыжок со стрельбой
+                if (playerBulletDir === 'up') {
+                    // Стрельба вверх в прыжке - используем отдельные файлы 5-6
+                    useShootUpFiles = true;
+                    spriteIsReady = (shootUpSpritesReady === 7);
+                } else {
+                    // Стрельба влево/вправо в прыжке
+                    currentSprite = kuzyJumpImg;
+                    spriteIsReady = jumpSpriteReady;
+                }
+            } else if (this.isJumping && !this.shooting) {
+                // Прыжок без стрельбы
+                currentSprite = kuzyJumpImg;
+                spriteIsReady = jumpSpriteReady;
+            } else if (!this.isJumping && this.shooting) {
+                // Стрельба без прыжка
+                if (playerBulletDir === 'up') {
+                    // Стрельба вверх - используем отдельные файлы 0-4
+                    useShootUpFiles = true;
+                    spriteIsReady = (shootUpSpritesReady === 7);
+                } else {
+                    // Стрельба влево/вправо - используем отдельные файлы
+                    useShootFiles = true;
+                    spriteIsReady = (shootSpritesReady === 5);
+                }
+            }
+            // Иначе используется обычный спрайт ходьбы (kuzyImg)
+            
+            if (!spriteIsReady) return;
             
             ctx.save();
             
@@ -541,30 +635,87 @@ document.addEventListener('DOMContentLoaded', () => {
                 // Переворачиваем по горизонтали
                 ctx.translate(this.x + this.w, this.y);
                 ctx.scale(-1, 1);
-                ctx.drawImage(
-                    kuzyImg,
-                    this.frame * FRAME_W,
-                    0,
-                    FRAME_W,
-                    FRAME_H,
-                    0,
-                    0,
-                    this.w,
-                    this.h
-                );
+                
+                if (useShootFiles) {
+                    // Используем отдельный файл по индексу кадра
+                    const shootFrame = Math.min(this.frame, 4); // ограничиваем 0-4
+                    ctx.drawImage(
+                        kuzyShootImgs[shootFrame],
+                        0,
+                        0,
+                        this.w,
+                        this.h
+                    );
+                } else if (useShootUpFiles) {
+                    // Стрельба вверх (не зеркалится)
+                    // Если в прыжке - кадры 5-6, иначе 0-4
+                    let shootFrame = this.frame;
+                    if (this.isJumping) {
+                        shootFrame = Math.max(5, Math.min(this.frame, 6)); // ограничиваем 5-6
+                    } else {
+                        shootFrame = Math.min(this.frame, 4); // ограничиваем 0-4
+                    }
+                    ctx.drawImage(
+                        kuzyShootUpImgs[shootFrame],
+                        0,
+                        0,
+                        this.w,
+                        this.h
+                    );
+                } else {
+                    ctx.drawImage(
+                        currentSprite,
+                        this.frame * FRAME_W,
+                        0,
+                        FRAME_W,
+                        FRAME_H,
+                        0,
+                        0,
+                        this.w,
+                        this.h
+                    );
+                }
             } else {
                 // Обычное отображение (вправо или вверх)
-                ctx.drawImage(
-                    kuzyImg,
-                    this.frame * FRAME_W,
-                    0,
-                    FRAME_W,
-                    FRAME_H,
-                    this.x,
-                    this.y,
-                    this.w,
-                    this.h
-                );
+                if (useShootFiles) {
+                    // Используем отдельный файл по индексу кадра
+                    const shootFrame = Math.min(this.frame, 4); // ограничиваем 0-4
+                    ctx.drawImage(
+                        kuzyShootImgs[shootFrame],
+                        this.x,
+                        this.y,
+                        this.w,
+                        this.h
+                    );
+                } else if (useShootUpFiles) {
+                    // Стрельба вверх
+                    // Если в прыжке - кадры 5-6, иначе 0-4
+                    let shootFrame = this.frame;
+                    if (this.isJumping) {
+                        shootFrame = Math.max(5, Math.min(this.frame, 6)); // ограничиваем 5-6
+                    } else {
+                        shootFrame = Math.min(this.frame, 4); // ограничиваем 0-4
+                    }
+                    ctx.drawImage(
+                        kuzyShootUpImgs[shootFrame],
+                        this.x,
+                        this.y,
+                        this.w,
+                        this.h
+                    );
+                } else {
+                    ctx.drawImage(
+                        currentSprite,
+                        this.frame * FRAME_W,
+                        0,
+                        FRAME_W,
+                        FRAME_H,
+                        this.x,
+                        this.y,
+                        this.w,
+                        this.h
+                    );
+                }
             }
             
             ctx.restore();
