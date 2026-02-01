@@ -21,7 +21,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const ENEMY_X_SPACING = 120;
     const ENEMY_Y_SPACING = 100;
     const PLAYER_LIVES = 15;
-    const INVULN_TIME = 2;
+    const INVULN_TIME = 0.5;
     const BONUS_SHOTS_PER_BOTTLE = 3;
 
     // ==== CANVAS SETUP ====
@@ -1880,7 +1880,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Визуальная индикация неуязвимости (мигание)
         if (invuln > 0) {
-            const blinkSpeed = 16; // 8 миганий в секунду
+            const blinkSpeed = 16; // 16 миганий в секунду
             if (Math.floor(invuln * blinkSpeed) % 2 === 0) {
                 ctx.globalAlpha = 0.3; // Полупрозрачный
             }
