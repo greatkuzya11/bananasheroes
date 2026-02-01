@@ -245,7 +245,13 @@ document.addEventListener('DOMContentLoaded', () => {
             levelCompleteShown = false;
             gameOverShown = false;
             player = new Player(selectedChar);
-            spawnEnemies();
+            // Спавним врагов только если не режим 67
+            if (gameMode !== '67') {
+                spawnEnemies();
+            } else {
+                enemies = [];
+                enemy67 = new Enemy67(player.x, player.y);
+            }
             document.getElementById('menu').style.display = 'none';
             document.getElementById('game').style.display = 'block';
             overlay.remove();
