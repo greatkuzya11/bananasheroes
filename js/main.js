@@ -39,7 +39,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function showLevelComplete() {
         // Show overlay — keep game running so player can still move; damage disabled after boss death.
         // Save best score if this run produced a new record and reflect it in the message
-        const key = 'bh_bestScore_' + (selectedChar || 'kuzy');
+        const key = 'bh_bestScore_' + (selectedChar || 'kuzy') + '_' + (gameMode || 'normal');
         const best = parseInt(localStorage.getItem(key) || '0', 10) || 0;
         let isNew = false;
         if (score > best) {
@@ -152,10 +152,23 @@ document.addEventListener('DOMContentLoaded', () => {
             { id: 'dron', name: 'Дрон' },
             { id: 'kuzy', name: 'Кузя' }
         ];
-        el.innerHTML = charsList.map(c => {
-            const best = parseInt(localStorage.getItem('bh_bestScore_' + c.id) || '0', 10) || 0;
-            return `<div style="display:inline-block; margin:6px 12px; color:#fff">${c.name}: <b>${best}</b></div>`;
-        }).join('');
+        const modes = [
+            { id: 'normal', name: 'Обычный' },
+            { id: 'survival', name: 'Выживание' },
+            { id: '67', name: 'Режим 67' }
+        ];
+        
+        let html = '<div style="display:flex; flex-direction:column; gap:8px;">';
+        charsList.forEach(c => {
+            html += `<div style="color:#fff; font-size:14px;"><b>${c.name}:</b> `;
+            const scores = modes.map(m => {
+                const best = parseInt(localStorage.getItem('bh_bestScore_' + c.id + '_' + m.id) || '0', 10) || 0;
+                return `${m.name}: <b>${best}</b>`;
+            }).join(' | ');
+            html += scores + '</div>';
+        });
+        html += '</div>';
+        el.innerHTML = html;
     }
 
     function showGameOver() {
@@ -163,7 +176,7 @@ document.addEventListener('DOMContentLoaded', () => {
         gameOverShown = true;
         running = false;
 
-        const key = 'bh_bestScore_' + (selectedChar || 'kuzy');
+        const key = 'bh_bestScore_' + (selectedChar || 'kuzy') + '_' + (gameMode || 'normal');
         const best = parseInt(localStorage.getItem(key) || '0', 10) || 0;
         let isNew = false;
         if (score > best) {
@@ -206,7 +219,9 @@ document.addEventListener('DOMContentLoaded', () => {
         const bestLine = document.createElement('div');
         const bestVal = parseInt(localStorage.getItem(key) || '0', 10) || 0;
         const displayName = (charNames && charNames[selectedChar]) ? charNames[selectedChar] : selectedChar;
-        bestLine.innerText = `Рекорд (${displayName}): ${bestVal}` + (isNew ? ' — Новый рекорд!' : '');
+        const modeNames = { 'normal': 'Обычный', 'survival': 'Выживание', '67': 'Режим 67' };
+        const modeName = modeNames[gameMode] || gameMode;
+        bestLine.innerText = `Рекорд (${displayName}, ${modeName}): ${bestVal}` + (isNew ? ' — Новый рекорд!' : '');
         Object.assign(bestLine.style, { fontSize: '16px', marginBottom: '18px', color: isNew ? '#ffd54f' : '#ddd' });
 
         const buttons = document.createElement('div');
@@ -564,7 +579,7 @@ document.addEventListener('DOMContentLoaded', () => {
             this.shootInterval = 0.8; // в 3 раза быстрее сирени (~1 сек)
             this.bulletEmojis = ['🪳', '🧨', '7️⃣', '6️⃣', '💩'];
             // Движение к игроку
-            this.moveSpeed = 50; // скорость 10 пикселей в секунду
+            this.moveSpeed = 50; // скорость 50 пикселей в секунду
             this.sizeIncreaseTimer = 0; // таймер для увеличения размера каждую секунду
         }
 
@@ -1546,6 +1561,11 @@ document.addEventListener('DOMContentLoaded', () => {
      */
     chars.forEach(c => {
         c.onclick = () => {
+            // Убираем выделение со всех персонажей
+            chars.forEach(ch => ch.classList.remove('selected'));
+            // Выделяем выбранного
+            c.classList.add('selected');
+            
             selectedChar = c.dataset.char;
             modes.style.display = 'block';
         };
@@ -1557,8 +1577,14 @@ document.addEventListener('DOMContentLoaded', () => {
     /**
      * Обработчик выбора режима игры в меню
      */
-    document.querySelectorAll('.mode').forEach(m => {
+    const modeButtons = document.querySelectorAll('.mode');
+    modeButtons.forEach(m => {
         m.onclick = () => {
+            // Убираем выделение со всех режимов
+            modeButtons.forEach(mb => mb.classList.remove('selected'));
+            // Выделяем выбранный
+            m.classList.add('selected');
+            
             // Reset full game state for a fresh run
             enemies = [];
             bullets = [];

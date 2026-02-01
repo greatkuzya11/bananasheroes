@@ -57,6 +57,23 @@
             padding: 15px;
             border-radius: 10px;
             background: #ffcc00;
+            transition: all 0.2s ease;
+            border: 3px solid transparent;
+        }
+        
+        .char:hover {
+            transform: scale(1.05);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+        }
+        
+        .char:active {
+            transform: scale(0.95);
+        }
+        
+        .char.selected {
+            background: #ff9800;
+            border-color: #fff;
+            box-shadow: 0 0 15px rgba(255,152,0,0.6);
         }
 
         #modes {
@@ -65,13 +82,30 @@
         }
 
         #modes button {
-            font-size: 18px;
-            padding: 10px 20px;
-            margin: 10px;
             cursor: pointer;
-            border: none;
-            background-color: #ff9800;
-            color: white;
+            font-size: 24px;
+            padding: 15px;
+            border-radius: 10px;
+            background: #ffcc00;
+            transition: all 0.2s ease;
+            border: 3px solid transparent;
+            margin: 10px;
+            color: #000;
+        }
+        
+        #modes button:hover {
+            transform: scale(1.05);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+        }
+        
+        #modes button:active {
+            transform: scale(0.95);
+        }
+        
+        #modes button.selected {
+            background: #ff9800;
+            border-color: #fff;
+            box-shadow: 0 0 15px rgba(255,152,0,0.6);
         }
 
         #game {
