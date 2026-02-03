@@ -31,7 +31,7 @@ document.addEventListener('DOMContentLoaded', () => {
      */
     function resizeCanvas() {
         canvas.width = window.innerWidth;
-        canvas.height = window.innerHeight * 0.9;
+        canvas.height = window.innerHeight;
     }
 
     // Показываем модальное окно завершения уровня с двумя кнопками
@@ -2583,6 +2583,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 playerBulletDir = 'up';
                 // Инициализация платформ для режима platforms
                 if (gameMode === 'platforms') {
+                    bgImg.src = 'img/pl-bg.png';
                     initPlatformLevel();
                     // Позиционируем игрока на 30 пикселей выше земли
                     player.y = canvas.height - 40 - player.h - 30;
