@@ -19,7 +19,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const ENEMY_START_Y = 60;
     const ENEMY_X_SPACING = 120;
     const ENEMY_Y_SPACING = 100;
-    const PLAYER_LIVES = 55;
+    const PLAYER_LIVES = 10;
     const INVULN_TIME = 0.5;
     const BONUS_SHOTS_PER_BOTTLE = 3;
 
@@ -245,13 +245,26 @@ document.addEventListener('DOMContentLoaded', () => {
             invuln = INVULN_TIME;
             levelCompleteShown = false;
             gameOverShown = false;
+            bossDefeated = false;
+            // reset survival counters
+            killCount = 0;
+            survivalEnemySpeedIncrease = 0;
+            survivalBulletSpeedIncrease = 0;
+            survivalSpeedUps = 0;
+            survivalBulletMultiplier = 1;
+            survivalWaveSpawning = false;
             player = new Player(selectedChar);
             // Спавним врагов только если не режим 67
             if (gameMode !== '67') {
                 spawnEnemies();
+                playerBulletDir = 'up';
             } else {
                 enemies = [];
                 enemy67 = new Enemy67(player.x, player.y);
+                // Позиция игрока почти с левого угла для режима 67
+                player.x = 20;
+                // Направление пуль по умолчанию направо для режима 67
+                playerBulletDir = 'right';
             }
             // Инициализация платформ для режима platforms
             if (gameMode === 'platforms') {
@@ -568,6 +581,9 @@ document.addEventListener('DOMContentLoaded', () => {
     // player bullet firing direction: 'up'|'left'|'right'
     let playerBulletDir = 'up';
     let dirSwitchHeld = false;
+    // alternative shooting mode flag
+    let altShootMode = false;
+    let ctrlHeld = false;
     // game mode: 'normal' or 'survival' or 'platforms'
     let gameMode = 'normal';
     // platforms for platform mode
@@ -660,14 +676,38 @@ document.addEventListener('DOMContentLoaded', () => {
             // Character-specific jump style: 'max' = linear, 'dron' = physics instant boost, 'kuzy' = physics with smooth vy ramp
             this.jumpStyle = (type === 'max') ? 'max' : (type === 'dron') ? 'dron' : 'kuzy';
             this.jumpRampFactor = (type === 'kuzy') ? 4.0 : 6.0; // lower = smoother for 'kuzy'
+            // Facing direction for sprite mirroring: 'left' or 'right'
+            this.facingDir = 'right';
         }
         /**
          * Обновляет положение, анимацию и обработку выстрелов игрока
          */
         update(dt) {
-            // Horizontal movement (allowed during jump)
-            if (keys["ArrowLeft"]) this.x -= this.speed;
-            if (keys["ArrowRight"]) this.x += this.speed;
+            // Alternative shooting mode: arrows change direction
+            if (altShootMode) {
+                if (keys["ArrowLeft"]) {
+                    playerBulletDir = 'left';
+                    this.facingDir = 'left';
+                    this.x -= this.speed;
+                }
+                if (keys["ArrowRight"]) {
+                    playerBulletDir = 'right';
+                    this.facingDir = 'right';
+                    this.x += this.speed;
+                }
+                // ArrowDown shoots up in alternative mode
+                if (keys["ArrowDown"]) {
+                    playerBulletDir = 'up';
+                }
+            } else {
+                // Normal mode: just horizontal movement
+                if (keys["ArrowLeft"]) {
+                    this.x -= this.speed;
+                }
+                if (keys["ArrowRight"]) {
+                    this.x += this.speed;
+                }
+            }
             this.x = Math.max(10, Math.min(canvas.width - this.w - 10, this.x));
 
             // Jump initiation (only when not already jumping)
@@ -692,13 +732,16 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             }
 
-            if (keys[" "] && performance.now() - this.lastShot > 333) {
+            // Shooting logic
+            // In alternative mode with ArrowDown held (shooting up), shoot automatically
+            const autoShootUp = altShootMode && keys["ArrowDown"] && playerBulletDir === 'up';
+            if ((keys[" "] || autoShootUp) && performance.now() - this.lastShot > 333) {
                 this.lastShot = performance.now();
                 shootPlayerBullet(this);
             }
             
             // Выключаем режим стрельбы, если клавиша не нажата
-            if (!keys[" "]) {
+            if (!keys[" "] && !autoShootUp) {
                 this.shooting = false;
             }
 
@@ -949,8 +992,8 @@ document.addEventListener('DOMContentLoaded', () => {
             
             ctx.save();
             
-            // Если направление пуль влево - отображаем спрайт зеркально
-            if (playerBulletDir === 'left') {
+            // Отзеркаливаем спрайт если игрок смотрит влево
+            if (this.facingDir === 'left') {
                 // Переворачиваем по горизонтали
                 ctx.translate(this.x + this.w, this.y);
                 ctx.scale(-1, 1);
@@ -2127,10 +2170,11 @@ document.addEventListener('DOMContentLoaded', () => {
         if (hudEl) {
             const dirIcon = playerBulletDir === 'up' ? '↑' : (playerBulletDir === 'left' ? '←' : '→');
             const playerName = charNames[selectedChar] || selectedChar;
+            const modeIndicator = altShootMode ? '<span style="color:orange">🔫ALT</span>' : '';
             if (bonusMode && bonusShots > 0) {
-                hudEl.innerHTML = `${playerName} | Жизни: ${"❤️".repeat(lives)}<br>Очки: ${score}   Комбо: ${combo}   <span style="color:black">Бонус: ${bonusShots}</span>   Пули: ${dirIcon}`;
+                hudEl.innerHTML = `${playerName} | Жизни: ${"❤️".repeat(lives)}<br>Очки: ${score}   Комбо: ${combo}   <span style="color:black">Бонус: ${bonusShots}</span>   Пули: ${dirIcon} ${modeIndicator}`;
             } else {
-                hudEl.innerHTML = `${playerName} | Жизни: ${"❤️".repeat(lives)}<br>Очки: ${score}   Комбо: ${combo}   Бонус: ${bonusShots}   Пули: ${dirIcon}`;
+                hudEl.innerHTML = `${playerName} | Жизни: ${"❤️".repeat(lives)}<br>Очки: ${score}   Комбо: ${combo}   Бонус: ${bonusShots}   Пули: ${dirIcon} ${modeIndicator}`;
             }
         }
     }
@@ -2421,13 +2465,31 @@ document.addEventListener('DOMContentLoaded', () => {
                 bonusMode = true;
             }
         }
-        if (e.key === "ArrowDown") {
+        // Toggle alternative shooting mode with Ctrl
+        if (e.key === "Control") {
+            if (!ctrlHeld) {
+                ctrlHeld = true;
+                altShootMode = !altShootMode;
+                // Reset direction to 'up' when switching modes
+                if (!altShootMode) {
+                    playerBulletDir = 'up';
+                }
+            }
+        }
+        if (e.key === "ArrowDown" && !altShootMode) {
             // cycle bullet direction once per key press
             if (!dirSwitchHeld) {
                 dirSwitchHeld = true;
-                if (playerBulletDir === 'up') playerBulletDir = 'left';
-                else if (playerBulletDir === 'left') playerBulletDir = 'right';
-                else playerBulletDir = 'up';
+                if (playerBulletDir === 'up') {
+                    playerBulletDir = 'left';
+                    player.facingDir = 'left';
+                } else if (playerBulletDir === 'left') {
+                    playerBulletDir = 'right';
+                    player.facingDir = 'right';
+                } else {
+                    playerBulletDir = 'up';
+                    // Оставляем текущее направление взгляда
+                }
             }
         }
     });
@@ -2437,6 +2499,7 @@ document.addEventListener('DOMContentLoaded', () => {
     document.addEventListener('keyup', e => {
         keys[e.key] = false;
         if (e.key === 'ArrowDown') dirSwitchHeld = false;
+        if (e.key === 'Control') ctrlHeld = false;
     });
 
 
