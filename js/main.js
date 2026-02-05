@@ -254,17 +254,20 @@ document.addEventListener('DOMContentLoaded', () => {
             survivalBulletMultiplier = 1;
             survivalWaveSpawning = false;
             player = new Player(selectedChar);
-            // Спавним врагов только если не режим 67
-            if (gameMode !== '67') {
+            // Спавним врагов только если не режим 67 и не режим platforms
+            if (gameMode !== '67' && gameMode !== 'platforms') {
                 spawnEnemies();
                 playerBulletDir = 'up';
-            } else {
+            } else if (gameMode === '67') {
                 enemies = [];
                 enemy67 = new Enemy67(player.x, player.y);
                 // Позиция игрока почти с левого угла для режима 67
                 player.x = 20;
                 // Направление пуль по умолчанию направо для режима 67
                 playerBulletDir = 'right';
+            } else if (gameMode === 'platforms') {
+                enemies = [];
+                playerBulletDir = 'up';
             }
             // Инициализация платформ для режима platforms
             if (gameMode === 'platforms') {
@@ -597,6 +600,8 @@ document.addEventListener('DOMContentLoaded', () => {
     let gameMode = 'normal';
     // platforms for platform mode
     let platforms = [];
+    // home platform for spawning/respawning in platforms mode
+    let homePlatform = null;
     // survival counters
     let killCount = 0;
     let survivalEnemySpeedIncrease = 0;
@@ -938,16 +943,22 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                 });
                 
-                // Проверка выхода за нижнюю границу (телепорт наверх с потерей жизни)
+                // Проверка выхода за нижнюю границу (телепорт на homePlatform с потерей жизни)
                 if (this.y > canvas.height) {
                     lives--;
                     combo = 0;
                     if (lives <= 0) {
                         showGameOver();
                     } else {
-                        // Телепорт на верхнюю платформу
-                        this.y = 50;
-                        this.x = canvas.width / 2 - this.w / 2;
+                        // Телепорт на homePlatform в центр
+                        if (homePlatform) {
+                            this.x = homePlatform.x + (homePlatform.w - this.w) / 2;
+                            this.y = homePlatform.y - this.h;
+                        } else {
+                            // Fallback если нет homePlatform
+                            this.x = canvas.width / 2 - this.w / 2;
+                            this.y = canvas.height / 2;
+                        }
                         this.vy = 0;
                         this.isJumping = false;
                         invuln = INVULN_TIME;
@@ -1383,17 +1394,18 @@ document.addEventListener('DOMContentLoaded', () => {
         const cw = canvas.width;
         const ch = canvas.height;
         
-        // ========== ЗЕМЛЯ (НЕВИДИМАЯ) ==========
-        // X: 0 (от левого края)
-        // Y: 94% от верха (6% от низа)
-        // Ширина: 100% экрана
-        // Высота: 6% экрана
+        // ========== НАЧАЛЬНАЯ ПЛАТФОРМА (HOME PLATFORM) ==========
+        // cw X: 7% от ширины (примерно центр слева)
+        // ch Y: 35% от верха
+        // cw Ширина: 30% от ширины экрана
+        // ch Высота: 10% от высоты экрана
         // Движение: null (статичная)
         // Speed: 50 (не используется для статичных)
         // Range: 200 (не используется для статичных)
         // Текстура: null (без текстуры)
-        // Видимость: false (невидимая, т.к. фон уже содержит землю)
-        platforms.push(new Platform(cw * 0.07, ch * 0.35, cw*0.3, ch * 0.1, null, 50, 200, null, false));
+        // Видимость: false (невидимая для скорости, но игрок на ней стартует)
+        homePlatform = new Platform(cw * 0.07, ch * 0.35, cw*0.3, ch * 0.1, null, 50, 200, null, false);
+        platforms.push(homePlatform);
         
         // ========== ЛЕВАЯ НИЖНЯЯ ПЛАТФОРМА ==========
         // X: 5% от ширины экрана
@@ -1405,7 +1417,8 @@ document.addEventListener('DOMContentLoaded', () => {
         // Range: 200 (не используется)
         // Текстура: img/platform2.png
         // Видимость: true (по умолчанию)
-        platforms.push(new Platform(cw * 0.05, ch * 0.65, cw * 0.20, ch * 0.10, null, 100, 200, 'img/platform2.png'));
+        let platform67 = new Platform(cw * 0.05, ch * 0.65, cw * 0.20, ch * 0.15, null, 100, 200, 'img/platform1.png');
+        platforms.push(platform67);
         
         // ========== ЦЕНТРАЛЬНАЯ ГОРИЗОНТАЛЬНАЯ ПЛАТФОРМА ==========
         // X: 40% от ширины (центр минус половина ширины платформы)
@@ -1417,7 +1430,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // Range: 12% от ширины экрана (амплитуда движения)
         // Текстура: img/platform3.png
         // Видимость: true (по умолчанию)
-        platforms.push(new Platform(cw * 0.150, ch * 0.20, cw * 0.20, ch * 0.15, 'horizontal', 50, cw * 0.12, 'img/platform3.png'));
+        platforms.push(new Platform(cw * 0.425, ch * 0.70, cw * 0.20, ch * 0.15, 'horizontal', 400, cw * 0.18, 'img/platform3.png'));
         
         // ========== ПРАВАЯ ВЕРХНЯЯ ВЕРТИКАЛЬНАЯ ПЛАТФОРМА ==========
         // X: 80% от ширины экрана
@@ -1429,7 +1442,8 @@ document.addEventListener('DOMContentLoaded', () => {
         // Range: 12% от высоты экрана (амплитуда движения)
         // Текстура: img/platform4.png
         // Видимость: true (по умолчанию)
-        platforms.push(new Platform(cw * 0.80, ch * 0.75, cw * 0.15, ch * 0.11, 'vertical', 40, ch * 0.12, 'img/platform4.png'));
+        let bossPlatform = new Platform(cw * 0.80, ch * 0.55, cw * 0.15, ch * 0.11, 'vertical', 200, ch * 0.22, 'img/platform4.png')
+        platforms.push(bossPlatform);
         
         // ========== ЛЕВАЯ ВЕРХНЯЯ ГОРИЗОНТАЛЬНАЯ ПЛАТФОРМА ==========
         // X: 20% от ширины экрана
@@ -1441,8 +1455,10 @@ document.addEventListener('DOMContentLoaded', () => {
         // Range: 50% от высоты экрана (большая амплитуда)
         // Текстура: img/platform5.png
         // Видимость: true (по умолчанию)
-        platforms.push(new Platform(cw * 0.20, ch * 0.20, cw * 0.15, ch * 0.11, 'horizontal', 180, ch * 0.50, 'img/platform5.png'));
-         platforms.push(new Platform(cw * 0.82, ch * 0.13, cw * 0.15, ch * 0.11, null, 180, ch * 0.50, 'img/platform8.png'));
+        let movingPlatform = new Platform(cw * 0.55, ch * 0.25, cw * 0.15, ch * 0.11, 'horizontal', 800, ch * 0.18, 'img/platform5.png');
+        platforms.push(movingPlatform);
+        // платформа с кубком. 
+        platforms.push(new Platform(cw * 0.82, ch * 0.13, cw * 0.15, ch * 0.11, null, 180, ch * 0.50, 'img/platform8.png'));
     }
 
     /**
@@ -2601,9 +2617,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (gameMode === 'platforms') {
                     bgImg.src = 'img/pl-bg.png';
                     initPlatformLevel();
-                    // Позиционируем игрока на 30 пикселей выше земли
-                    player.y = canvas.height - 40 - player.h - 30;
-                    player.x = canvas.width / 2 - player.w / 2;
+                    // Позиционируем игрока в центр homePlatform
+                    if (homePlatform) {
+                        player.x = homePlatform.x + (homePlatform.w - player.w) / 2;
+                        player.y = homePlatform.y - player.h;
+                    } else {
+                        // Fallback
+                        player.y = canvas.height - 40 - player.h - 30;
+                        player.x = canvas.width / 2 - player.w / 2;
+                    }
                     // spawnEnemiesOnPlatforms(); // Отключено для тестирования
                 } else {
                     // Normal/survival modes: standard background and spawn enemies
