@@ -439,8 +439,17 @@ document.addEventListener('DOMContentLoaded', () => {
             player = new Player(selectedChar);
             // Спавним врагов только если не режим 67
             if (gameMode !== '67') {
-                spawnEnemies();
                 playerBulletDir = 'up';
+                // Инициализация платформ для режима platforms
+                if (gameMode === 'platforms') {
+                    initPlatformLevel();
+                    // Позиционируем игрока на 30 пикселей выше земли
+                    player.y = canvas.height - 40 - player.h - 30;
+                    player.x = canvas.width / 2 - player.w / 2;
+                    // spawnEnemiesOnPlatforms(); // Отключено для тестирования
+                } else {
+                    spawnEnemies();
+                }
             } else {
                 enemies = [];
                 // Позиция игрока почти с левого угла для режима 67
@@ -1384,7 +1393,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // Range: 200 (не используется для статичных)
         // Текстура: null (без текстуры)
         // Видимость: false (невидимая, т.к. фон уже содержит землю)
-        platforms.push(new Platform(0, ch * 0.94, cw, ch * 0.06, null, 50, 200, null, false));
+        platforms.push(new Platform(cw * 0.07, ch * 0.35, cw*0.3, ch * 0.1, null, 50, 200, null, false));
         
         // ========== ЛЕВАЯ НИЖНЯЯ ПЛАТФОРМА ==========
         // X: 5% от ширины экрана
@@ -1396,7 +1405,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // Range: 200 (не используется)
         // Текстура: img/platform2.png
         // Видимость: true (по умолчанию)
-        platforms.push(new Platform(cw * 0.05, ch * 0.50, cw * 0.20, ch * 0.10, 'vertical', 100, 200, 'img/platform2.png'));
+        platforms.push(new Platform(cw * 0.05, ch * 0.65, cw * 0.20, ch * 0.10, null, 100, 200, 'img/platform2.png'));
         
         // ========== ЦЕНТРАЛЬНАЯ ГОРИЗОНТАЛЬНАЯ ПЛАТФОРМА ==========
         // X: 40% от ширины (центр минус половина ширины платформы)
@@ -1408,7 +1417,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // Range: 12% от ширины экрана (амплитуда движения)
         // Текстура: img/platform3.png
         // Видимость: true (по умолчанию)
-        platforms.push(new Platform(cw * 0.40, ch * 0.40, cw * 0.30, ch * 0.20, 'horizontal', 50, cw * 0.12, 'img/platform3.png'));
+        platforms.push(new Platform(cw * 0.150, ch * 0.20, cw * 0.20, ch * 0.15, 'horizontal', 50, cw * 0.12, 'img/platform3.png'));
         
         // ========== ПРАВАЯ ВЕРХНЯЯ ВЕРТИКАЛЬНАЯ ПЛАТФОРМА ==========
         // X: 80% от ширины экрана
@@ -1420,7 +1429,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // Range: 12% от высоты экрана (амплитуда движения)
         // Текстура: img/platform4.png
         // Видимость: true (по умолчанию)
-        platforms.push(new Platform(cw * 0.80, ch * 0.15, cw * 0.15, ch * 0.11, 'vertical', 40, ch * 0.12, 'img/platform4.png'));
+        platforms.push(new Platform(cw * 0.80, ch * 0.75, cw * 0.15, ch * 0.11, 'vertical', 40, ch * 0.12, 'img/platform4.png'));
         
         // ========== ЛЕВАЯ ВЕРХНЯЯ ГОРИЗОНТАЛЬНАЯ ПЛАТФОРМА ==========
         // X: 20% от ширины экрана
@@ -1433,6 +1442,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // Текстура: img/platform5.png
         // Видимость: true (по умолчанию)
         platforms.push(new Platform(cw * 0.20, ch * 0.20, cw * 0.15, ch * 0.11, 'horizontal', 180, ch * 0.50, 'img/platform5.png'));
+         platforms.push(new Platform(cw * 0.82, ch * 0.13, cw * 0.15, ch * 0.11, null, 180, ch * 0.50, 'img/platform8.png'));
     }
 
     /**
@@ -1887,7 +1897,9 @@ document.addEventListener('DOMContentLoaded', () => {
         /**
          * Проверяет попадание пули по врагу и вызывает выпадение бонуса через trySpawnBonus
          */
-        bullets.forEach((b, bi) => {
+        for (let bi = bullets.length - 1; bi >= 0; bi--) {
+            const b = bullets[bi];
+            
             // Проверка попадания по enemy67
             if (enemy67 && enemy67.hp > 0) {
                 if (b.x > enemy67.x && b.x < enemy67.x + enemy67.w && b.y > enemy67.y && b.y < enemy67.y + enemy67.h) {
@@ -1917,12 +1929,14 @@ document.addEventListener('DOMContentLoaded', () => {
                             levelCompleteShown = true;
                         }
                     }
-                    return;
+                    continue;
                 }
             }
             
             if (!boss) {
-                enemies.forEach((e, ei) => {
+                // Используем обратный цикл для безопасного удаления при итерации
+                for (let ei = enemies.length - 1; ei >= 0; ei--) {
+                    const e = enemies[ei];
                     if (b.x > e.x && b.x < e.x + e.w && b.y > e.y && b.y < e.y + e.h) {
                         // Взрыв на месте врага
                         explosions.push({ x: e.x + e.w / 2, y: e.y + e.h / 2, timer: 0 });
@@ -1945,7 +1959,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         if (!(b.isBonus && player.type === 'dron')) {
                             bullets.splice(bi, 1);
                         }
-                            score += 2;
+                        score += 2;
                         combo++;
                         // Выпадение бонуса по обычному шансу
                         trySpawnBonus(e.x, e.y);
@@ -1963,15 +1977,16 @@ document.addEventListener('DOMContentLoaded', () => {
                             const hitX = e.x + e.w / 2;
                             const hitY = e.y + e.h / 2;
                             
-                            enemies.forEach((enemy, idx) => {
+                            for (let j = 0; j < enemies.length; j++) {
+                                const enemy = enemies[j];
                                 const dx = (enemy.x + enemy.w / 2) - hitX;
                                 const dy = (enemy.y + enemy.h / 2) - hitY;
                                 const dist = Math.sqrt(dx * dx + dy * dy);
                                 if (dist < nearestDist) {
                                     nearestDist = dist;
-                                    nearestEnemy = { enemy, idx };
+                                    nearestEnemy = { enemy, idx: j };
                                 }
-                            });
+                            }
                             
                             if (nearestEnemy) {
                                 const ne = nearestEnemy.enemy;
@@ -1984,8 +1999,9 @@ document.addEventListener('DOMContentLoaded', () => {
                                 trySpawnHeart(ne.x, ne.y);
                             }
                         }
+                        break; // Пуля может убить только одного врага за раз
                     }
-                });
+                }
             } else {
                 // Попадание по боссу-сосиске
                 if (b.x > boss.x && b.x < boss.x + boss.w && b.y > boss.y && b.y < boss.y + boss.h && boss.hp > 0) {
@@ -2036,7 +2052,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                 }
             }
-        });
+        }
 
         /**
          * Пытается создать бонус (бутылку) с определённым шансом
