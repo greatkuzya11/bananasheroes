@@ -238,6 +238,7 @@ document.addEventListener('DOMContentLoaded', () => {
             platforms = [];
             boss = null;
             bukinTablet = null;
+            enemy67 = null;
             score = 0;
             combo = 0;
             bonusShots = 0;
@@ -253,6 +254,10 @@ document.addEventListener('DOMContentLoaded', () => {
             survivalSpeedUps = 0;
             survivalBulletMultiplier = 1;
             survivalWaveSpawning = false;
+            // reset platform mode counters
+            platform67HitCount = 0;
+            homePlatform = null;
+            bossPlatform = null;
             player = new Player(selectedChar);
             // Спавним врагов только если не режим 67 и не режим platforms
             if (gameMode !== '67' && gameMode !== 'platforms') {
@@ -268,11 +273,18 @@ document.addEventListener('DOMContentLoaded', () => {
             } else if (gameMode === 'platforms') {
                 enemies = [];
                 playerBulletDir = 'up';
-            }
-            // Инициализация платформ для режима platforms
-            if (gameMode === 'platforms') {
+                // Инициализация платформ для режима platforms
                 initPlatformLevel();
-                spawnEnemiesOnPlatforms();
+                // Позиционируем игрока в центр homePlatform
+                if (homePlatform) {
+                    player.x = homePlatform.x + (homePlatform.w - player.w) / 2;
+                    player.y = homePlatform.y - player.h;
+                }
+                // Спавним врага 67 на bossPlatform
+                if (bossPlatform) {
+                    enemy67 = new Enemy67(player.x, player.y, true);
+                    platform67HitCount = 0;
+                }
             }
             document.getElementById('menu').style.display = 'none';
             document.getElementById('game').style.display = 'block';
@@ -424,6 +436,7 @@ document.addEventListener('DOMContentLoaded', () => {
             platforms = [];
             boss = null;
             bukinTablet = null;
+            enemy67 = null;
             score = 0;
             combo = 0;
             bonusShots = 0;
@@ -439,27 +452,36 @@ document.addEventListener('DOMContentLoaded', () => {
             survivalSpeedUps = 0;
             survivalBulletMultiplier = 1;
             survivalWaveSpawning = false;
+            // reset platform mode counters
+            platform67HitCount = 0;
+            homePlatform = null;
+            bossPlatform = null;
             player = new Player(selectedChar);
-            // Спавним врагов только если не режим 67
-            if (gameMode !== '67') {
+            // Спавним врагов в зависимости от режима
+            if (gameMode === 'platforms') {
+                enemies = [];
                 playerBulletDir = 'up';
                 // Инициализация платформ для режима platforms
-                if (gameMode === 'platforms') {
-                    initPlatformLevel();
-                    // Позиционируем игрока на 30 пикселей выше земли
-                    player.y = canvas.height - 40 - player.h - 30;
-                    player.x = canvas.width / 2 - player.w / 2;
-                    // spawnEnemiesOnPlatforms(); // Отключено для тестирования
-                } else {
-                    spawnEnemies();
+                initPlatformLevel();
+                // Позиционируем игрока в центр homePlatform
+                if (homePlatform) {
+                    player.x = homePlatform.x + (homePlatform.w - player.w) / 2;
+                    player.y = homePlatform.y - player.h;
                 }
-            } else {
+                // Спавним врага 67 на bossPlatform
+                if (bossPlatform) {
+                    enemy67 = new Enemy67(player.x, player.y, true);
+                    platform67HitCount = 0;
+                }
+            } else if (gameMode === '67') {
                 enemies = [];
+                enemy67 = new Enemy67(player.x, player.y);
                 // Позиция игрока почти с левого угла для режима 67
                 player.x = 20;
-                // Направление пуль по умолчанию направо для режима 67
                 playerBulletDir = 'right';
-                enemy67 = new Enemy67(player.x, player.y);
+            } else {
+                spawnEnemies();
+                playerBulletDir = 'up';
             }
             // Не нужно запускать requestAnimationFrame - loop уже работает
             // running уже true, просто сбрасываем last
@@ -602,6 +624,10 @@ document.addEventListener('DOMContentLoaded', () => {
     let platforms = [];
     // home platform for spawning/respawning in platforms mode
     let homePlatform = null;
+    // boss platform in platforms mode
+    let bossPlatform = null;
+    // hits counter for enemy67 in platforms mode
+    let platform67HitCount = 0;
     // survival counters
     let killCount = 0;
     let survivalEnemySpeedIncrease = 0;
@@ -1109,13 +1135,13 @@ document.addEventListener('DOMContentLoaded', () => {
      * Враг "67": декоративный враг с анимированным спрайтом и покачиванием
      */
     class Enemy67 {
-        constructor(playerX, playerY) {
-            // Размер: высота = 1/2 экрана
-            this.h = canvas.height * 0.5;
+        constructor(playerX, playerY, platformMode = false) {
+            // Размер: высота = 1/2 экрана, но в режиме платформ больше (в 2.25 раза)
+            this.h = platformMode ? (canvas.height * 0.3375) : (canvas.height * 0.5);
             this.w = this.h; // квадратный спрайт
-            // Позиция: почти с правого угла
-            this.x = canvas.width - this.w - 20;
-            this.y = canvas.height - this.h - 20;
+            // Позиция: почти с правого угла или на платформе
+            this.x = platformMode ? (bossPlatform.x + (bossPlatform.w - this.w) / 2) : (canvas.width - this.w - 20);
+            this.y = platformMode ? (bossPlatform.y - this.h * 0.92) : (canvas.height - this.h - 20);
             // Анимация: 2 кадра, 0.3 сек на кадр
             this.frame = 0;
             this.timer = 0;
@@ -1125,20 +1151,21 @@ document.addEventListener('DOMContentLoaded', () => {
             this.baseY = this.y;
             this.swayTime = 0;
             // Амплитуда и скорость покачивания
-            this.swayAmplitudeX = 15;
-            this.swayAmplitudeY = 10;
+            this.swayAmplitudeX = platformMode ? 5 : 15; // меньше в режиме платформ
+            this.swayAmplitudeY = platformMode ? 0 : 10; // не качается по вертикали на платформе
             this.swaySpeedX = 1.2;
             this.swaySpeedY = 1.5;
             // HP и атака
-            this.hp = 20;
-            this.attackTimer = 0;
-            this.attackDelay = 5.0; // начинает атаковать через 5 секунд
+            this.hp = platformMode ? 40 : 20; // 40 попаданий в режиме платформ
+            this.attackTimer = 0; // начинаем с 0
+            this.attackDelay = platformMode ? 0 : 5.0; // в режиме 67 ждем 5 сек, на платформе сразу
             this.shootTimer = 0;
             this.shootInterval = 0.8; // в 3 раза быстрее сирени (~1 сек)
             this.bulletEmojis = ['🪳', '🧨', '7️⃣', '6️⃣', '💩'];
             // Движение к игроку
-            this.moveSpeed = 50; // скорость 50 пикселей в секунду
+            this.moveSpeed = platformMode ? 0 : 50; // не движется в режиме платформ
             this.sizeIncreaseTimer = 0; // таймер для увеличения размера каждую секунду
+            this.platformMode = platformMode; // флаг режима платформ
         }
 
         update(dt) {
@@ -1152,31 +1179,40 @@ document.addEventListener('DOMContentLoaded', () => {
             // Атака
             this.attackTimer += dt;
             if (this.attackTimer >= this.attackDelay) {
-                // После начала атаки увеличиваем размер каждую секунду на 5%
-                this.sizeIncreaseTimer += dt;
-                if (this.sizeIncreaseTimer >= 1.0) {
-                    // Проверяем, не достиг ли размер 90% от экрана
-                    const maxSize = Math.min(canvas.width, canvas.height) * 0.9;
-                    if (this.w < maxSize && this.h < maxSize) {
-                        // Каждую секунду увеличиваем размер на 5%
-                        this.w *= 1.05;
-                        this.h *= 1.05;
+                // В режиме платформ не увеличиваем размер
+                if (!this.platformMode) {
+                    // После начала атаки увеличиваем размер каждую секунду на 5%
+                    this.sizeIncreaseTimer += dt;
+                    if (this.sizeIncreaseTimer >= 1.0) {
+                        // Проверяем, не достиг ли размер 90% от экрана
+                        const maxSize = Math.min(canvas.width, canvas.height) * 0.9;
+                        if (this.w < maxSize && this.h < maxSize) {
+                            // Каждую секунду увеличиваем размер на 5%
+                            this.w *= 1.05;
+                            this.h *= 1.05;
+                        }
+                        this.sizeIncreaseTimer = 0;
                     }
-                    this.sizeIncreaseTimer = 0;
                 }
                 
-                // Движение к игроку
-                const dx = player.x + player.w / 2 - (this.baseX + this.w / 2);
-                const dy = player.y + player.h / 2 - (this.baseY + this.h / 2);
-                const dist = Math.sqrt(dx * dx + dy * dy);
-                if (dist > 5) { // двигаемся только если не слишком близко
-                    this.baseX += (dx / dist) * this.moveSpeed * dt;
-                    this.baseY += (dy / dist) * this.moveSpeed * dt;
+                // Движение к игроку (только не в режиме платформ)
+                if (!this.platformMode) {
+                    const dx = player.x + player.w / 2 - (this.baseX + this.w / 2);
+                    const dy = player.y + player.h / 2 - (this.baseY + this.h / 2);
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+                    if (dist > 5) { // двигаемся только если не слишком близко
+                        this.baseX += (dx / dist) * this.moveSpeed * dt;
+                        this.baseY += (dy / dist) * this.moveSpeed * dt;
+                    }
+                    
+                    // Ограничиваем позицию в границах экрана
+                    this.baseX = Math.max(0, Math.min(canvas.width - this.w, this.baseX));
+                    this.baseY = Math.max(0, Math.min(canvas.height - this.h, this.baseY));
+                } else if (bossPlatform) {
+                    // В режиме платформ держимся над платформой (с смещением вниз на 1/10 размера)
+                    this.baseX = bossPlatform.x + (bossPlatform.w - this.w) / 2;
+                    this.baseY = bossPlatform.y - this.h * 0.88; // чуть ниже, чтобы не висеть слишком высоко
                 }
-                
-                // Ограничиваем позицию в границах экрана
-                this.baseX = Math.max(0, Math.min(canvas.width - this.w, this.baseX));
-                this.baseY = Math.max(0, Math.min(canvas.height - this.h, this.baseY));
                 
                 // Стрельба
                 this.shootTimer += dt;
@@ -1434,15 +1470,15 @@ document.addEventListener('DOMContentLoaded', () => {
         
         // ========== ПРАВАЯ ВЕРХНЯЯ ВЕРТИКАЛЬНАЯ ПЛАТФОРМА ==========
         // X: 80% от ширины экрана
-        // Y: 15% от верха
+        // Y: 55% от верха (измещено вниз для режима платформ)
         // Ширина: 15% от ширины экрана
         // Высота: 11% от высоты экрана
         // Движение: 'vertical' (вверх-вниз)
-        // Speed: 40 (скорость колебаний)
-        // Range: 12% от высоты экрана (амплитуда движения)
+        // Speed: 200 (скорость колебаний)
+        // Range: 22% от высоты экрана (амплитуда движения)
         // Текстура: img/platform4.png
         // Видимость: true (по умолчанию)
-        let bossPlatform = new Platform(cw * 0.80, ch * 0.55, cw * 0.15, ch * 0.11, 'vertical', 200, ch * 0.22, 'img/platform4.png')
+        bossPlatform = new Platform(cw * 0.80, ch * 0.55, cw * 0.15, ch * 0.11, 'vertical', 200, ch * 0.22, 'img/platform4.png')
         platforms.push(bossPlatform);
         
         // ========== ЛЕВАЯ ВЕРХНЯЯ ГОРИЗОНТАЛЬНАЯ ПЛАТФОРМА ==========
@@ -1922,6 +1958,72 @@ document.addEventListener('DOMContentLoaded', () => {
                     // Бонусный выстрел Кузи наносит 2 урона
                     const damage = (b.isBonus && player.type === 'kuzy') ? 2 : 1;
                     enemy67.hp -= damage;
+                    
+                    // В режиме платформ отслеживаем попадания для спавна врагов
+                    if (gameMode === 'platforms') {
+                        platform67HitCount += damage;
+                        
+                        // После 20 попаданий спавнится 1 враг
+                        if (platform67HitCount === 20) {
+                            const lilacColors = ["#b57edc", "#c084fc", "#a855f7", "#e1bee7", "#ede7f6"];
+                            const flowers = [];
+                            for (let j = 0; j < 18; j++) {
+                                const angle = Math.PI * 2 * Math.random();
+                                const rad = 0.18 + Math.random() * 0.18;
+                                const relX = Math.cos(angle) * 0.22 * (0.7 + Math.random()*0.7);
+                                const relY = 0.18 + Math.sin(angle) * 0.22 * (0.7 + Math.random()*0.7);
+                                const sizeK = 0.5 + Math.random()*0.5;
+                                const color = lilacColors[Math.floor(Math.random() * lilacColors.length)];
+                                flowers.push({relX, relY, rad, sizeK, color});
+                            }
+                            const enemyW = canvas.height * ENEMY_WIDTH_RATIO;
+                            const enemyH = canvas.height * ENEMY_HEIGHT_RATIO;
+                            enemies.push({
+                                x: canvas.width / 2 - enemyW / 2,
+                                y: 50,
+                                w: enemyW,
+                                h: enemyH,
+                                dir: 1,
+                                diving: false,
+                                targetX: 0,
+                                shootTimer: 0,
+                                flowers
+                            });
+                        }
+                        
+                        // После 25, 30, 35, 40 попаданий спавняются по 2 врага
+                        if ((platform67HitCount === 25 || platform67HitCount === 30 || platform67HitCount === 35 || platform67HitCount === 40) && platform67HitCount >= 25) {
+                            const lilacColors = ["#b57edc", "#c084fc", "#a855f7", "#e1bee7", "#ede7f6"];
+                            
+                            for (let spawn = 0; spawn < 2; spawn++) {
+                                const flowers = [];
+                                for (let j = 0; j < 18; j++) {
+                                    const angle = Math.PI * 2 * Math.random();
+                                    const rad = 0.18 + Math.random() * 0.18;
+                                    const relX = Math.cos(angle) * 0.22 * (0.7 + Math.random()*0.7);
+                                    const relY = 0.18 + Math.sin(angle) * 0.22 * (0.7 + Math.random()*0.7);
+                                    const sizeK = 0.5 + Math.random()*0.5;
+                                    const color = lilacColors[Math.floor(Math.random() * lilacColors.length)];
+                                    flowers.push({relX, relY, rad, sizeK, color});
+                                }
+                                const enemyW = canvas.height * ENEMY_WIDTH_RATIO;
+                                const enemyH = canvas.height * ENEMY_HEIGHT_RATIO;
+                                const spawnX = spawn === 0 ? canvas.width * 0.25 : canvas.width * 0.75;
+                                enemies.push({
+                                    x: spawnX - enemyW / 2,
+                                    y: 50,
+                                    w: enemyW,
+                                    h: enemyH,
+                                    dir: 1,
+                                    diving: false,
+                                    targetX: 0,
+                                    shootTimer: 0,
+                                    flowers
+                                });
+                            }
+                        }
+                    }
+                    
                     // Бонусная пуля Дрона не исчезает и продолжает лететь
                     if (!(b.isBonus && player.type === 'dron')) {
                         bullets.splice(bi, 1);
@@ -1940,7 +2042,8 @@ document.addEventListener('DOMContentLoaded', () => {
                         });
                         // Показываем экран победы по аналогии с боссом
                         enemy67 = null;
-                        if (!levelCompleteShown) {
+                        platform67HitCount = 0; // сбрасываем счётчик
+                        if (!levelCompleteShown && gameMode !== 'platforms') {
                             showLevelComplete();
                             levelCompleteShown = true;
                         }
@@ -2626,7 +2729,11 @@ document.addEventListener('DOMContentLoaded', () => {
                         player.y = canvas.height - 40 - player.h - 30;
                         player.x = canvas.width / 2 - player.w / 2;
                     }
-                    // spawnEnemiesOnPlatforms(); // Отключено для тестирования
+                    // Спавним врага 67 на bossPlatform
+                    if (bossPlatform) {
+                        enemy67 = new Enemy67(player.x, player.y, true);
+                        platform67HitCount = 0;
+                    }
                 } else {
                     // Normal/survival modes: standard background and spawn enemies
                     bgImg.src = 'img/forest.png';
