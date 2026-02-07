@@ -19,7 +19,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const ENEMY_START_Y = 60;
     const ENEMY_X_SPACING = 120;
     const ENEMY_Y_SPACING = 100;
-    const PLAYER_LIVES = 10;
+    const PLAYER_LIVES = 20;
     const INVULN_TIME = 0.5;
     const BONUS_SHOTS_PER_BOTTLE = 3;
 
@@ -141,6 +141,99 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    // Показываем модальное окно завершения уровня платформ
+    function showLevelCompleteMessage() {
+        const key = 'bh_bestScore_' + (selectedChar || 'kuzy') + '_' + (gameMode || 'normal');
+        const best = parseInt(localStorage.getItem(key) || '0', 10) || 0;
+        let isNew = false;
+        if (score > best) {
+            localStorage.setItem(key, String(score));
+            isNew = true;
+        }
+        updateBestScoresDisplay();
+
+        const existing = document.getElementById('level-complete-overlay');
+        if (existing) existing.remove();
+
+        const overlay = document.createElement('div');
+        overlay.id = 'level-complete-overlay';
+        Object.assign(overlay.style, {
+            position: 'fixed', left: '0', top: '0', width: '100%', height: '100%',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            pointerEvents: 'auto'
+        });
+
+        const box = document.createElement('div');
+        Object.assign(box.style, {
+            background: 'rgba(255,255,255,0.95)', borderRadius: '12px', padding: '24px',
+            boxShadow: '0 8px 24px rgba(0,0,0,0.3)', textAlign: 'center', minWidth: '380px'
+        });
+
+        // Icons row
+        const iconsRow = document.createElement('div');
+        Object.assign(iconsRow.style, { fontSize: '28px', marginBottom: '12px' });
+        const cup = document.createElement('span');
+        cup.innerText = '🏆';
+        const bananas = document.createElement('span');
+        bananas.innerText = '🍌';
+        Object.assign(cup.style, { marginRight: '10px', display: 'inline-block' });
+        Object.assign(bananas.style, { marginLeft: '10px', display: 'inline-block' });
+        iconsRow.appendChild(cup);
+        iconsRow.appendChild(bananas);
+
+        const msg = document.createElement('div');
+        msg.innerText = 'Поздравляем, уровень с платформами пройден' + (isNew ? ' — Новый рекорд!' : '');
+        Object.assign(msg.style, { fontSize: '20px', marginBottom: '18px', color: '#222', opacity: '0', transform: 'translateY(12px)' });
+
+        const styleTag = document.createElement('style');
+        styleTag.innerHTML = `
+            @keyframes popIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+            @keyframes bounceIcon { 0% { transform: translateY(-6px); } 50% { transform: translateY(0); } 100% { transform: translateY(-3px); } }
+        `;
+        document.head.appendChild(styleTag);
+
+        const buttons = document.createElement('div');
+        Object.assign(buttons.style, { display: 'flex', gap: '12px', justifyContent: 'center' });
+
+        const btnMain = document.createElement('button');
+        btnMain.innerText = 'Главный экран';
+        Object.assign(btnMain.style, { padding: '10px 16px', fontSize: '16px', cursor: 'pointer' });
+        btnMain.onclick = () => {
+            running = false;
+            levelCompleteShown = false;
+            enemies = [];
+            bullets = [];
+            enemyBullets = [];
+            bottles = [];
+            hearts = [];
+            platforms = [];
+            boss = null;
+            bukinTablet = null;
+            enemy67 = null;
+            platformRuby = null;
+            platformCup = null;
+            document.getElementById('game').style.display = 'none';
+            document.getElementById('menu').style.display = 'block';
+            updateBestScoresDisplay();
+            overlay.remove();
+        };
+
+        buttons.appendChild(btnMain);
+        box.appendChild(iconsRow);
+        box.appendChild(msg);
+        box.appendChild(buttons);
+        overlay.appendChild(box);
+        document.body.appendChild(overlay);
+
+        requestAnimationFrame(() => {
+            msg.style.transition = 'opacity 520ms ease-out, transform 520ms ease-out';
+            msg.style.opacity = '1';
+            msg.style.transform = 'translateY(0)';
+            cup.style.animation = 'bounceIcon 900ms ease-in-out 1';
+            bananas.style.animation = 'bounceIcon 900ms ease-in-out 1';
+        });
+    }
+
     // ==== GAME OVER HANDLERS ====
     const charNames = { max: 'Макс', dron: 'Дрон', kuzy: 'Кузя' };
     function updateBestScoresDisplay() {
@@ -154,7 +247,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const modes = [
             { id: 'normal', name: 'Обычный' },
             { id: 'survival', name: 'Выживание' },
-            { id: '67', name: 'Режим 67' }
+            { id: '67', name: 'Режим 67' },
+            { id: 'platforms', name: 'Платформы' }
         ];
         
         let html = '<div style="display:flex; flex-direction:column; gap:8px;">';
@@ -258,6 +352,8 @@ document.addEventListener('DOMContentLoaded', () => {
             platform67HitCount = 0;
             homePlatform = null;
             bossPlatform = null;
+            platformRuby = null;
+            platformCup = null;
             player = new Player(selectedChar);
             // Спавним врагов только если не режим 67 и не режим platforms
             if (gameMode !== '67' && gameMode !== 'platforms') {
@@ -272,13 +368,18 @@ document.addEventListener('DOMContentLoaded', () => {
                 playerBulletDir = 'right';
             } else if (gameMode === 'platforms') {
                 enemies = [];
-                playerBulletDir = 'up';
+                playerBulletDir = 'right';
                 // Инициализация платформ для режима platforms
                 initPlatformLevel();
+                // Инициализация отслеживания неподвижности
+                platformPlayerLastX = 0;
+                platformInactivityTimer = 0;
                 // Позиционируем игрока в центр homePlatform
                 if (homePlatform) {
                     player.x = homePlatform.x + (homePlatform.w - player.w) / 2;
                     player.y = homePlatform.y - player.h;
+                    player.onPlatform = true; // Игрок стартует на платформе, может прыгать
+                    platformPlayerLastX = player.x;
                 }
                 // Спавним врага 67 на bossPlatform
                 if (bossPlatform) {
@@ -456,17 +557,24 @@ document.addEventListener('DOMContentLoaded', () => {
             platform67HitCount = 0;
             homePlatform = null;
             bossPlatform = null;
+            platformRuby = null;
+            platformCup = null;
             player = new Player(selectedChar);
             // Спавним врагов в зависимости от режима
             if (gameMode === 'platforms') {
                 enemies = [];
-                playerBulletDir = 'up';
+                playerBulletDir = 'right';
                 // Инициализация платформ для режима platforms
                 initPlatformLevel();
+                // Инициализация отслеживания неподвижности
+                platformPlayerLastX = 0;
+                platformInactivityTimer = 0;
                 // Позиционируем игрока в центр homePlatform
                 if (homePlatform) {
                     player.x = homePlatform.x + (homePlatform.w - player.w) / 2;
                     player.y = homePlatform.y - player.h;
+                    player.onPlatform = true; // Игрок стартует на платформе, может прыгать
+                    platformPlayerLastX = player.x;
                 }
                 // Спавним врага 67 на bossPlatform
                 if (bossPlatform) {
@@ -628,6 +736,9 @@ document.addEventListener('DOMContentLoaded', () => {
     let bossPlatform = null;
     // hits counter for enemy67 in platforms mode
     let platform67HitCount = 0;
+    // platform mode: track player inactivity for spawning enemies
+    let platformPlayerLastX = 0;
+    let platformInactivityTimer = 0;
     // survival counters
     let killCount = 0;
     let survivalEnemySpeedIncrease = 0;
@@ -683,6 +794,26 @@ document.addEventListener('DOMContentLoaded', () => {
     enemy67Img.onload = () => enemy67SpriteReady = true;
     enemy67Img.src = "img/67.png";
 
+    // Platform mode assets: ruby and cup
+    const rubyImg1 = new Image();
+    let ruby1Ready = false;
+    rubyImg1.onload = () => ruby1Ready = true;
+    rubyImg1.src = "img/rub1.png";
+
+    const rubyImg2 = new Image();
+    let ruby2Ready = false;
+    rubyImg2.onload = () => ruby2Ready = true;
+    rubyImg2.src = "img/rub2.png";
+
+    const cupImg = new Image();
+    let cupImgReady = false;
+    cupImg.onload = () => cupImgReady = true;
+    cupImg.src = "img/cup.png";
+
+    // Platform mode state: ruby and cup
+    let platformRuby = null; // { x, y, w, h, stage: 1 or 2 }
+    let platformCup = null; // { x, y, w, h, landed: bool, cy, cx (for falling) }
+
     // ---------- PLAYER ----------
 
     // ==== PLAYER CLASS ====
@@ -718,6 +849,8 @@ document.addEventListener('DOMContentLoaded', () => {
             this.jumpRampFactor = (type === 'kuzy') ? 4.0 : 6.0; // lower = smoother for 'kuzy'
             // Facing direction for sprite mirroring: 'left' or 'right'
             this.facingDir = 'right';
+            // Platform mode: track if on platform (for jump validation)
+            this.onPlatform = false;
         }
         /**
          * Обновляет положение, анимацию и обработку выстрелов игрока
@@ -764,6 +897,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (this.jumpStyle === 'max') {
                     // linear fixed-height jump (no charge)
                     this.jumpHeight = this.jumpMaxHeight;
+                    // Устанавливаем отрицательное vy чтобы логика платформ знала что Max прыгает вверх
+                    this.vy = -1;
                 } else {
                     // physics styles: set gravity and initial upward velocity based on min height
                     this.gravity = 2 * this.jumpMaxHeight;
@@ -851,10 +986,13 @@ document.addEventListener('DOMContentLoaded', () => {
                     } else if (this.jumpTimer <= this.jumpDuration) {
                         const t = (this.jumpTimer - half) / half;
                         this.y = this.jumpBaseY - this.jumpHeight * (1 - t);
+                        // Устанавливаем положительное vy по мере падения чтобы коллизия сработала
+                        this.vy = t * 2; // от 0 к 2
                     } else {
                         this.isJumping = false;
                         this.jumpTimer = 0;
                         this.y = this.jumpBaseY;
+                        this.vy = 1; // Положительное значение для коллизии с платформой
                     }
                 } else if (this.jumpStyle === 'dron') {
                     // Physics with immediate boost when holding
@@ -906,7 +1044,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 // Проверяем, стоим ли мы на платформе
                 let onPlatform = false;
                 let currentPlatform = null;
-                this.onPlatform = false; // Сохраняем состояние для проверки прыжков
                 
                 platforms.forEach(p => {
                     // Проверка по вертикали - стоим ли на платформе по высоте
@@ -932,6 +1069,10 @@ document.addEventListener('DOMContentLoaded', () => {
                         this.y += this.vy * dt;
                     }
                     // Если прыгаем, то логика прыжков выше уже обработала физику
+                    // Сбрасываем onPlatform только если не в воздухе и не прыгаем
+                    if (!this.isJumping) {
+                        this.onPlatform = false;
+                    }
                 } else if (currentPlatform) {
                     // Игрок стоит на платформе
                     if (!this.isJumping) {
@@ -966,6 +1107,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         this.jumpTimer = 0;
                         this.jumpHoldTimer = 0;
                         this.jumpBaseY = this.y;
+                        this.onPlatform = true;
                     }
                 });
                 
@@ -1494,7 +1636,8 @@ document.addEventListener('DOMContentLoaded', () => {
         let movingPlatform = new Platform(cw * 0.55, ch * 0.25, cw * 0.15, ch * 0.11, 'horizontal', 800, ch * 0.18, 'img/platform5.png');
         platforms.push(movingPlatform);
         // платформа с кубком. 
-        platforms.push(new Platform(cw * 0.82, ch * 0.13, cw * 0.15, ch * 0.11, null, 180, ch * 0.50, 'img/platform8.png'));
+        let trophyPlatform = new Platform(cw * 0.82, ch * 0.13, cw * 0.15, ch * 0.11, null, 180, ch * 0.50, 'img/platform8.png');
+        platforms.push(trophyPlatform);
     }
 
     /**
@@ -1837,6 +1980,63 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             }
         }
+
+        // Platform mode: check for player inactivity and spawn enemies
+        // Враги спавнятся только если Enemy67 ещё жив
+        if (gameMode === 'platforms' && enemy67) {
+            const playerMovement = Math.abs(player.x - platformPlayerLastX);
+            const inactivityThreshold = canvas.width * 0.1; // 1/10 of screen width
+            
+            if (playerMovement > inactivityThreshold) {
+                // Игрок двигается, сбрасываем таймер
+                platformInactivityTimer = 0;
+                platformPlayerLastX = player.x;
+            } else {
+                // Игрок не двигается
+                platformInactivityTimer += dt;
+                
+                // Если неподвижен 3 секунды - спавним одного врага сирень
+                if (platformInactivityTimer >= 3.0) {
+                    platformInactivityTimer = 0;
+                    platformPlayerLastX = player.x;
+                    
+                    // Спавним одного врага сирень на случайной платформе (кроме home и trophy)
+                    const spawnablePlatforms = platforms.filter((p, i) => i > 0 && i < platforms.length - 1);
+                    if (spawnablePlatforms.length > 0) {
+                        const plat = spawnablePlatforms[Math.floor(Math.random() * spawnablePlatforms.length)];
+                        const lilacColors = ["#b57edc", "#c084fc", "#a855f7", "#e1bee7", "#ede7f6"];
+                        const flowers = [];
+                        for (let j = 0; j < 18; j++) {
+                            const angle = Math.PI * 2 * Math.random();
+                            const rad = 0.18 + Math.random() * 0.18;
+                            const relX = Math.cos(angle) * 0.22 * (0.7 + Math.random()*0.7);
+                            const relY = 0.18 + Math.sin(angle) * 0.22 * (0.7 + Math.random()*0.7);
+                            const sizeK = 0.5 + Math.random()*0.5;
+                            const color = lilacColors[Math.floor(Math.random() * lilacColors.length)];
+                            flowers.push({relX, relY, rad, sizeK, color});
+                        }
+                        const enemyW = canvas.height * ENEMY_WIDTH_RATIO;
+                        const enemyH = canvas.height * ENEMY_HEIGHT_RATIO;
+                        const ex = plat.x + plat.w / 2 - enemyW / 2;
+                        const ey = plat.y - enemyH - 5;
+                        
+                        enemies.push({
+                            x: ex,
+                            y: ey,
+                            w: enemyW,
+                            h: enemyH,
+                            dir: 1,
+                            diving: false,
+                            targetX: 0,
+                            shootTimer: 0,
+                            flowers,
+                            platformIndex: platforms.indexOf(plat)
+                        });
+                    }
+                }
+            }
+        }
+
         enemies.forEach(e => {
             if (!e.diving) {
                 e.x += e.dir * (1.2 + survivalEnemySpeedIncrease);
@@ -2040,6 +2240,46 @@ document.addEventListener('DOMContentLoaded', () => {
                             timer: 0,
                             size: enemy67.w * 0.8 // размер взрыва как размер врага
                         });
+                        
+                        // В режиме платформ: взрываем всех врагов и пули врагов
+                        if (gameMode === 'platforms') {
+                            // Взрываем всех врагов сирень на уровне
+                            for (let i = 0; i < enemies.length; i++) {
+                                const e = enemies[i];
+                                explosions.push({ 
+                                    x: e.x + e.w / 2, 
+                                    y: e.y + e.h / 2, 
+                                    timer: 0 
+                                });
+                            }
+                            enemies = []; // очищаем всех врагов
+                            
+                            // Взрываем все пули врагов
+                            for (let i = 0; i < enemyBullets.length; i++) {
+                                const eb = enemyBullets[i];
+                                explosions.push({ 
+                                    x: eb.x, 
+                                    y: eb.y, 
+                                    timer: 0 
+                                });
+                            }
+                            enemyBullets = []; // очищаем все пули врагов
+                        }
+                        
+                        // В режиме платформ создаем рубин на platform67
+                        if (gameMode === 'platforms' && platforms.length > 1) {
+                            const platform67 = platforms[1]; // вторая платформа - это platform67
+                            const rubyW = platform67.h;
+                            const rubyH = platform67.h;
+                            platformRuby = {
+                                x: platform67.x + (platform67.w - rubyW) / 2,
+                                y: platform67.y + platform67.h * 0.3 - rubyH,
+                                w: rubyW,
+                                h: rubyH,
+                                stage: 1 // rub1.png
+                            };
+                        }
+                        
                         // Показываем экран победы по аналогии с боссом
                         enemy67 = null;
                         platform67HitCount = 0; // сбрасываем счётчик
@@ -2295,11 +2535,84 @@ document.addEventListener('DOMContentLoaded', () => {
                 // Добавляем облачко с текстом
                 // Облачко слева от игрока
                 speechBalloons.push({ x: player.x - player.w * 0.25, y: player.y + player.h * 0.25, timer: 0 });
-                    if (lives <= 0) {
+                if (lives <= 0) {
                         showGameOver();
                     }
             }
         });
+
+        // Platform mode: check ruby collision (by center distance)
+        if (gameMode === 'platforms' && platformRuby) {
+            const rubyCenterX = platformRuby.x + platformRuby.w / 2;
+            const rubyCenterY = platformRuby.y + platformRuby.h / 2;
+            const playerCenterX = player.x + player.w / 2;
+            const playerCenterY = player.y + player.h / 2;
+            const dx = rubyCenterX - playerCenterX;
+            const dy = rubyCenterY - playerCenterY;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+            const minDistance = (platformRuby.w + player.w) / 2;
+            
+            if (distance < minDistance) {
+                if (platformRuby.stage === 1) {
+                    // Rub1 -> Rub2
+                    platformRuby.stage = 2;
+                    // Create cup falling from trophyPlatform
+                    if (platforms.length > 4) {
+                        const trophyPlatform = platforms[platforms.length - 1];
+                        const cupW = trophyPlatform.h;
+                        const cupH = trophyPlatform.h;
+                        platformCup = {
+                            x: trophyPlatform.x + (trophyPlatform.w - cupW) / 2,
+                            y: -cupH,
+                            cy: -cupH,
+                            cx: trophyPlatform.x + (trophyPlatform.w - cupW) / 2,
+                            w: cupW,
+                            h: cupH,
+                            landed: false,
+                            collisionTriggered: false,
+                            targetCx: trophyPlatform.x + (trophyPlatform.w - cupW) / 2,
+                            targetCy: trophyPlatform.y + trophyPlatform.h * 0.1 - cupH,
+                            desiredW: cupW
+                        };
+                    }
+                }
+            }
+        }
+
+        // Platform mode: update falling cup
+        if (gameMode === 'platforms' && platformCup && !platformCup.landed) {
+            platformCup.cy += 8;
+            platformCup.cx += (platformCup.targetCx - platformCup.cx) * 0.12;
+            
+            if (platformCup.cy >= platformCup.targetCy) {
+                platformCup.cy = platformCup.targetCy;
+                platformCup.cx = platformCup.targetCx;
+                platformCup.x = platformCup.targetCx;
+                platformCup.y = platformCup.targetCy;
+                platformCup.landed = true;
+            } else {
+                platformCup.x = platformCup.cx;
+                platformCup.y = platformCup.cy;
+            }
+        }
+
+        // Platform mode: check cup collision (must be landed first, by center distance)
+        if (gameMode === 'platforms' && platformCup && platformCup.landed) {
+            const cupCenterX = platformCup.x + platformCup.w / 2;
+            const cupCenterY = platformCup.y + platformCup.h / 2;
+            const playerCenterX = player.x + player.w / 2;
+            const playerCenterY = player.y + player.h / 2;
+            const dx = cupCenterX - playerCenterX;
+            const dy = cupCenterY - playerCenterY;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+            const minDistance = (platformCup.w + player.w) / 2;
+            
+            if (distance < minDistance && !platformCup.collisionTriggered) {
+                platformCup.collisionTriggered = true;
+                levelCompleteShown = true;
+                showLevelCompleteMessage();
+            }
+        }
 
         const hudEl = document.getElementById('hud');
         if (hudEl) {
@@ -2356,6 +2669,20 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
 
+        // Platform mode: draw ruby and cup BEFORE player (background)
+        if (gameMode === 'platforms' && platformRuby) {
+            const rubyImg = platformRuby.stage === 1 ? rubyImg1 : rubyImg2;
+            const rubyReady = platformRuby.stage === 1 ? ruby1Ready : ruby2Ready;
+            if (rubyReady && rubyImg && rubyImg.complete) {
+                ctx.drawImage(rubyImg, platformRuby.x, platformRuby.y, platformRuby.w, platformRuby.h);
+            }
+        }
+        if (gameMode === 'platforms' && platformCup) {
+            if (cupImgReady && cupImg && cupImg.complete) {
+                ctx.drawImage(cupImg, platformCup.x, platformCup.y, platformCup.w, platformCup.h);
+            }
+        }
+        
         // Визуальная индикация неуязвимости (мигание)
         if (invuln > 0) {
             const blinkSpeed = 16; // 16 миганий в секунду
@@ -2363,6 +2690,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 ctx.globalAlpha = 0.3; // Полупрозрачный
             }
         }
+        
         player.draw();
         ctx.globalAlpha = 1; // Восстановить прозрачность
 
@@ -2551,7 +2879,7 @@ document.addEventListener('DOMContentLoaded', () => {
             ctx.restore();
         });
 
-        // (табличка теперь рисуется позади игрока)
+        // (рубин и кубок теперь рисуются перед игроком)
     }
 
 
@@ -2719,11 +3047,17 @@ document.addEventListener('DOMContentLoaded', () => {
                 // Инициализация платформ для режима platforms
                 if (gameMode === 'platforms') {
                     bgImg.src = 'img/pl-bg.png';
+                    playerBulletDir = 'right'; // Направление пуль вправо для режима платформ
                     initPlatformLevel();
+                    // Инициализация отслеживания неподвижности
+                    platformPlayerLastX = 0;
+                    platformInactivityTimer = 0;
                     // Позиционируем игрока в центр homePlatform
                     if (homePlatform) {
                         player.x = homePlatform.x + (homePlatform.w - player.w) / 2;
                         player.y = homePlatform.y - player.h;
+                        player.onPlatform = true; // Игрок стартует на платформе, может прыгать
+                        platformPlayerLastX = player.x;
                     } else {
                         // Fallback
                         player.y = canvas.height - 40 - player.h - 30;
