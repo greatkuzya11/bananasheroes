@@ -26,6 +26,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // ==== CANVAS SETUP ====
     const canvas = document.getElementById('canvas');
     const ctx = canvas.getContext('2d');
+    
     /**
      * Изменяет размер canvas под размер окна браузера
      */
@@ -1468,9 +1469,17 @@ document.addEventListener('DOMContentLoaded', () => {
                 ctx.textAlign = 'center';
                 ctx.textBaseline = 'middle';
                 const numEmojis = Math.floor(this.w / (emojiSize * 1.5));
+                const perf = window.BHBulletPerf;
+                const renderMode = perf ? perf.bulletRenderMode() : 'emoji';
+                const getEmojiBitmap = perf ? perf.getEmojiBitmap : null;
+                const woodImg = getEmojiBitmap ? getEmojiBitmap('🪵') : null;
                 for (let i = 0; i < numEmojis; i++) {
                     const ex = this.x + (i + 0.5) * (this.w / numEmojis);
-                    ctx.fillText('🪵', ex, this.y + this.h / 2);
+                    if (renderMode === 'png' && woodImg) {
+                        ctx.drawImage(woodImg, ex - emojiSize / 2, this.y + this.h / 2 - emojiSize / 2, emojiSize, emojiSize);
+                    } else {
+                        ctx.fillText('🪵', ex, this.y + this.h / 2);
+                    }
                 }
             }
         }
@@ -1769,6 +1778,63 @@ document.addEventListener('DOMContentLoaded', () => {
         ctx.restore();
     }
 
+    function buildLilacSprite(size, flowers) {
+        const scale = 1.4;
+        const w = Math.ceil(size * scale);
+        const h = Math.ceil(size * scale);
+        const c = document.createElement('canvas');
+        c.width = w;
+        c.height = h;
+        const cctx = c.getContext('2d');
+        const cx = w / 2;
+        const cy = h / 2;
+        
+        // Стебель
+        cctx.save();
+        cctx.strokeStyle = "#388e3c";
+        cctx.lineWidth = size * 0.08;
+        cctx.beginPath();
+        cctx.moveTo(cx, cy + size * 0.1);
+        cctx.lineTo(cx, cy + size * 0.6);
+        cctx.stroke();
+
+        // Веточки
+        cctx.lineWidth = size * 0.04;
+        for (let a = -0.7; a <= 0.7; a += 0.7) {
+            cctx.beginPath();
+            cctx.moveTo(cx, cy + size * 0.3);
+            cctx.lineTo(cx + Math.sin(a) * size * 0.25, cy + size * 0.5);
+            cctx.stroke();
+        }
+
+        // Гроздь сирени (кружки из массива flowers)
+        for (const f of flowers) {
+            cctx.beginPath();
+            cctx.arc(cx + f.relX * size, cy + f.relY * size, f.rad * size * f.sizeK, 0, Math.PI * 2);
+            cctx.fillStyle = f.color;
+            cctx.globalAlpha = 0.85;
+            cctx.fill();
+        }
+        cctx.globalAlpha = 1;
+        cctx.restore();
+
+        return { canvas: c, w, h };
+    }
+
+    function drawLilacCached(e) {
+        // simple culling
+        if (e.x + e.w < 0 || e.x > canvas.width || e.y + e.h < 0 || e.y > canvas.height) return;
+        if (!e.lilacSprite) {
+            const sprite = buildLilacSprite(e.w, e.flowers);
+            e.lilacSprite = sprite.canvas;
+            e.lilacSpriteW = sprite.w;
+            e.lilacSpriteH = sprite.h;
+        }
+        const drawX = e.x + e.w / 2 - e.lilacSpriteW / 2;
+        const drawY = e.y + e.h / 2 - e.lilacSpriteH / 2;
+        ctx.drawImage(e.lilacSprite, drawX, drawY, e.lilacSpriteW, e.lilacSpriteH);
+    }
+
     // ---------- HELPERS ----------
 
     // ==== COLLISION DETECTION ====
@@ -1863,6 +1929,9 @@ document.addEventListener('DOMContentLoaded', () => {
             return ex.timer < 0.5;
         });
 
+        const perf = window.BHBulletPerf;
+        const rotationEnabled = perf ? perf.bulletRotationEnabled() : true;
+        if (perf && perf.isEnabled()) perf.beforeBulletUpdate();
         bullets.forEach(b => {
             if (typeof b.vx === 'number' && typeof b.vy === 'number') {
                 b.x += b.vx;
@@ -1871,14 +1940,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 b.y -= b.speed;
             }
             // Вращаем пулю Дрона
-            if (b.playerType === 'dron' && typeof b.rotation === 'number') {
+            if (rotationEnabled && b.playerType === 'dron' && typeof b.rotation === 'number') {
                 b.rotation += 0.3; // скорость вращения
             }
             // Вращаем пулю Макса
-            if (b.playerType === 'max' && typeof b.rotation === 'number') {
+            if (rotationEnabled && b.playerType === 'max' && typeof b.rotation === 'number') {
                 b.rotation += 0.3; // скорость вращения
             }
         });
+        if (perf && perf.isEnabled()) perf.afterBulletUpdate();
         // Move enemy bullets using their velocity if provided (supports homing)
         enemyBullets.forEach(b => {
             if (typeof b.vx === 'number' && typeof b.vy === 'number') {
@@ -2358,6 +2428,9 @@ document.addEventListener('DOMContentLoaded', () => {
                                 trySpawnHeart(ne.x, ne.y);
                             }
                         }
+                        if (b.isBonus && player.type === 'dron') {
+                            continue;
+                        }
                         break; // Пуля может убить только одного врага за раз
                     }
                 }
@@ -2498,48 +2571,50 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
 
-        // Enemy bullet hits player
-        enemyBullets.forEach((eb, ei) => {
-            // After boss is defeated, remaining enemy bullets no longer damage the player
-            if (bossDefeated) return;
-            if (rect(eb, player) && invuln <= 0) {
-                lives--;
-                combo = 0;
-                invuln = 1;
-                // Добавляем взрыв
-                explosions.push({ x: player.x + player.w / 2, y: player.y + player.h / 2, timer: 0 });
-                // Добавляем облачко с текстом
-                // Облачко слева от игрока
-                speechBalloons.push({ x: player.x - player.w * 0.25, y: player.y + player.h * 0.25, timer: 0 });
-                enemyBullets.splice(ei, 1);
-                if (lives <= 0) {
-                    showGameOver();
-                }
-            }
-        });
-
-        // Enemy collides with player
-        enemies.forEach((e) => {
-            // Проверяем столкновение по прямоугольникам
-            if (
-                rect(
-                    { x: e.x, y: e.y, w: e.w, h: e.h },
-                    { x: player.x, y: player.y, w: player.w, h: player.h }
-                ) && invuln <= 0
-            ) {
-                lives--;
-                combo = 0;
-                invuln = 1;
-                // Добавляем взрыв
-                explosions.push({ x: player.x + player.w / 2, y: player.y + player.h / 2, timer: 0 });
-                // Добавляем облачко с текстом
-                // Облачко слева от игрока
-                speechBalloons.push({ x: player.x - player.w * 0.25, y: player.y + player.h * 0.25, timer: 0 });
-                if (lives <= 0) {
+        if (invuln <= 0) {
+            // Enemy bullet hits player
+            enemyBullets.forEach((eb, ei) => {
+                // After boss is defeated, remaining enemy bullets no longer damage the player
+                if (bossDefeated) return;
+                if (rect(eb, player)) {
+                    lives--;
+                    combo = 0;
+                    invuln = 1;
+                    // Добавляем взрыв
+                    explosions.push({ x: player.x + player.w / 2, y: player.y + player.h / 2, timer: 0 });
+                    // Добавляем облачко с текстом
+                    // Облачко слева от игрока
+                    speechBalloons.push({ x: player.x - player.w * 0.25, y: player.y + player.h * 0.25, timer: 0 });
+                    enemyBullets.splice(ei, 1);
+                    if (lives <= 0) {
                         showGameOver();
                     }
-            }
-        });
+                }
+            });
+
+            // Enemy collides with player
+            enemies.forEach((e) => {
+                // Проверяем столкновение по прямоугольникам
+                if (
+                    rect(
+                        { x: e.x, y: e.y, w: e.w, h: e.h },
+                        { x: player.x, y: player.y, w: player.w, h: player.h }
+                    )
+                ) {
+                    lives--;
+                    combo = 0;
+                    invuln = 1;
+                    // Добавляем взрыв
+                    explosions.push({ x: player.x + player.w / 2, y: player.y + player.h / 2, timer: 0 });
+                    // Добавляем облачко с текстом
+                    // Облачко слева от игрока
+                    speechBalloons.push({ x: player.x - player.w * 0.25, y: player.y + player.h * 0.25, timer: 0 });
+                    if (lives <= 0) {
+                        showGameOver();
+                    }
+                }
+            });
+        }
 
         // Platform mode: check ruby collision (by center distance)
         if (gameMode === 'platforms' && platformRuby) {
@@ -2614,15 +2689,24 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
 
-        const hudEl = document.getElementById('hud');
+        if (!hudEl) hudEl = document.getElementById('hud');
         if (hudEl) {
             const dirIcon = playerBulletDir === 'up' ? '↑' : (playerBulletDir === 'left' ? '←' : '→');
             const playerName = charNames[selectedChar] || selectedChar;
             const modeIndicator = altShootMode ? '<span style="color:orange">🔫ALT</span>' : '';
+            if (lives !== lastHudLives) {
+                cachedLivesStr = "❤️".repeat(lives);
+                lastHudLives = lives;
+            }
+            let hudHtml = '';
             if (bonusMode && bonusShots > 0) {
-                hudEl.innerHTML = `${playerName} | Жизни: ${"❤️".repeat(lives)}<br>Очки: ${score}   Комбо: ${combo}   <span style="color:black">Бонус: ${bonusShots}</span>   Пули: ${dirIcon} ${modeIndicator}`;
+                hudHtml = `${playerName} | Жизни: ${cachedLivesStr}<br>Очки: ${score}   Комбо: ${combo}   <span style="color:black">Бонус: ${bonusShots}</span>   Пули: ${dirIcon} ${modeIndicator}`;
             } else {
-                hudEl.innerHTML = `${playerName} | Жизни: ${"❤️".repeat(lives)}<br>Очки: ${score}   Комбо: ${combo}   Бонус: ${bonusShots}   Пули: ${dirIcon} ${modeIndicator}`;
+                hudHtml = `${playerName} | Жизни: ${cachedLivesStr}<br>Очки: ${score}   Комбо: ${combo}   Бонус: ${bonusShots}   Пули: ${dirIcon} ${modeIndicator}`;
+            }
+            if (hudHtml !== lastHudHtml) {
+                hudEl.innerHTML = hudHtml;
+                lastHudHtml = hudHtml;
             }
         }
     }
@@ -2694,13 +2778,15 @@ document.addEventListener('DOMContentLoaded', () => {
         player.draw();
         ctx.globalAlpha = 1; // Восстановить прозрачность
 
+        const perf = window.BHBulletPerf;
+        const renderMode = perf ? perf.bulletRenderMode() : 'emoji';
+        const rotationEnabled = perf ? perf.bulletRotationEnabled() : true;
+        const getEmojiBitmap = perf ? perf.getEmojiBitmap : null;
+        if (perf && perf.isEnabled()) perf.beforeBulletDraw();
         bullets.forEach(b => {
             if (b.emoji) {
                 ctx.save();
                 const size = Math.max(16, b.r * 2);
-                ctx.font = `${size}px serif`;
-                ctx.textAlign = 'center';
-                ctx.textBaseline = 'middle';
                 // rotate according to bullet direction
                 let angle = 0;
                 if (b.dir === 'up') angle = -Math.PI / 2;
@@ -2710,16 +2796,23 @@ document.addEventListener('DOMContentLoaded', () => {
                 ctx.translate(b.x, b.y);
                 ctx.rotate(angle);
                 
-                // Дополнительное вращение для пули Дрона
-                if (b.playerType === 'dron' && typeof b.rotation === 'number') {
+                // Дополнительное вращение для пули Дрона/Макса
+                if (rotationEnabled && b.playerType === 'dron' && typeof b.rotation === 'number') {
                     ctx.rotate(b.rotation);
                 }
-                // Дополнительное вращение для пули Макса
-                if (b.playerType === 'max' && typeof b.rotation === 'number') {
+                if (rotationEnabled && b.playerType === 'max' && typeof b.rotation === 'number') {
                     ctx.rotate(b.rotation);
                 }
                 
-                ctx.fillText(b.emoji, 0, 0);
+                const bulletBitmap = getEmojiBitmap ? getEmojiBitmap(b.emoji) : null;
+                if (renderMode === 'png' && bulletBitmap) {
+                    ctx.drawImage(bulletBitmap, -size / 2, -size / 2, size, size);
+                } else {
+                    ctx.font = `${size}px serif`;
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText(b.emoji, 0, 0);
+                }
                 ctx.restore();
             } else {
                 ctx.fillStyle = b.color;
@@ -2728,31 +2821,53 @@ document.addEventListener('DOMContentLoaded', () => {
                 ctx.fill();
             }
         });
+        if (perf && perf.isEnabled()) perf.afterBulletDraw();
 
         // Отрисовываем пули врагов с их индивидуальным эмодзи-листиком
         enemyBullets.forEach(b => {
-            ctx.font = `${b.h * 2.4}px serif`;
-            ctx.textAlign = "left";
-            ctx.textBaseline = "top";
-            ctx.fillText(b.emoji || "🍃", b.x, b.y);
+            const emoji = b.emoji || "🍃";
+            const size = (b.h || 12) * 2.4;
+            const bulletImg = getEmojiBitmap ? getEmojiBitmap(emoji) : null;
+            if (renderMode === 'png' && bulletImg) {
+                ctx.drawImage(bulletImg, b.x, b.y, size, size);
+            } else {
+                ctx.font = `${size}px serif`;
+                ctx.textAlign = "left";
+                ctx.textBaseline = "top";
+                ctx.fillText(emoji, b.x, b.y);
+            }
         });
 
         bottles.forEach(b => {
-            ctx.font = `${b.h}px serif`;
-            ctx.textAlign = "left";
-            ctx.textBaseline = "top";
-            ctx.fillText("🍺", b.x, b.y);
+            const emoji = "🍺";
+            const size = b.h || 36;
+            const img = getEmojiBitmap ? getEmojiBitmap(emoji) : null;
+            if (renderMode === 'png' && img) {
+                ctx.drawImage(img, b.x, b.y, size, size);
+            } else {
+                ctx.font = `${size}px serif`;
+                ctx.textAlign = "left";
+                ctx.textBaseline = "top";
+                ctx.fillText(emoji, b.x, b.y);
+            }
         });
 
         hearts.forEach(h => {
-            ctx.font = `${h.h}px serif`;
-            ctx.textAlign = "left";
-            ctx.textBaseline = "top";
-            ctx.fillText("❤️", h.x, h.y);
+            const emoji = "❤️";
+            const size = h.h || 30;
+            const img = getEmojiBitmap ? getEmojiBitmap(emoji) : null;
+            if (renderMode === 'png' && img) {
+                ctx.drawImage(img, h.x, h.y, size, size);
+            } else {
+                ctx.font = `${size}px serif`;
+                ctx.textAlign = "left";
+                ctx.textBaseline = "top";
+                ctx.fillText(emoji, h.x, h.y);
+            }
         });
 
         enemies.forEach(e => {
-            drawLilac(e.x + e.w / 2, e.y + e.h / 2, e.w, e.flowers);
+            drawLilacCached(e);
         });
 
         // Отрисовываем врага 67
@@ -2763,11 +2878,12 @@ document.addEventListener('DOMContentLoaded', () => {
         // Рисуем босса-сосиску
         if (boss) {
             ctx.save();
+            const bossEmoji = "🌭";
+            ctx.globalAlpha = 1;
             ctx.font = `${boss.h}px serif`;
             ctx.textAlign = "center";
             ctx.textBaseline = "middle";
-            ctx.globalAlpha = 1;
-            ctx.fillText("🌭", boss.x + boss.w / 2, boss.y + boss.h / 2);
+            ctx.fillText(bossEmoji, boss.x + boss.w / 2, boss.y + boss.h / 2);
             // HP bar
             ctx.fillStyle = "#fff";
             ctx.fillRect(boss.x, boss.y - 18, boss.w, 12);
@@ -2784,11 +2900,18 @@ document.addEventListener('DOMContentLoaded', () => {
             const scale = ex.scale || 1;
             // Если указан размер, используем его, иначе стандартный
             const baseSize = ex.size || 60;
-            ctx.font = `${(baseSize + ex.timer * baseSize) * scale}px serif`;
+            const size = (baseSize + ex.timer * baseSize) * scale;
             ctx.textAlign = "center";
             ctx.textBaseline = "middle";
             ctx.globalAlpha = 1 - ex.timer * 2;
-            ctx.fillText("💥", ex.x, ex.y);
+            const emoji = "💥";
+            const img = getEmojiBitmap ? getEmojiBitmap(emoji) : null;
+            if (renderMode === 'png' && img) {
+                ctx.drawImage(img, ex.x - size / 2, ex.y - size / 2, size, size);
+            } else {
+                ctx.font = `${size}px serif`;
+                ctx.fillText(emoji, ex.x, ex.y);
+            }
             ctx.restore();
         });
 
@@ -2880,6 +3003,8 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         // (рубин и кубок теперь рисуются перед игроком)
+        
+        if (perf && perf.isEnabled()) perf.drawOverlay(ctx, bullets.length);
     }
 
 
@@ -2889,6 +3014,10 @@ document.addEventListener('DOMContentLoaded', () => {
     let paused = false;
     let levelCompleteShown = false;
     let gameOverShown = false;
+    let hudEl = null;
+    let lastHudHtml = '';
+    let lastHudLives = -1;
+    let cachedLivesStr = '';
     /**
      * Главный игровой цикл: обновляет и рисует игру, вызывает сам себя через requestAnimationFrame
      * @param {number} ts - текущее время (timestamp)
