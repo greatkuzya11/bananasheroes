@@ -1,8 +1,11 @@
+/**
+ * Модуль профилирования: считает время обновления/отрисовки пуль и выводит оверлей.
+ */
 (function () {
     'use strict';
 
     const PERF = {
-        enabled: true,
+        enabled: false,
         frameCount: 0,
         bulletUpdateMs: 0,
         bulletDrawMs: 0,
@@ -12,54 +15,74 @@
         drawStart: 0
     };
 
-    let bulletRenderMode = 'emoji'; // 'emoji' | 'png'
+    let bulletRenderMode = 'png'; // режим отрисовки пуль: 'emoji' | 'png'
     let bulletRotationEnabled = true;
 
     const EMOJI_SOURCES = {
-        // Player bullets
+        // Пули игрока
         '🌀': 'img/dron_bullet.png',
         '💩': 'img/emoji/1f4a9.png',
         '💦': 'img/emoji/1f4a6.png',
-        // Enemy67 bullets
+        // Пули врага 67
         '🪳': 'img/emoji/1fab3.png',
         '🧨': 'img/emoji/1f9e8.png',
         '7️⃣': 'img/emoji/0037-fe0f-20e3.png',
         '6️⃣': 'img/emoji/0036-fe0f-20e3.png',
-        // Enemy bullets (leafs)
+        // Пули врагов (листья)
         '🍃': 'img/emoji/1f343.png',
         '🍂': 'img/emoji/1f342.png',
         '🍁': 'img/emoji/1f341.png',
         '🌿': 'img/emoji/1f33f.png',
         '🌱': 'img/emoji/1f331.png',
-        // Bonuses / effects
+        // Бонусы / эффекты
         '🍺': 'img/emoji/1f37a.png',
         '❤️': 'img/emoji/2764-fe0f.png',
         '💥': 'img/emoji/1f4a5.png',
         '🪵': 'img/emoji/1fab5.png',
-        // Boss emoji
+        // Эмодзи босса
         '🌭': 'img/emoji/1f32d.png'
     };
 
     const emojiImages = {};
     const emojiReady = {};
 
+    /**
+     * Загружает PNG для эмодзи и отмечает готовность.
+     * @param {string} emoji - символ эмодзи.
+     * @param {string} src - путь к PNG-иконке.
+     */
     function loadEmoji(emoji, src) {
         const img = new Image();
+        // Отмечаем готовность изображения для данного эмодзи
+        // Обработчик загрузки PNG: отмечаем готовность текущего эмодзи
         img.onload = () => { emojiReady[emoji] = true; };
         img.src = src;
         emojiImages[emoji] = img;
     }
 
+    /**
+     * Инициирует загрузку всех эмодзи, перечисленных в словаре источников.
+     * @param {string} emoji - ключ эмодзи из словаря.
+     */
+    // Загружаем PNG для каждого эмодзи; emoji — символ эмодзи
     Object.keys(EMOJI_SOURCES).forEach(emoji => {
         loadEmoji(emoji, EMOJI_SOURCES[emoji]);
     });
 
+    /**
+     * Возвращает загруженное изображение для эмодзи, если оно готово.
+     * @param {string} emoji - символ эмодзи.
+     * @returns {HTMLImageElement|null} изображение или null, если еще не готово.
+     */
     function getEmojiBitmap(emoji) {
         if (!emoji) return null;
         if (emojiReady[emoji]) return emojiImages[emoji];
         return null;
     }
 
+    /**
+     * Сбрасывает накопленную статистику профайлера.
+     */
     function resetStats() {
         PERF.frameCount = 0;
         PERF.bulletUpdateMs = 0;
@@ -70,6 +93,10 @@
         PERF.avg.bulletDraw = 0;
     }
 
+    /**
+     * Обрабатывает горячие клавиши профайлера.
+     * @param {KeyboardEvent} e - событие нажатия клавиши.
+     */
     function handleKey(e) {
         const key = (e.key || '').toLowerCase();
         if (key === 'p') {
@@ -88,26 +115,43 @@
 
     document.addEventListener('keydown', handleKey);
 
+    /**
+     * Помечает начало измерения времени обновления пуль.
+     */
     function beforeBulletUpdate() {
         if (!PERF.enabled) return;
         PERF.updateStart = performance.now();
     }
 
+    /**
+     * Заканчивает измерение времени обновления пуль.
+     */
     function afterBulletUpdate() {
         if (!PERF.enabled) return;
         PERF.bulletUpdateMs += performance.now() - PERF.updateStart;
     }
 
+    /**
+     * Помечает начало измерения времени отрисовки пуль.
+     */
     function beforeBulletDraw() {
         if (!PERF.enabled) return;
         PERF.drawStart = performance.now();
     }
 
+    /**
+     * Заканчивает измерение времени отрисовки пуль.
+     */
     function afterBulletDraw() {
         if (!PERF.enabled) return;
         PERF.bulletDrawMs += performance.now() - PERF.drawStart;
     }
 
+    /**
+     * Рисует оверлей профилирования поверх игрового кадра.
+     * @param {CanvasRenderingContext2D} ctx - контекст canvas для отрисовки.
+     * @param {number} bulletsCount - текущее количество пуль.
+     */
     function drawOverlay(ctx, bulletsCount) {
         if (!PERF.enabled || !ctx) return;
         const now = performance.now();
@@ -126,6 +170,11 @@
 
         const count = (typeof bulletsCount === 'number') ? bulletsCount : 0;
         ctx.save();
+        // Сбрасываем трансформации и выравнивание текста после игрового рендера
+        if (ctx.setTransform) ctx.setTransform(1, 0, 0, 1, 0, 0);
+        ctx.globalAlpha = 1;
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'top';
         ctx.fillStyle = 'rgba(0,0,0,0.6)';
         ctx.fillRect(10, 10, 280, 86);
         ctx.fillStyle = '#fff';
@@ -138,15 +187,25 @@
         ctx.restore();
     }
 
+    // Публичное API профайлера
     window.BHBulletPerf = {
+        // Возвращает, включен ли профайлер
         isEnabled: () => PERF.enabled,
+        // Возвращает текущий режим отрисовки пуль
         bulletRenderMode: () => bulletRenderMode,
+        // Возвращает, включено ли вращение пуль
         bulletRotationEnabled: () => bulletRotationEnabled,
+        // Возвращает PNG-иконку для эмодзи
         getEmojiBitmap,
+        // Хук начала измерения обновления пуль
         beforeBulletUpdate,
+        // Хук конца измерения обновления пуль
         afterBulletUpdate,
+        // Хук начала измерения отрисовки пуль
         beforeBulletDraw,
+        // Хук конца измерения отрисовки пуль
         afterBulletDraw,
+        // Рисует оверлей профайлера
         drawOverlay
     };
 })();
