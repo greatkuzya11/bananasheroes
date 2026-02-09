@@ -45,10 +45,14 @@ function showLevelComplete() {
     iconsRow.appendChild(bananas);
 
     const msg = document.createElement('div');
-    // Отдельная победная фраза для режима 67
+    // Отдельные победные фразы для специальных режимов
     const victoryText67 = 'Поздравляю, вы победили 67!';
+    const victoryTextO4ko = 'Поздравляю, вы победили Очко!';
     const victoryTextDefault = 'Поздравляем, уровень пройден. Букин освобождён.';
-    msg.innerText = (gameMode === '67' ? victoryText67 : victoryTextDefault) + (isNew ? ' — Новый рекорд!' : '');
+    const victoryText = (gameMode === '67')
+        ? victoryText67
+        : (gameMode === 'o4ko') ? victoryTextO4ko : victoryTextDefault;
+    msg.innerText = victoryText + (isNew ? ' — Новый рекорд!' : '');
     Object.assign(msg.style, { fontSize: '20px', marginBottom: '18px', color: '#222', opacity: '0', transform: 'translateY(12px)' });
 
     // Добавляем простые CSS-анимации (появление и подпрыгивание иконок)
@@ -76,6 +80,7 @@ function showLevelComplete() {
         enemyBullets = [];
         bottles = [];
         boss = null;
+        bossO4ko = null;
         bukinTablet = null;
         document.getElementById('game').style.display = 'none';
         document.getElementById('menu').style.display = 'block';
@@ -180,6 +185,7 @@ function showLevelCompleteMessage() {
         hearts = [];
         platforms = [];
         boss = null;
+        bossO4ko = null;
         bukinTablet = null;
         enemy67 = null;
         platformRuby = null;
@@ -223,6 +229,7 @@ function updateBestScoresDisplay() {
         { id: 'normal', name: 'Обычный' },
         { id: 'survival', name: 'Выживание' },
         { id: '67', name: 'Режим 67' },
+        { id: 'o4ko', name: 'Очко' },
         { id: 'platforms', name: 'Платформы' }
     ];
     
@@ -291,7 +298,7 @@ function showGameOver() {
     const bestLine = document.createElement('div');
     const bestVal = parseInt(localStorage.getItem(key) || '0', 10) || 0;
     const displayName = (charNames && charNames[selectedChar]) ? charNames[selectedChar] : selectedChar;
-    const modeNames = { 'normal': 'Обычный', 'survival': 'Выживание', '67': 'Режим 67', 'platforms': 'Платформы' };
+    const modeNames = { 'normal': 'Обычный', 'survival': 'Выживание', '67': 'Режим 67', 'o4ko': 'Очко', 'platforms': 'Платформы' };
     const modeName = modeNames[gameMode] || gameMode;
     bestLine.innerText = `Рекорд (${displayName}, ${modeName}): ${bestVal}` + (isNew ? ' — Новый рекорд!' : '');
     Object.assign(bestLine.style, { fontSize: '16px', marginBottom: '18px', color: isNew ? '#ffd54f' : '#ddd' });
@@ -311,6 +318,7 @@ function showGameOver() {
         hearts = [];
         platforms = [];
         boss = null;
+        bossO4ko = null;
         bukinTablet = null;
         enemy67 = null;
         score = 0;
@@ -335,19 +343,28 @@ function showGameOver() {
         platformRuby = null;
         platformCup = null;
         player = new Player(selectedChar);
-        // Спавним врагов только если не режим 67 и не режим платформ
-        if (gameMode !== '67' && gameMode !== 'platforms') {
+        // Спавним врагов только если не специальный режим
+        if (gameMode !== '67' && gameMode !== 'o4ko' && gameMode !== 'platforms') {
+            bgImg.src = 'img/forest.png';
             spawnEnemies();
             playerBulletDir = 'up';
         } else if (gameMode === '67') {
             enemies = [];
+            bgImg.src = 'img/forest2.png';
             enemy67 = new Enemy67(player.x, player.y);
             // Позиция игрока почти с левого угла для режима 67
             player.x = 20;
             // Направление пуль по умолчанию направо для режима 67
             playerBulletDir = 'right';
+        } else if (gameMode === 'o4ko') {
+            enemies = [];
+            bgImg.src = 'img/bg-avs.png';
+            player.x = 20;
+            playerBulletDir = 'right';
+            bossO4ko = new BossO4ko(player.x, player.y);
         } else if (gameMode === 'platforms') {
             enemies = [];
+            bgImg.src = 'img/pl-bg.png';
             playerBulletDir = 'right';
             // Инициализация платформ для режима платформ
             initPlatformLevel();
@@ -385,6 +402,7 @@ function showGameOver() {
         enemyBullets = [];
         bottles = [];
         boss = null;
+        bossO4ko = null;
         bukinTablet = null;
         score = 0;
         combo = 0;

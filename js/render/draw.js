@@ -166,6 +166,10 @@ function draw() {
     if (enemy67) {
         enemy67.draw();
     }
+    // Отрисовываем босса режима "Очко"
+    if (bossO4ko) {
+        bossO4ko.draw();
+    }
 
     // Рисуем босса-сосиску
     if (boss) {

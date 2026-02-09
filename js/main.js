@@ -143,6 +143,7 @@ document.addEventListener('DOMContentLoaded', () => {
             hearts = [];
             platforms = [];
             boss = null;
+            bossO4ko = null;
             bukinTablet = null;
             enemy67 = null;
             score = 0;
@@ -194,6 +195,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 // Позиция игрока почти с левого угла для режима 67
                 player.x = 20;
                 playerBulletDir = 'right';
+            } else if (gameMode === 'o4ko') {
+                enemies = [];
+                enemy67 = null;
+                bgImg.src = 'img/bg-avs.png';
+                // Позиция игрока почти с левого угла для режима "Очко"
+                player.x = 20;
+                playerBulletDir = 'right';
+                bossO4ko = new BossO4ko(player.x, player.y);
             } else {
                 spawnEnemies();
                 playerBulletDir = 'up';
@@ -248,6 +257,7 @@ document.addEventListener('DOMContentLoaded', () => {
             hearts = [];
             platforms = [];
             boss = null;
+            bossO4ko = null;
             bukinTablet = null;
             score = 0;
             combo = 0;
@@ -395,6 +405,7 @@ document.addEventListener('DOMContentLoaded', () => {
             enemyBullets = [];
             bottles = [];
             boss = null;
+            bossO4ko = null;
             bukinTablet = null;
             speechBalloons = [];
             explosions = [];
@@ -422,6 +433,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (gameMode === '67') {
                 // Режим 67: без обычных врагов и с другим фоном
                 enemies = [];
+                bossO4ko = null;
                 bgImg.src = 'img/forest2.png';
                 // Позиция игрока почти с левого угла
                 player.x = 20;
@@ -429,8 +441,17 @@ document.addEventListener('DOMContentLoaded', () => {
                 playerBulletDir = 'right';
                 // Создаем врага 67
                 enemy67 = new Enemy67(player.x, player.y);
+            } else if (gameMode === 'o4ko') {
+                // Режим "Очко": логика старта как у режима 67, но со своим боссом
+                enemies = [];
+                enemy67 = null;
+                bgImg.src = 'img/bg-avs.png';
+                player.x = 20;
+                playerBulletDir = 'right';
+                bossO4ko = new BossO4ko(player.x, player.y);
             } else {
                 enemy67 = null;
+                bossO4ko = null;
                 // В других режимах направление по умолчанию вверх
                 playerBulletDir = 'up';
                 // Инициализация платформ для режима платформ

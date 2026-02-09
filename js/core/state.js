@@ -13,6 +13,7 @@ let platforms = [];
 let player = null;
 let boss = null;
 let enemy67 = null;
+let bossO4ko = null;
 
 let bossDefeated = false;
 let score = 0;

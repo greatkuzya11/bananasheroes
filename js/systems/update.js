@@ -18,6 +18,10 @@ function update(dt) {
     if (enemy67) {
         enemy67.update(dt);
     }
+    // Обновляем босса "Очко" (если есть)
+    if (bossO4ko) {
+        bossO4ko.update(dt);
+    }
 
     // Обновляем падение таблички Букин (если есть)
     if (bukinTablet && !bukinTablet.landed) {
@@ -127,7 +131,7 @@ function update(dt) {
     }
 
     // ЛОГИКА БОССА
-    if (gameMode !== 'survival' && gameMode !== '67' && gameMode !== 'platforms' && !boss && !bossDefeated && enemies.length === 0) {
+    if (gameMode !== 'survival' && gameMode !== '67' && gameMode !== 'o4ko' && gameMode !== 'platforms' && !boss && !bossDefeated && enemies.length === 0) {
         // Создаем босса-сосиску после уничтожения всех врагов
         const baseSize = canvas.height * 0.08;
         boss = {
@@ -499,6 +503,36 @@ function update(dt) {
                     enemy67 = null;
                     platform67HitCount = 0; // сбрасываем счётчик
                     if (!levelCompleteShown && gameMode !== 'platforms') {
+                        showLevelComplete();
+                        levelCompleteShown = true;
+                    }
+                }
+                continue;
+            }
+        }
+
+        // Проверка попадания по боссу режима "Очко"
+        if (bossO4ko && bossO4ko.hp > 0) {
+            if (b.x > bossO4ko.x && b.x < bossO4ko.x + bossO4ko.w && b.y > bossO4ko.y && b.y < bossO4ko.y + bossO4ko.h) {
+                // Бонусный выстрел Кузи и Дрона наносит 2 урона
+                const damage = (b.isBonus && (player.type === 'kuzy' || player.type === 'dron')) ? 2 : 1;
+                bossO4ko.hp -= damage;
+                bullets.splice(bi, 1);
+                score += 5;
+                explosions.push({ x: b.x, y: b.y, timer: 0 });
+
+                if (bossO4ko.hp <= 0) {
+                    bossDefeated = true;
+                    score += 20;
+                    combo++;
+                    explosions.push({
+                        x: bossO4ko.x + bossO4ko.w / 2,
+                        y: bossO4ko.y + bossO4ko.h / 2,
+                        timer: 0,
+                        size: bossO4ko.w * 0.8
+                    });
+                    bossO4ko = null;
+                    if (!levelCompleteShown) {
                         showLevelComplete();
                         levelCompleteShown = true;
                     }

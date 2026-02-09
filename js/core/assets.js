@@ -48,6 +48,17 @@ let enemy67SpriteReady = false;
 enemy67Img.onload = () => { enemy67SpriteReady = true; };
 enemy67Img.src = "img/67.png";
 
+// Спрайты босса "Очко" (6 отдельных кадров)
+const o4koImgs = [];
+let o4koSpritesReady = 0;
+for (let i = 1; i <= 6; i++) {
+    const img = new Image();
+    // Обработчик загрузки кадра босса "Очко"
+    img.onload = () => { o4koSpritesReady++; };
+    img.src = `img/bosso4ko/o${i}.png`;
+    o4koImgs.push(img);
+}
+
 // Ресурсы режима платформ: рубин и кубок
 const rubyImg1 = new Image();
 let ruby1Ready = false;
