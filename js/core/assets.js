@@ -59,6 +59,37 @@ for (let i = 1; i <= 6; i++) {
     o4koImgs.push(img);
 }
 
+// Снаряды босса "Очко" (варианты "говна")
+const o4koPoopImgs = [];
+let o4koPoopReady = 0;
+for (let i = 1; i <= 3; i++) {
+    const img = new Image();
+    img.onload = () => { o4koPoopReady++; };
+    img.src = `img/o4ko/shit${i}.png`;
+    o4koPoopImgs.push(img);
+}
+
+// Редкий банан-бонус для режима "Очко"
+const bananaBonusImg = new Image();
+let bananaBonusReady = false;
+bananaBonusImg.onload = () => { bananaBonusReady = true; };
+bananaBonusImg.src = "img/o4ko/banana_bonus.png";
+
+// Победные бутылки для завершения уровня "Очко"
+const o4koVictoryBeerImgs = [];
+let o4koVictoryBeerReady = 0;
+const o4koVictoryBeerPaths = [
+    "img/beer/beer2.png",
+    "img/beer/beer1.png",
+    "img/beer/beer3.png"
+];
+for (let i = 0; i < o4koVictoryBeerPaths.length; i++) {
+    const img = new Image();
+    img.onload = () => { o4koVictoryBeerReady++; };
+    img.src = o4koVictoryBeerPaths[i];
+    o4koVictoryBeerImgs.push(img);
+}
+
 // Ресурсы режима платформ: рубин и кубок
 const rubyImg1 = new Image();
 let ruby1Ready = false;

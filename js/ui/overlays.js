@@ -20,9 +20,13 @@ function showLevelComplete() {
 
     const overlay = document.createElement('div');
     overlay.id = 'level-complete-overlay';
+    const isO4koVictory = gameMode === 'o4ko';
     Object.assign(overlay.style, {
         position: 'fixed', left: '0', top: '0', width: '100%', height: '100%',
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        display: 'flex',
+        alignItems: isO4koVictory ? 'flex-start' : 'center',
+        justifyContent: 'center',
+        paddingTop: isO4koVictory ? '5vh' : '0',
         pointerEvents: 'auto'
     });
 
@@ -79,9 +83,18 @@ function showLevelComplete() {
         bullets = [];
         enemyBullets = [];
         bottles = [];
+        hearts = [];
+        bananaBonuses = [];
+        o4koVictoryBeers = [];
+        o4koVictorySequenceActive = false;
         boss = null;
         bossO4ko = null;
         bukinTablet = null;
+        o4koHitStreak = 0;
+        o4koRandomDropTimer = 0;
+        o4koVulnHitCount = 0;
+        o4koLivesLost = 0;
+        o4koPityHeartUsed = false;
         document.getElementById('game').style.display = 'none';
         document.getElementById('menu').style.display = 'block';
         // Показываем выбор персонажа (скрываем выбор режима)
@@ -183,6 +196,9 @@ function showLevelCompleteMessage() {
         enemyBullets = [];
         bottles = [];
         hearts = [];
+        bananaBonuses = [];
+        o4koVictoryBeers = [];
+        o4koVictorySequenceActive = false;
         platforms = [];
         boss = null;
         bossO4ko = null;
@@ -190,6 +206,11 @@ function showLevelCompleteMessage() {
         enemy67 = null;
         platformRuby = null;
         platformCup = null;
+        o4koHitStreak = 0;
+        o4koRandomDropTimer = 0;
+        o4koVulnHitCount = 0;
+        o4koLivesLost = 0;
+        o4koPityHeartUsed = false;
         document.getElementById('game').style.display = 'none';
         document.getElementById('menu').style.display = 'block';
         updateBestScoresDisplay();
@@ -316,6 +337,9 @@ function showGameOver() {
         enemyBullets = [];
         bottles = [];
         hearts = [];
+        bananaBonuses = [];
+        o4koVictoryBeers = [];
+        o4koVictorySequenceActive = false;
         platforms = [];
         boss = null;
         bossO4ko = null;
@@ -336,6 +360,11 @@ function showGameOver() {
         survivalSpeedUps = 0;
         survivalBulletMultiplier = 1;
         survivalWaveSpawning = false;
+        o4koHitStreak = 0;
+        o4koRandomDropTimer = 0;
+        o4koVulnHitCount = 0;
+        o4koLivesLost = 0;
+        o4koPityHeartUsed = false;
         // Сбрасываем счетчики режима платформ
         platform67HitCount = 0;
         homePlatform = null;
@@ -401,6 +430,10 @@ function showGameOver() {
         bullets = [];
         enemyBullets = [];
         bottles = [];
+        hearts = [];
+        bananaBonuses = [];
+        o4koVictoryBeers = [];
+        o4koVictorySequenceActive = false;
         boss = null;
         bossO4ko = null;
         bukinTablet = null;
@@ -409,6 +442,11 @@ function showGameOver() {
         bonusShots = 0;
         lives = PLAYER_LIVES;
         invuln = INVULN_TIME;
+        o4koHitStreak = 0;
+        o4koRandomDropTimer = 0;
+        o4koVulnHitCount = 0;
+        o4koLivesLost = 0;
+        o4koPityHeartUsed = false;
         levelCompleteShown = false;
         gameOverShown = false;
         running = false;

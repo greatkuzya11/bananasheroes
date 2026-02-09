@@ -53,6 +53,32 @@ function draw() {
             ctx.drawImage(cupImg, platformCup.x, platformCup.y, platformCup.w, platformCup.h);
         }
     }
+
+    const perf = window.BHBulletPerf;
+    const renderMode = perf ? perf.bulletRenderMode() : 'emoji';
+    const rotationEnabled = perf ? perf.bulletRotationEnabled() : true;
+    const getEmojiBitmap = perf ? perf.getEmojiBitmap : null;
+
+    // Финальные бутылки победы в уровне "Очко":
+    // рисуем в фоновом слое, чтобы не перекрывать игрока и его пули.
+    o4koVictoryBeers.forEach(b => {
+        if (b.img && b.img.complete) {
+            ctx.drawImage(b.img, b.x, b.y, b.w, b.h);
+            return;
+        }
+        // Фолбек, если картинка не загрузилась.
+        const emoji = "🍺";
+        const size = b.h || 72;
+        const img = getEmojiBitmap ? getEmojiBitmap(emoji) : null;
+        if (renderMode === 'png' && img) {
+            ctx.drawImage(img, b.x, b.y, b.w || size, b.h || size);
+        } else {
+            ctx.font = `${size}px serif`;
+            ctx.textAlign = "left";
+            ctx.textBaseline = "top";
+            ctx.fillText(emoji, b.x, b.y);
+        }
+    });
     
     // Визуальная индикация неуязвимости (мигание)
     if (invuln > 0) {
@@ -65,10 +91,6 @@ function draw() {
     player.draw();
     ctx.globalAlpha = 1; // Восстановить прозрачность
 
-    const perf = window.BHBulletPerf;
-    const renderMode = perf ? perf.bulletRenderMode() : 'emoji';
-    const rotationEnabled = perf ? perf.bulletRotationEnabled() : true;
-    const getEmojiBitmap = perf ? perf.getEmojiBitmap : null;
     if (perf && perf.isEnabled()) perf.beforeBulletDraw();
     // Рисуем все пули игрока; b — объект пули
     bullets.forEach(b => {
@@ -114,16 +136,54 @@ function draw() {
     // Отрисовываем пули врагов с их индивидуальным эмодзи-листиком
     // Рисуем пули врагов; b — объект пули врага
     enemyBullets.forEach(b => {
+        const isO4koPoop = !!b.o4koPoop;
+        const w = b.w || 24;
+        const h = b.h || 24;
+        const cx = b.x + w / 2;
+        const cy = b.y + h / 2;
+        const angle = (typeof b.rotation === 'number') ? b.rotation : 0;
+
+        if (b.img && b.img.complete) {
+            if (isO4koPoop && typeof b.rotation === 'number') {
+                ctx.save();
+                ctx.translate(cx, cy);
+                ctx.rotate(angle);
+                ctx.drawImage(b.img, -w / 2, -h / 2, w, h);
+                ctx.restore();
+            } else {
+                ctx.drawImage(b.img, b.x, b.y, w, h);
+            }
+            return;
+        }
         const emoji = b.emoji || "🍃";
-        const size = (b.h || 12) * 2.4;
+        const size = isO4koPoop ? Math.max(w, h) : (b.h || 12) * 2.4;
         const bulletImg = getEmojiBitmap ? getEmojiBitmap(emoji) : null;
         if (renderMode === 'png' && bulletImg) {
-            ctx.drawImage(bulletImg, b.x, b.y, size, size);
+            if (isO4koPoop && typeof b.rotation === 'number') {
+                ctx.save();
+                ctx.translate(cx, cy);
+                ctx.rotate(angle);
+                ctx.drawImage(bulletImg, -size / 2, -size / 2, size, size);
+                ctx.restore();
+            } else {
+                ctx.drawImage(bulletImg, b.x, b.y, size, size);
+            }
         } else {
-            ctx.font = `${size}px serif`;
-            ctx.textAlign = "left";
-            ctx.textBaseline = "top";
-            ctx.fillText(emoji, b.x, b.y);
+            if (isO4koPoop && typeof b.rotation === 'number') {
+                ctx.save();
+                ctx.translate(cx, cy);
+                ctx.rotate(angle);
+                ctx.font = `${size}px serif`;
+                ctx.textAlign = "center";
+                ctx.textBaseline = "middle";
+                ctx.fillText(emoji, 0, 0);
+                ctx.restore();
+            } else {
+                ctx.font = `${size}px serif`;
+                ctx.textAlign = "left";
+                ctx.textBaseline = "top";
+                ctx.fillText(emoji, b.x, b.y);
+            }
         }
     });
 
@@ -157,6 +217,24 @@ function draw() {
         }
     });
 
+    // Рисуем редкие бананы (только режим "Очко")
+    bananaBonuses.forEach(b => {
+        const size = b.h || 40;
+        if (bananaBonusReady && bananaBonusImg.complete) {
+            ctx.drawImage(bananaBonusImg, b.x, b.y, size, size);
+        } else {
+            const img = getEmojiBitmap ? getEmojiBitmap("🍌") : null;
+            if (renderMode === 'png' && img) {
+                ctx.drawImage(img, b.x, b.y, size, size);
+            } else {
+                ctx.font = `${size}px serif`;
+                ctx.textAlign = "left";
+                ctx.textBaseline = "top";
+                ctx.fillText("🍌", b.x, b.y);
+            }
+        }
+    });
+
     // Рисуем врагов сирень; e — объект врага
     enemies.forEach(e => {
         drawLilacCached(e);
@@ -169,6 +247,29 @@ function draw() {
     // Отрисовываем босса режима "Очко"
     if (bossO4ko) {
         bossO4ko.draw();
+        // Красная полоса HP босса "Очко"
+        const hpRatio = Math.max(0, Math.min(1, bossO4ko.hp / Math.max(1, bossO4ko.maxHp)));
+        const barW = Math.max(220, canvas.width * 0.34);
+        const barH = 16;
+        const barX = (canvas.width - barW) * 0.5;
+        const barY = 16;
+
+        ctx.save();
+        ctx.fillStyle = 'rgba(0,0,0,0.45)';
+        ctx.fillRect(barX - 2, barY - 2, barW + 4, barH + 4);
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(barX, barY, barW, barH);
+        ctx.fillStyle = '#e53935';
+        ctx.fillRect(barX, barY, barW * hpRatio, barH);
+        ctx.strokeStyle = '#111';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(barX, barY, barW, barH);
+        ctx.fillStyle = '#fff';
+        ctx.font = 'bold 14px Arial';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'bottom';
+        ctx.fillText(`Очко HP: ${bossO4ko.hp}/${bossO4ko.maxHp}`, barX + barW / 2, barY - 2);
+        ctx.restore();
     }
 
     // Рисуем босса-сосиску
@@ -198,16 +299,39 @@ function draw() {
         // Если указан размер, используем его, иначе стандартный
         const baseSize = ex.size || 60;
         const size = (baseSize + ex.timer * baseSize) * scale;
+
+        const dur = (typeof ex.duration === 'number') ? ex.duration : 0.5;
+        const t = Math.min(1, ex.timer / Math.max(0.0001, dur));
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
-        ctx.globalAlpha = 1 - ex.timer * 2;
-        const emoji = "💥";
-        const img = getEmojiBitmap ? getEmojiBitmap(emoji) : null;
-        if (renderMode === 'png' && img) {
-            ctx.drawImage(img, ex.x - size / 2, ex.y - size / 2, size, size);
+        ctx.globalAlpha = Math.max(0, 1 - t);
+
+        if (ex.style === 'brown') {
+            // Коричневый взрыв для смерти босса "Очко".
+            const r = size * 0.5;
+            const g = ctx.createRadialGradient(ex.x, ex.y, r * 0.12, ex.x, ex.y, r);
+            g.addColorStop(0, 'rgba(255, 214, 153, 0.95)');
+            g.addColorStop(0.35, 'rgba(164, 93, 45, 0.85)');
+            g.addColorStop(1, 'rgba(67, 37, 18, 0)');
+            ctx.fillStyle = g;
+            ctx.beginPath();
+            ctx.arc(ex.x, ex.y, r, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.strokeStyle = `rgba(110, 60, 28, ${Math.max(0, 0.85 - t)})`;
+            ctx.lineWidth = Math.max(2, r * 0.08);
+            ctx.beginPath();
+            ctx.arc(ex.x, ex.y, Math.max(6, r * (0.55 + 0.35 * t)), 0, Math.PI * 2);
+            ctx.stroke();
         } else {
-            ctx.font = `${size}px serif`;
-            ctx.fillText(emoji, ex.x, ex.y);
+            const emoji = "💥";
+            const img = getEmojiBitmap ? getEmojiBitmap(emoji) : null;
+            if (renderMode === 'png' && img) {
+                ctx.drawImage(img, ex.x - size / 2, ex.y - size / 2, size, size);
+            } else {
+                ctx.font = `${size}px serif`;
+                ctx.fillText(emoji, ex.x, ex.y);
+            }
         }
         ctx.restore();
     });

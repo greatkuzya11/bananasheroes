@@ -1,5 +1,51 @@
 ﻿// ==== ОБНОВЛЕНИЕ ИГРЫ ====
 /**
+ * Запускает финальную анимацию победы в уровне "Очко":
+ * коричневый взрыв и падение трех бутылок.
+ */
+function startO4koVictorySequence() {
+    o4koVictoryBeers = [];
+    o4koVictorySequenceActive = true;
+
+    const baseH = Math.max(72, Math.round(canvas.height * 0.11)) * 2;
+    const centerY = canvas.height * 0.51;
+
+    const beerLayout = [];
+    for (let i = 0; i < 3; i++) {
+        const img = o4koVictoryBeerImgs[i] || null;
+        let h = baseH;
+        let w = Math.round(h * 0.62);
+        // Сохраняем исходные пропорции текстуры, чтобы не было "сплющивания".
+        if (img && img.complete && img.width > 0 && img.height > 0) {
+            w = Math.max(24, Math.round(h * (img.width / img.height)));
+        }
+        beerLayout.push({ img, w, h });
+    }
+
+    const widest = beerLayout.reduce((m, b) => Math.max(m, b.w), 0);
+    const gap = Math.max(14, Math.round(widest * 0.28));
+    const totalW = beerLayout.reduce((sum, b) => sum + b.w, 0) + gap * (beerLayout.length - 1);
+    let curX = canvas.width * 0.5 - totalW * 0.5;
+
+    for (let i = 0; i < beerLayout.length; i++) {
+        const item = beerLayout[i];
+        const targetY = centerY - item.h * 0.5;
+        o4koVictoryBeers.push({
+            x: curX,
+            y: -item.h - 18 - i * 10,
+            w: item.w,
+            h: item.h,
+            targetY,
+            vy: 0,
+            gravity: canvas.height * 1.9,
+            landed: false,
+            img: item.img
+        });
+        curX += item.w + gap;
+    }
+}
+
+/**
  * Обновляет игровое состояние за один кадр.
  * @param {number} dt - прошедшее время кадра в секундах.
  */
@@ -21,6 +67,24 @@ function update(dt) {
     // Обновляем босса "Очко" (если есть)
     if (bossO4ko) {
         bossO4ko.update(dt);
+        if (gameMode === 'o4ko' && bossO4ko.consumePhaseTransition()) {
+            score += 10; // Бонус за смену фазы
+        }
+    }
+
+    // Случайные дропы в уровне "Очко"
+    if (gameMode === 'o4ko' && bossO4ko) {
+        o4koRandomDropTimer += dt;
+        if (o4koRandomDropTimer >= 15) {
+            o4koRandomDropTimer = 0;
+            if (Math.random() < 0.50) {
+                spawnO4koDrop('random');
+            }
+            // Банан по таймеру: при хорошем стрике
+            if (o4koHitStreak >= 15 && Math.random() < 0.20) {
+                spawnO4koDrop('banana');
+            }
+        }
     }
 
     // Обновляем падение таблички Букин (если есть)
@@ -50,6 +114,28 @@ function update(dt) {
         }
     }
 
+    // Финал уровня "Очко": падение 3 бутылок и показ сообщения после приземления.
+    if (gameMode === 'o4ko' && o4koVictorySequenceActive && o4koVictoryBeers.length > 0) {
+        let landedCount = 0;
+        o4koVictoryBeers.forEach(b => {
+            if (!b.landed) {
+                b.vy += b.gravity * dt;
+                b.y += b.vy * dt;
+                if (b.y >= b.targetY) {
+                    b.y = b.targetY;
+                    b.vy = 0;
+                    b.landed = true;
+                }
+            }
+            if (b.landed) landedCount++;
+        });
+        if (landedCount === o4koVictoryBeers.length && !levelCompleteShown) {
+            showLevelComplete();
+            levelCompleteShown = true;
+            o4koVictorySequenceActive = false;
+        }
+    }
+
     // Обновляем облачки с текстом
     // Фильтруем активные облачки; sb — объект облачка
     speechBalloons = speechBalloons.filter(sb => {
@@ -62,7 +148,8 @@ function update(dt) {
     // Фильтруем активные взрывы; ex — объект взрыва
     explosions = explosions.filter(ex => {
         ex.timer += dt;
-        return ex.timer < 0.5;
+        const dur = (typeof ex.duration === 'number') ? ex.duration : 0.5;
+        return ex.timer < dur;
     });
 
     const perf = window.BHBulletPerf;
@@ -95,6 +182,9 @@ function update(dt) {
         } else {
             b.y += 4;
         }
+        if (b.o4koPoop) {
+            b.rotation = (typeof b.rotation === 'number' ? b.rotation : 0) + (typeof b.rotationSpeed === 'number' ? b.rotationSpeed : 0.08);
+        }
     });
     // Двигаем бонусные бутылки; b — объект бутылки
     bottles.forEach(b => {
@@ -105,8 +195,8 @@ function update(dt) {
     // Оставляем пули в пределах расширенных границ экрана
     // Фильтруем пули игрока по границам; b — объект пули
     bullets = bullets.filter(b => b.x >= -100 && b.x <= canvas.width + 100 && b.y >= -100 && b.y <= canvas.height + 100);
-    // Фильтруем пули врагов по вертикали; b — объект пули врага
-    enemyBullets = enemyBullets.filter(b => b.y < canvas.height);
+    // Фильтруем пули врагов по границам экрана
+    enemyBullets = enemyBullets.filter(b => b.y < canvas.height + 100 && b.x > -120 && b.x < canvas.width + 120);
     // Фильтруем бутылки по вертикали; b — объект бутылки
     bottles = bottles.filter(b => b.y < canvas.height);
     // Двигаем сердечки; h — объект сердечка
@@ -116,6 +206,13 @@ function update(dt) {
     });
     // Фильтруем сердечки по вертикали; h — объект сердечка
     hearts = hearts.filter(h => h.y < canvas.height);
+    // Двигаем бананы; b — объект банана
+    bananaBonuses.forEach(b => {
+        b.y += 2.2;
+        b.x += Math.sin(b.y / 18) * 1.1;
+    });
+    // Фильтруем бананы по вертикали
+    bananaBonuses = bananaBonuses.filter(b => b.y < canvas.height + 20);
 
     const leafEmojis = ["🍃", "🍂", "🍁", "🌿", "🌱"];
 
@@ -514,28 +611,68 @@ function update(dt) {
         // Проверка попадания по боссу режима "Очко"
         if (bossO4ko && bossO4ko.hp > 0) {
             if (b.x > bossO4ko.x && b.x < bossO4ko.x + bossO4ko.w && b.y > bossO4ko.y && b.y < bossO4ko.y + bossO4ko.h) {
-                // Бонусный выстрел Кузи и Дрона наносит 2 урона
-                const damage = (b.isBonus && (player.type === 'kuzy' || player.type === 'dron')) ? 2 : 1;
-                bossO4ko.hp -= damage;
+                // Для уровня "Очко" бонусные пули по боссу:
+                // Кузя/Дрон = 3 урона, Макс = 1.5 урона.
+                const isBonus = !!b.isBonus;
+                let exactBonusDamage = null;
+                if (isBonus && (player.type === 'kuzy' || player.type === 'dron')) {
+                    exactBonusDamage = 3;
+                } else if (isBonus && player.type === 'max') {
+                    exactBonusDamage = 1.5;
+                }
+                let hitInfo;
+                if (typeof exactBonusDamage === 'number') {
+                    const vulnerable = (typeof bossO4ko.isVulnerable === 'function') ? bossO4ko.isVulnerable() : false;
+                    bossO4ko.hp = Math.max(0, bossO4ko.hp - exactBonusDamage);
+                    hitInfo = { damage: exactBonusDamage, vulnerable, killed: bossO4ko.hp <= 0 };
+                } else {
+                    hitInfo = bossO4ko.takeHit(1);
+                }
                 bullets.splice(bi, 1);
                 score += 5;
+                combo++;
                 explosions.push({ x: b.x, y: b.y, timer: 0 });
 
-                if (bossO4ko.hp <= 0) {
+                // Награды за серию попаданий по боссу.
+                o4koHitStreak += 1;
+
+                // Каждые 8 попаданий по боссу без урона игроку гарантированно даем пиво.
+                if (o4koHitStreak > 0 && o4koHitStreak % 8 === 0) {
+                    spawnO4koDrop('beer');
+                }
+
+                // Попадание в окно уязвимости: дополнительный счет +2.
+                if (hitInfo.vulnerable) {
+                    score += 2;
+                    o4koVulnHitCount += 1;
+                    // Каждые 20 попаданий в окно уязвимости гарантированно даем пиво.
+                    if (o4koVulnHitCount > 0 && o4koVulnHitCount % 20 === 0) {
+                        spawnO4koDrop('beer');
+                    }
+                }
+
+                // Редкий банан за длинную серию без потери жизни.
+                if (o4koHitStreak >= 15 && o4koHitStreak % 12 === 0 && Math.random() < 0.30) {
+                    spawnO4koDrop('banana');
+                }
+
+                if (hitInfo.killed) {
                     bossDefeated = true;
-                    score += 20;
+                    score += 30; // Бонус за победу над боссом
                     combo++;
+                    // Коричневый взрыв босса "Очко"
                     explosions.push({
                         x: bossO4ko.x + bossO4ko.w / 2,
                         y: bossO4ko.y + bossO4ko.h / 2,
                         timer: 0,
-                        size: bossO4ko.w * 0.8
+                        size: bossO4ko.w * 1.05,
+                        style: 'brown',
+                        duration: 0.85
                     });
+                    // Запускаем последовательность победы уровня "Очко":
+                    // падение 3 бутылок, затем показ сообщения о завершении.
+                    startO4koVictorySequence();
                     bossO4ko = null;
-                    if (!levelCompleteShown) {
-                        showLevelComplete();
-                        levelCompleteShown = true;
-                    }
                 }
                 continue;
             }
@@ -687,51 +824,77 @@ function update(dt) {
         }
     });
 
-    if (invuln <= 0) {
-        // Пуля врага попадает в игрока
-        // eb — объект пули врага, ei — индекс в массиве
-        enemyBullets.forEach((eb, ei) => {
-            // После победы над боссом пули врагов больше не наносят урон
-            if (bossDefeated) return;
-            if (rect(eb, player)) {
-                lives--;
-                combo = 0;
-                invuln = 1;
-                // Добавляем взрыв
-                explosions.push({ x: player.x + player.w / 2, y: player.y + player.h / 2, timer: 0 });
-                // Добавляем облачко с текстом
-                // Облачко слева от игрока
-                speechBalloons.push({ x: player.x - player.w * 0.25, y: player.y + player.h * 0.25, timer: 0 });
-                enemyBullets.splice(ei, 1);
-                if (lives <= 0) {
-                    showGameOver();
-                }
-            }
-        });
+    // Игрок подбирает банан-бонус (только режим "Очко")
+    bananaBonuses.forEach((bn, bni) => {
+        if (rect(bn, player)) {
+            lives = Math.min(PLAYER_LIVES, lives + 1); // +1 жизнь
+            bonusShots += 5; // +5 бонусных выстрелов
+            score += 3;
+            bananaBonuses.splice(bni, 1);
+        }
+    });
 
-        // Враг сталкивается с игроком
-        // e — объект врага
-        enemies.forEach((e) => {
-            // Проверяем столкновение по прямоугольникам
-            if (
-                rect(
-                    { x: e.x, y: e.y, w: e.w, h: e.h },
-                    { x: player.x, y: player.y, w: player.w, h: player.h }
-                )
-            ) {
-                lives--;
-                combo = 0;
-                invuln = 1;
-                // Добавляем взрыв
-                explosions.push({ x: player.x + player.w / 2, y: player.y + player.h / 2, timer: 0 });
-                // Добавляем облачко с текстом
-                // Облачко слева от игрока
-                speechBalloons.push({ x: player.x - player.w * 0.25, y: player.y + player.h * 0.25, timer: 0 });
-                if (lives <= 0) {
-                    showGameOver();
+    /**
+     * Применяет урон по игроку и общие побочные эффекты.
+     */
+    const applyPlayerDamage = () => {
+        lives--;
+        combo = 0;
+        o4koHitStreak = 0;
+        invuln = INVULN_TIME;
+
+        if (gameMode === 'o4ko' && bossO4ko) {
+            o4koLivesLost += 1;
+            // Pity-heart: после 4 потерянных жизней за бой, только 1 раз за уровень.
+            if (!o4koPityHeartUsed && o4koLivesLost >= 4) {
+                spawnO4koDrop('heart');
+                o4koPityHeartUsed = true;
+            }
+        }
+
+        explosions.push({ x: player.x + player.w / 2, y: player.y + player.h / 2, timer: 0 });
+        speechBalloons.push({ x: player.x - player.w * 0.25, y: player.y + player.h * 0.25, timer: 0 });
+        if (lives <= 0) {
+            showGameOver();
+        }
+    };
+
+    if (invuln <= 0) {
+        // Урон от контакта с боссом "Очко" и его спец-действий.
+        if (gameMode === 'o4ko' && bossO4ko && bossO4ko.hp > 0) {
+            const bossRect = { x: bossO4ko.x, y: bossO4ko.y, w: bossO4ko.w, h: bossO4ko.h };
+            if (rect(bossRect, player)) {
+                applyPlayerDamage();
+            }
+            if (invuln <= 0 && bossO4ko.isDashDangerActive()) {
+                if (rect(bossO4ko.getDashHitbox(), player)) {
+                    applyPlayerDamage();
                 }
             }
-        });
+            if (invuln <= 0 && bossO4ko.isTargetHitByGroundWave(player)) {
+                applyPlayerDamage();
+            }
+        }
+
+        // Пули врагов.
+        for (let ei = enemyBullets.length - 1; ei >= 0 && invuln <= 0; ei--) {
+            const eb = enemyBullets[ei];
+            if (bossDefeated) continue; // после победы по старым правилам пули игнорируем
+            if (rect(eb, player)) {
+                enemyBullets.splice(ei, 1);
+                applyPlayerDamage();
+                break;
+            }
+        }
+
+        // Контакт с обычными врагами.
+        for (let i = 0; i < enemies.length && invuln <= 0; i++) {
+            const e = enemies[i];
+            if (rect({ x: e.x, y: e.y, w: e.w, h: e.h }, player)) {
+                applyPlayerDamage();
+                break;
+            }
+        }
     }
 
     // Режим платформ: проверяем столкновение с рубином (по расстоянию центров)
@@ -816,11 +979,14 @@ function update(dt) {
             cachedLivesStr = "❤️".repeat(lives);
             lastHudLives = lives;
         }
+        const o4koPhaseInfo = (gameMode === 'o4ko' && bossO4ko)
+            ? `   Фаза: ${bossO4ko.getPhaseLabel()}`
+            : '';
         let hudHtml = '';
         if (bonusMode && bonusShots > 0) {
-            hudHtml = `${playerName} | Жизни: ${cachedLivesStr}<br>Очки: ${score}   Комбо: ${combo}   <span style="color:black">Бонус: ${bonusShots}</span>   Пули: ${dirIcon} ${modeIndicator}`;
+            hudHtml = `${playerName} | Жизни: ${cachedLivesStr}<br>Очки: ${score}   Комбо: ${combo}   <span style="color:black">Бонус: ${bonusShots}</span>   Пули: ${dirIcon} ${modeIndicator}${o4koPhaseInfo}`;
         } else {
-            hudHtml = `${playerName} | Жизни: ${cachedLivesStr}<br>Очки: ${score}   Комбо: ${combo}   Бонус: ${bonusShots}   Пули: ${dirIcon} ${modeIndicator}`;
+            hudHtml = `${playerName} | Жизни: ${cachedLivesStr}<br>Очки: ${score}   Комбо: ${combo}   Бонус: ${bonusShots}   Пули: ${dirIcon} ${modeIndicator}${o4koPhaseInfo}`;
         }
         if (hudHtml !== lastHudHtml) {
             hudEl.innerHTML = hudHtml;

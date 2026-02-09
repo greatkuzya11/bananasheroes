@@ -196,6 +196,40 @@ function trySpawnHeart(x, y) {
     }
 }
 
+/**
+ * Спавнит бонус сверху экрана для режима "Очко".
+ * @param {'beer'|'heart'|'banana'|'random'} kind - тип бонуса.
+ * @returns {'beer'|'heart'|'banana'} фактически созданный тип.
+ */
+function spawnO4koDrop(kind = 'random') {
+    let actual = kind;
+    if (actual === 'random') {
+        // random для уровня "Очко": 70% пиво, 30% сердце
+        actual = Math.random() < 0.7 ? 'beer' : 'heart';
+    }
+
+    if (actual === 'beer') {
+        const w = 36;
+        const h = 36;
+        const x = 12 + Math.random() * Math.max(1, canvas.width - w - 24);
+        bottles.push({ x, y: -h - 8, w, h, fromTop: true });
+        return 'beer';
+    }
+    if (actual === 'heart') {
+        const w = 40;
+        const h = 40;
+        const x = 12 + Math.random() * Math.max(1, canvas.width - w - 24);
+        hearts.push({ x, y: -h - 8, w, h, fromTop: true });
+        return 'heart';
+    }
+
+    const w = 40;
+    const h = 40;
+    const x = 12 + Math.random() * Math.max(1, canvas.width - w - 24);
+    bananaBonuses.push({ x, y: -h - 8, w, h, fromTop: true });
+    return 'banana';
+}
+
 // Спавнит одного врага примерно в заданных координатах центра
 /**
  * Спавнит одного врага по приблизительным координатам центра.

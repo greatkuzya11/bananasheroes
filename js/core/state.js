@@ -8,6 +8,9 @@ let enemyBullets = [];
 let enemies = [];
 let bottles = [];
 let hearts = [];
+let bananaBonuses = [];
+let o4koVictoryBeers = [];
+let o4koVictorySequenceActive = false;
 let platforms = [];
 
 let player = null;
@@ -30,6 +33,11 @@ let ctrlHeld = false;
 
 let gameMode = 'normal';
 let selectedChar = 'kuzy';
+let o4koHitStreak = 0;
+let o4koRandomDropTimer = 0;
+let o4koVulnHitCount = 0;
+let o4koLivesLost = 0;
+let o4koPityHeartUsed = false;
 
 let homePlatform = null;
 let bossPlatform = null;
