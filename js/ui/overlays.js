@@ -3,6 +3,13 @@
  * Показывает экран завершения уровня и фиксирует рекорд при необходимости.
  */
 function showLevelComplete() {
+    if (typeof window.clearGameInputs === 'function') {
+        window.clearGameInputs();
+    }
+    if (typeof window.setGameTouchControlsVisible === 'function') {
+        window.setGameTouchControlsVisible(false);
+    }
+
     // Показываем оверлей, игра может продолжаться; урон отключен после смерти босса.
     // Сохраняем рекорд, если текущий результат его превзошел, и отображаем это.
     const key = 'bh_bestScore_' + (selectedChar || 'kuzy') + '_' + (gameMode || 'normal');
@@ -75,6 +82,9 @@ function showLevelComplete() {
     Object.assign(btnMain.style, { padding: '8px 14px', fontSize: '16px', cursor: 'pointer' });
     // Обработчик клика по кнопке "Главный экран"
     btnMain.onclick = () => {
+        if (typeof window.clearGameInputs === 'function') {
+            window.clearGameInputs();
+        }
         // Вернуться в меню
         running = false;
         levelCompleteShown = false;
@@ -99,6 +109,9 @@ function showLevelComplete() {
         document.getElementById('menu').style.display = 'block';
         // Показываем выбор персонажа (скрываем выбор режима)
         if (modes) modes.style.display = 'none';
+        if (typeof window.setGameTouchControlsVisible === 'function') {
+            window.setGameTouchControlsVisible(false);
+        }
         overlay.remove();
     };
 
@@ -132,6 +145,13 @@ function showLevelComplete() {
  * Показывает сообщение о завершении уровня платформ и фиксирует рекорд.
  */
 function showLevelCompleteMessage() {
+    if (typeof window.clearGameInputs === 'function') {
+        window.clearGameInputs();
+    }
+    if (typeof window.setGameTouchControlsVisible === 'function') {
+        window.setGameTouchControlsVisible(false);
+    }
+
     const key = 'bh_bestScore_' + (selectedChar || 'kuzy') + '_' + (gameMode || 'normal');
     const best = parseInt(localStorage.getItem(key) || '0', 10) || 0;
     let isNew = false;
@@ -189,6 +209,9 @@ function showLevelCompleteMessage() {
     Object.assign(btnMain.style, { padding: '10px 16px', fontSize: '16px', cursor: 'pointer' });
     // Обработчик клика по кнопке "Главный экран"
     btnMain.onclick = () => {
+        if (typeof window.clearGameInputs === 'function') {
+            window.clearGameInputs();
+        }
         running = false;
         levelCompleteShown = false;
         enemies = [];
@@ -214,6 +237,9 @@ function showLevelCompleteMessage() {
         document.getElementById('game').style.display = 'none';
         document.getElementById('menu').style.display = 'block';
         updateBestScoresDisplay();
+        if (typeof window.setGameTouchControlsVisible === 'function') {
+            window.setGameTouchControlsVisible(false);
+        }
         overlay.remove();
     };
 
@@ -275,6 +301,12 @@ function showGameOver() {
     if (gameOverShown) return;
     gameOverShown = true;
     running = false;
+    if (typeof window.clearGameInputs === 'function') {
+        window.clearGameInputs();
+    }
+    if (typeof window.setGameTouchControlsVisible === 'function') {
+        window.setGameTouchControlsVisible(false);
+    }
 
     const key = 'bh_bestScore_' + (selectedChar || 'kuzy') + '_' + (gameMode || 'normal');
     const best = parseInt(localStorage.getItem(key) || '0', 10) || 0;
@@ -332,6 +364,9 @@ function showGameOver() {
     Object.assign(btnRetry.style, { padding: '10px 16px', fontSize: '16px', cursor: 'pointer' });
     // Обработчик клика по кнопке "Повторить"
     btnRetry.onclick = () => {
+        if (typeof window.clearGameInputs === 'function') {
+            window.clearGameInputs();
+        }
         enemies = [];
         bullets = [];
         enemyBullets = [];
@@ -419,6 +454,9 @@ function showGameOver() {
         running = true;
         last = performance.now();
         requestAnimationFrame(loop);
+        if (typeof window.setGameTouchControlsVisible === 'function') {
+            window.setGameTouchControlsVisible(true);
+        }
     };
 
     const btnMain = document.createElement('button');
@@ -426,6 +464,9 @@ function showGameOver() {
     Object.assign(btnMain.style, { padding: '10px 16px', fontSize: '16px', cursor: 'pointer' });
     // Обработчик клика по кнопке "Главный экран"
     btnMain.onclick = () => {
+        if (typeof window.clearGameInputs === 'function') {
+            window.clearGameInputs();
+        }
         enemies = [];
         bullets = [];
         enemyBullets = [];
@@ -455,6 +496,9 @@ function showGameOver() {
         // Показываем выбор персонажа (скрываем выбор режима)
         if (modes) modes.style.display = 'none';
         updateBestScoresDisplay();
+        if (typeof window.setGameTouchControlsVisible === 'function') {
+            window.setGameTouchControlsVisible(false);
+        }
         overlay.remove();
     };
 

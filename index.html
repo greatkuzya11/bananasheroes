@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Bananas Heroes</title>
     <link rel="icon" href="favicon.svg" type="image/svg+xml">
     <style>
@@ -111,11 +111,16 @@
         #game {
             display: none;
             position: relative;
+            width: 100vw;
+            height: 100vh;
+            touch-action: none;
+            overscroll-behavior: none;
         }
 
         canvas {
             display: block;
             background-color: #2e7d32;
+            touch-action: none;
         }
 
         #hud {
@@ -123,6 +128,217 @@
             bottom: 10px;
             left: 10px;
             font-size: 18px;
+            line-height: 1.25;
+            max-width: calc(100vw - 20px);
+            pointer-events: none;
+            z-index: 950;
+        }
+
+        #touch-controls {
+            position: absolute;
+            inset: 0;
+            display: none;
+            z-index: 940;
+            pointer-events: none;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        #touch-controls.active {
+            display: block;
+        }
+
+        #touch-controls .touch-pad {
+            position: absolute;
+            left: calc(12px + env(safe-area-inset-left));
+            bottom: calc(12px + env(safe-area-inset-bottom));
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            pointer-events: none;
+        }
+
+        #touch-controls .touch-actions {
+            position: absolute;
+            right: calc(12px + env(safe-area-inset-right));
+            bottom: calc(12px + env(safe-area-inset-bottom));
+            display: grid;
+            grid-template-columns: repeat(2, minmax(70px, 1fr));
+            gap: 8px;
+            pointer-events: none;
+        }
+
+        #touch-controls .touch-row {
+            display: flex;
+            gap: 8px;
+            pointer-events: none;
+        }
+
+        #touch-controls .touch-btn {
+            pointer-events: auto;
+            min-width: 64px;
+            min-height: 52px;
+            border: 2px solid rgba(255,255,255,0.45);
+            border-radius: 14px;
+            background: rgba(17, 24, 39, 0.65);
+            color: #fff;
+            font-size: 16px;
+            font-weight: 700;
+            backdrop-filter: blur(2px);
+            -webkit-backdrop-filter: blur(2px);
+            touch-action: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        #touch-controls .touch-btn:active,
+        #touch-controls .touch-btn.is-pressed {
+            transform: scale(0.96);
+            background: rgba(250, 204, 21, 0.85);
+            color: #111;
+            border-color: rgba(255,255,255,0.95);
+        }
+
+        #touch-controls .touch-btn.fire {
+            min-height: 64px;
+            font-size: 17px;
+            background: rgba(220, 38, 38, 0.78);
+        }
+
+        #touch-controls .touch-btn.small {
+            min-width: 58px;
+            min-height: 48px;
+            font-size: 13px;
+            font-weight: 700;
+        }
+
+        #touch-controls .touch-btn.dir {
+            font-size: 12px;
+            letter-spacing: 0.2px;
+        }
+
+        #mobile-controls-hint {
+            position: absolute;
+            inset: 0;
+            display: none;
+            z-index: 980;
+            pointer-events: none;
+        }
+
+        #mobile-controls-hint.active {
+            display: flex;
+            align-items: flex-start;
+            justify-content: center;
+            padding: calc(10px + env(safe-area-inset-top)) 10px 10px;
+            pointer-events: auto;
+            background: rgba(0,0,0,0.28);
+        }
+
+        #mobile-controls-hint .hint-card {
+            width: min(92vw, 520px);
+            background: rgba(15, 23, 42, 0.92);
+            border: 2px solid rgba(255,255,255,0.35);
+            border-radius: 14px;
+            padding: 12px 14px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.45);
+            color: #fff;
+        }
+
+        #mobile-controls-hint .hint-title {
+            font-size: 17px;
+            font-weight: 800;
+            margin-bottom: 8px;
+        }
+
+        #mobile-controls-hint .hint-text {
+            font-size: 13px;
+            line-height: 1.45;
+            opacity: 0.96;
+        }
+
+        #mobile-controls-hint .hint-close {
+            margin-top: 10px;
+            min-height: 38px;
+            min-width: 104px;
+            border: 2px solid rgba(255,255,255,0.6);
+            border-radius: 10px;
+            background: rgba(250, 204, 21, 0.92);
+            color: #111;
+            font-weight: 800;
+            cursor: pointer;
+        }
+
+        @media (max-width: 960px), (pointer: coarse) {
+            #menu {
+                padding-top: 20px;
+            }
+
+            #menu h1 {
+                font-size: clamp(24px, 7vw, 34px);
+                margin: 8px 10px 12px;
+            }
+
+            #menu .characters {
+                gap: 10px;
+                flex-wrap: wrap;
+                padding: 0 10px;
+            }
+
+            .char {
+                font-size: clamp(18px, 4.8vw, 24px);
+                padding: 12px 14px;
+            }
+
+            #best-scores {
+                padding: 0 10px;
+                max-width: min(94vw, 720px);
+                font-size: 13px;
+                line-height: 1.35;
+            }
+
+            #modes {
+                margin-top: 14px;
+                padding: 0 10px 18px;
+            }
+
+            #modes button {
+                display: block;
+                width: min(92vw, 360px);
+                margin: 8px auto;
+                font-size: clamp(17px, 4.5vw, 22px);
+                padding: 12px 10px;
+            }
+
+            #hud {
+                left: 8px;
+                right: 8px;
+                bottom: calc(8px + env(safe-area-inset-bottom));
+                font-size: clamp(12px, 3.5vw, 16px);
+                max-width: calc(100vw - 16px);
+            }
+
+            #touch-controls .touch-btn {
+                min-width: 58px;
+                min-height: 48px;
+                font-size: 15px;
+            }
+
+            #touch-controls .touch-btn.fire {
+                min-height: 58px;
+                font-size: 16px;
+            }
+
+            #mobile-controls-hint .hint-card {
+                width: min(94vw, 560px);
+                padding: 12px;
+            }
+
+            #mobile-controls-hint .hint-title {
+                font-size: clamp(15px, 4.2vw, 18px);
+            }
+
+            #mobile-controls-hint .hint-text {
+                font-size: clamp(12px, 3.4vw, 14px);
+            }
         }
     </style>
 </head>
@@ -156,6 +372,35 @@
 <div id="game">
     <canvas id="canvas"></canvas>
     <div id="hud"></div>
+    <div id="touch-controls" aria-hidden="true">
+        <div class="touch-pad">
+            <div class="touch-row" style="justify-content:center;">
+                <button class="touch-btn hold" data-key="ArrowUp" data-hold="1" title="Прыжок">UP</button>
+            </div>
+            <div class="touch-row">
+                <button class="touch-btn hold" data-key="ArrowLeft" data-hold="1" title="Влево">LEFT</button>
+                <button class="touch-btn hold dir" data-key="ArrowDown" data-hold="1" title="Смена направления / стрельба вверх">DIR/UP</button>
+                <button class="touch-btn hold" data-key="ArrowRight" data-hold="1" title="Вправо">RIGHT</button>
+            </div>
+        </div>
+        <div class="touch-actions">
+            <button class="touch-btn fire hold" data-key=" " data-hold="1" title="Огонь">FIRE</button>
+            <button class="touch-btn small tap" data-key="Shift" data-tap="1" title="Бонусный режим">BONUS</button>
+            <button class="touch-btn small tap" data-key="Control" data-tap="1" title="Альтернативная стрельба">ALT</button>
+            <button class="touch-btn small tap" data-key="Escape" data-tap="1" title="Пауза">PAUSE</button>
+        </div>
+    </div>
+    <div id="mobile-controls-hint" aria-hidden="true">
+        <div class="hint-card">
+            <div class="hint-title">Управление на телефоне</div>
+            <div class="hint-text">
+                LEFT/RIGHT — движение, UP — прыжок, FIRE — стрельба.
+                DIR/UP: в обычном режиме меняет направление пули, в ALT при удержании стреляет вверх.
+                ALT — альтернативная стрельба, BONUS — бонусный режим, PAUSE — пауза.
+            </div>
+            <button class="hint-close" data-action="close-mobile-hint">Понятно</button>
+        </div>
+    </div>
     <div id="overlay" style="display:none; position:absolute; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); color:white; text-align:center; padding:50px; box-sizing:border-box; flex-direction:column; align-items:center; justify-content:center;"></div>
 </div>
 
