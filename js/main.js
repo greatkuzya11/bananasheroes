@@ -335,8 +335,33 @@ document.addEventListener('DOMContentLoaded', () => {
      * Изменяет размер canvas под размер окна браузера.
      */
     function resizeCanvas() {
+        const prevW = canvas.width || window.innerWidth;
+        const prevH = canvas.height || window.innerHeight;
         canvas.width = window.innerWidth;
         canvas.height = window.innerHeight;
+        // Поддержка корректного позиционирования объектов в режиме "Носок" после ресайза.
+        if (gameMode === 'nosok') {
+            if (typeof setupNosokGoal === 'function') {
+                setupNosokGoal();
+            }
+            if (bossNosok && typeof bossNosok.refreshBounds === 'function') {
+                bossNosok.refreshBounds();
+            }
+            if (nosokBall) {
+                const targetR = Math.max(18, Math.round(Math.min(canvas.width, canvas.height) * 0.035));
+                const sx = canvas.width / Math.max(1, prevW);
+                const sy = canvas.height / Math.max(1, prevH);
+                nosokBall.r = targetR;
+                nosokBall.x *= sx;
+                nosokBall.y *= sy;
+                nosokBall.x = Math.max(nosokBall.r, Math.min(canvas.width - nosokBall.r, nosokBall.x));
+                nosokBall.y = Math.max(nosokBall.r, Math.min(canvas.height - 20 - nosokBall.r, nosokBall.y));
+            }
+            if (player) {
+                player.x = Math.max(10, Math.min(canvas.width - player.w - 10, player.x));
+                player.y = Math.min(player.y, canvas.height - player.h - 20);
+            }
+        }
     }
 
     /**
@@ -447,89 +472,7 @@ document.addEventListener('DOMContentLoaded', () => {
             paused = false;
             clearInputSource('keyboard');
             clearTouchInputs();
-            
-            enemies = [];
-            bullets = [];
-            enemyBullets = [];
-            bottles = [];
-            hearts = [];
-            bananaBonuses = [];
-            o4koVictoryBeers = [];
-            o4koVictorySequenceActive = false;
-            platforms = [];
-            boss = null;
-            bossO4ko = null;
-            bukinTablet = null;
-            enemy67 = null;
-            score = 0;
-            combo = 0;
-            bonusShots = 0;
-            lives = PLAYER_LIVES;
-            invuln = INVULN_TIME;
-            levelCompleteShown = false;
-            gameOverShown = false;
-            bossDefeated = false;
-            // Сбрасываем счетчики режима выживания
-            killCount = 0;
-            survivalEnemySpeedIncrease = 0;
-            survivalBulletSpeedIncrease = 0;
-            survivalSpeedUps = 0;
-            survivalBulletMultiplier = 1;
-            survivalWaveSpawning = false;
-            o4koHitStreak = 0;
-            o4koRandomDropTimer = 0;
-            o4koVulnHitCount = 0;
-            o4koLivesLost = 0;
-            o4koPityHeartUsed = false;
-            // Сбрасываем счетчики режима платформ
-            platform67HitCount = 0;
-            homePlatform = null;
-            bossPlatform = null;
-            platformRuby = null;
-            platformCup = null;
-            player = new Player(selectedChar);
-            // Спавним врагов в зависимости от режима
-            if (gameMode === 'platforms') {
-                enemies = [];
-                playerBulletDir = 'right';
-                // Инициализация платформ для режима платформ
-                initPlatformLevel();
-                // Инициализация отслеживания неподвижности
-                platformPlayerLastX = 0;
-                platformInactivityTimer = 0;
-                // Позиционируем игрока в центр домашней платформы
-                if (homePlatform) {
-                    player.x = homePlatform.x + (homePlatform.w - player.w) / 2;
-                    player.y = homePlatform.y - player.h;
-                    player.onPlatform = true; // Игрок стартует на платформе, может прыгать
-                    platformPlayerLastX = player.x;
-                }
-                // Спавним врага 67 на платформе босса
-                if (bossPlatform) {
-                    enemy67 = new Enemy67(player.x, player.y, true);
-                    platform67HitCount = 0;
-                }
-            } else if (gameMode === '67') {
-                enemies = [];
-                enemy67 = new Enemy67(player.x, player.y);
-                // Позиция игрока почти с левого угла для режима 67
-                player.x = 20;
-                playerBulletDir = 'right';
-            } else if (gameMode === 'o4ko') {
-                enemies = [];
-                enemy67 = null;
-                bgImg.src = 'img/bg-avs.png';
-                // Позиция игрока почти с левого угла для режима "Очко"
-                player.x = 20;
-                playerBulletDir = 'right';
-                bossO4ko = new BossO4ko(player.x, player.y);
-            } else {
-                spawnEnemies();
-                playerBulletDir = 'up';
-            }
-            // Не нужно запускать requestAnimationFrame — цикл уже работает
-            // Переменная running уже true, просто сбрасываем last
-            last = performance.now();
+            beginGameRun(gameMode, false);
             setTouchControlsVisible(true);
         };
         overlay.appendChild(btnRestart);
@@ -572,32 +515,9 @@ document.addEventListener('DOMContentLoaded', () => {
             paused = false;
             clearInputSource('keyboard');
             clearTouchInputs();
+            if (typeof clearScheduledEnemySpawns === 'function') clearScheduledEnemySpawns();
+            if (typeof resetGameStateForMenu === 'function') resetGameStateForMenu();
             
-            enemies = [];
-            bullets = [];
-            enemyBullets = [];
-            bottles = [];
-            hearts = [];
-            bananaBonuses = [];
-            o4koVictoryBeers = [];
-            o4koVictorySequenceActive = false;
-            platforms = [];
-            boss = null;
-            bossO4ko = null;
-            bukinTablet = null;
-            score = 0;
-            combo = 0;
-            bonusShots = 0;
-            lives = PLAYER_LIVES;
-            invuln = INVULN_TIME;
-            o4koHitStreak = 0;
-            o4koRandomDropTimer = 0;
-            o4koVulnHitCount = 0;
-            o4koLivesLost = 0;
-            o4koPityHeartUsed = false;
-            levelCompleteShown = false;
-            gameOverShown = false;
-            running = false;
             document.getElementById('game').style.display = 'none';
             document.getElementById('menu').style.display = 'block';
             updateBestScoresDisplay();
@@ -678,106 +598,12 @@ document.addEventListener('DOMContentLoaded', () => {
             modeButtons.forEach(mb => mb.classList.remove('selected'));
             // Выделяем выбранный
             m.classList.add('selected');
-            
-            // Полный сброс состояния для нового запуска
-            enemies = [];
-            bullets = [];
-            enemyBullets = [];
-            bottles = [];
-            hearts = [];
-            bananaBonuses = [];
-            o4koVictoryBeers = [];
-            o4koVictorySequenceActive = false;
-            boss = null;
-            bossO4ko = null;
-            bukinTablet = null;
-            speechBalloons = [];
-            explosions = [];
-            bossDefeated = false;
-            // Сбрасываем очки и состояние игрока
-            score = 0;
-            combo = 0;
-            bonusShots = 0;
-            lives = PLAYER_LIVES;
-            invuln = INVULN_TIME;
 
             document.getElementById('menu').style.display = 'none';
             document.getElementById('game').style.display = 'block';
             // Устанавливаем режим игры
             gameMode = m.dataset.mode || 'normal';
-            // Сбрасываем счетчики выживания
-            killCount = 0;
-            survivalEnemySpeedIncrease = 0;
-            survivalBulletSpeedIncrease = 0;
-            survivalSpeedUps = 0;
-            survivalBulletMultiplier = 1;
-            survivalWaveSpawning = false;
-            o4koHitStreak = 0;
-            o4koRandomDropTimer = 0;
-            o4koVulnHitCount = 0;
-            o4koLivesLost = 0;
-            o4koPityHeartUsed = false;
-            player = new Player(selectedChar);
-            // Настройка в зависимости от режима
-            if (gameMode === '67') {
-                // Режим 67: без обычных врагов и с другим фоном
-                enemies = [];
-                bossO4ko = null;
-                bgImg.src = 'img/forest2.png';
-                // Позиция игрока почти с левого угла
-                player.x = 20;
-                // Направление пуль по умолчанию направо
-                playerBulletDir = 'right';
-                // Создаем врага 67
-                enemy67 = new Enemy67(player.x, player.y);
-            } else if (gameMode === 'o4ko') {
-                // Режим "Очко": логика старта как у режима 67, но со своим боссом
-                enemies = [];
-                enemy67 = null;
-                bgImg.src = 'img/bg-avs.png';
-                player.x = 20;
-                playerBulletDir = 'right';
-                bossO4ko = new BossO4ko(player.x, player.y);
-            } else {
-                enemy67 = null;
-                bossO4ko = null;
-                // В других режимах направление по умолчанию вверх
-                playerBulletDir = 'up';
-                // Инициализация платформ для режима платформ
-                if (gameMode === 'platforms') {
-                    bgImg.src = 'img/pl-bg.png';
-                    playerBulletDir = 'right'; // Направление пуль вправо для режима платформ
-                    initPlatformLevel();
-                    // Инициализация отслеживания неподвижности
-                    platformPlayerLastX = 0;
-                    platformInactivityTimer = 0;
-                    // Позиционируем игрока в центр домашней платформы
-                    if (homePlatform) {
-                        player.x = homePlatform.x + (homePlatform.w - player.w) / 2;
-                        player.y = homePlatform.y - player.h;
-                        player.onPlatform = true; // Игрок стартует на платформе, может прыгать
-                        platformPlayerLastX = player.x;
-                    } else {
-                        // Запасной вариант позиционирования
-                        player.y = canvas.height - 40 - player.h - 30;
-                        player.x = canvas.width / 2 - player.w / 2;
-                    }
-                    // Спавним врага 67 на платформе босса
-                    if (bossPlatform) {
-                        enemy67 = new Enemy67(player.x, player.y, true);
-                        platform67HitCount = 0;
-                    }
-                } else {
-                    // Обычный/выживание: стандартный фон и спавн врагов
-                    bgImg.src = 'img/forest.png';
-                    spawnEnemies();
-                }
-            }
-            levelCompleteShown = false;
-            gameOverShown = false;
-            running = true;
-            last = performance.now();
-            requestAnimationFrame(loop);
+            beginGameRun(gameMode, true);
             setTouchControlsVisible(true);
         };
     });

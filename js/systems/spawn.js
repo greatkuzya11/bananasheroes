@@ -2,6 +2,43 @@
 /**
  * Инициализирует платформенный уровень и заполняет массив платформ.
  */
+let pendingEnemySpawnTimeouts = [];
+
+/**
+ * Очищает все отложенные таймеры спавна врагов.
+ */
+function clearScheduledEnemySpawns() {
+    if (!pendingEnemySpawnTimeouts.length) return;
+    for (let i = 0; i < pendingEnemySpawnTimeouts.length; i++) {
+        clearTimeout(pendingEnemySpawnTimeouts[i]);
+    }
+    pendingEnemySpawnTimeouts = [];
+}
+
+/**
+ * Ставит таймер спавна и отслеживает его для последующей очистки.
+ * @param {Function} cb - коллбек таймера.
+ * @param {number} delayMs - задержка в миллисекундах.
+ */
+function scheduleEnemySpawnTimeout(cb, delayMs) {
+    let timerId = null;
+    const wrapped = () => {
+        pendingEnemySpawnTimeouts = pendingEnemySpawnTimeouts.filter(id => id !== timerId);
+        cb();
+    };
+    timerId = setTimeout(wrapped, delayMs);
+    pendingEnemySpawnTimeouts.push(timerId);
+}
+
+/**
+ * Проверяет, допустим ли отложенный спавн сирени в текущем состоянии игры.
+ * @returns {boolean}
+ */
+function canSpawnScheduledLilacNow() {
+    if (!running || paused || levelCompleteShown || gameOverShown) return false;
+    return gameMode === 'normal' || gameMode === 'survival';
+}
+
 function initPlatformLevel() {
     platforms = [];
     
@@ -237,6 +274,7 @@ function spawnO4koDrop(kind = 'random') {
  * @param {number} cy - координата Y центра.
  */
 function spawnEnemyAt(cx, cy) {
+    if (!canSpawnScheduledLilacNow()) return;
     const lilacColors = ["#b57edc", "#c084fc", "#a855f7", "#e1bee7", "#ede7f6"];
     const flowers = [];
     for (let i = 0; i < 18; i++) {
@@ -266,7 +304,8 @@ function scheduleWave(cx, cy, count, intervalMs) {
         const spacing = canvas.width / (count + 1);
         for (let i = 0; i < count; i++) {
             // Коллбек таймера спавнит очередного врага волны
-            setTimeout(() => {
+            scheduleEnemySpawnTimeout(() => {
+                if (!canSpawnScheduledLilacNow()) return;
                 const rx = spacing * (i + 1);
                 const ry = ENEMY_START_Y + (Math.random() - 0.5) * 20;
                 spawnEnemyAt(rx, ry);
@@ -276,7 +315,8 @@ function scheduleWave(cx, cy, count, intervalMs) {
     }
     for (let i = 0; i < count; i++) {
         // Коллбек таймера спавнит очередного врага волны
-        setTimeout(() => {
+        scheduleEnemySpawnTimeout(() => {
+            if (!canSpawnScheduledLilacNow()) return;
             // небольшой случайный разброс, чтобы враги не накладывались
             const rx = cx + (Math.random() - 0.5) * 60;
             const ry = cy + (Math.random() - 0.5) * 40;

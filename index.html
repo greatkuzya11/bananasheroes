@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
@@ -132,6 +132,27 @@
             max-width: calc(100vw - 20px);
             pointer-events: none;
             z-index: 950;
+        }
+
+        #hud .hud-bonus {
+            display: inline-flex;
+            align-items: baseline;
+            gap: clamp(0.18em, 0.35vw, 0.42em);
+            color: inherit;
+            font: inherit;
+            letter-spacing: inherit;
+        }
+
+        #hud .hud-bonus.active {
+            color: #ffd54f;
+            text-shadow: 0 0 4px rgba(0,0,0,0.85), 0 0 8px rgba(0,0,0,0.55);
+        }
+
+        #hud .hud-bonus-value {
+            min-width: 2ch;
+            text-align: right;
+            font: inherit;
+            font-variant-numeric: tabular-nums;
         }
 
         #touch-controls {
@@ -364,7 +385,8 @@
             <button class="mode" data-mode="survival">Выживание</button>
             <button class="mode" data-mode="67">Режим 67</button>
             <button class="mode" data-mode="o4ko">Очко</button>
-            <button class="mode" data-mode="platforms">🪜 Платформы</button>
+            <button class="mode" data-mode="nosok">Носок</button>
+            <button class="mode" data-mode="platforms">🪵 Платформы</button>
         </div>
     </div>
 </div>
@@ -394,9 +416,9 @@
         <div class="hint-card">
             <div class="hint-title">Управление на телефоне</div>
             <div class="hint-text">
-                LEFT/RIGHT — движение, UP — прыжок, FIRE — стрельба.
+                LEFT/RIGHT - движение, UP - прыжок, FIRE - стрельба.
                 DIR/UP: в обычном режиме меняет направление пули, в ALT при удержании стреляет вверх.
-                ALT — альтернативная стрельба, BONUS — бонусный режим, PAUSE — пауза.
+                ALT - альтернативная стрельба, BONUS - бонусный режим, PAUSE - пауза.
             </div>
             <button class="hint-close" data-action="close-mobile-hint">Понятно</button>
         </div>
@@ -411,8 +433,10 @@
 <script src="js/entities/player.js"></script>
 <script src="js/entities/enemy67.js"></script>
 <script src="js/entities/bossO4ko.js"></script>
+<script src="js/entities/bossNosok.js"></script>
 <script src="js/entities/platform.js"></script>
 <script src="js/render/lilac.js"></script>
+<script src="js/modes/nosok.js"></script>
 <script src="js/systems/bullets.js"></script>
 <script src="js/systems/spawn.js"></script>
 <script src="js/systems/update.js"></script>
@@ -422,3 +446,4 @@
 <script src="js/main.js"></script>
 </body>
 </html>
+

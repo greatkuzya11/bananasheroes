@@ -6,18 +6,30 @@ function showLevelComplete() {
     if (typeof window.clearGameInputs === 'function') {
         window.clearGameInputs();
     }
+    if (typeof clearScheduledEnemySpawns === 'function') clearScheduledEnemySpawns();
     if (typeof window.setGameTouchControlsVisible === 'function') {
         window.setGameTouchControlsVisible(false);
     }
 
     // Показываем оверлей, игра может продолжаться; урон отключен после смерти босса.
-    // Сохраняем рекорд, если текущий результат его превзошел, и отображаем это.
-    const key = 'bh_bestScore_' + (selectedChar || 'kuzy') + '_' + (gameMode || 'normal');
-    const best = parseInt(localStorage.getItem(key) || '0', 10) || 0;
+    // Для режима "Носок" рекорд — минимальное время, для остальных — максимальные очки.
+    const isNosokVictory = gameMode === 'nosok';
     let isNew = false;
-    if (score > best) {
-        localStorage.setItem(key, String(score));
-        isNew = true;
+    if (isNosokVictory) {
+        const timeKey = getNosokBestTimeKey();
+        const prevBest = parseInt(localStorage.getItem(timeKey) || '0', 10) || 0;
+        const currentTime = Math.max(1, nosokFinalTimeMs || Math.round(nosokElapsedTime * 1000));
+        if (prevBest <= 0 || currentTime < prevBest) {
+            localStorage.setItem(timeKey, String(currentTime));
+            isNew = true;
+        }
+    } else {
+        const key = 'bh_bestScore_' + (selectedChar || 'kuzy') + '_' + (gameMode || 'normal');
+        const best = parseInt(localStorage.getItem(key) || '0', 10) || 0;
+        if (score > best) {
+            localStorage.setItem(key, String(score));
+            isNew = true;
+        }
     }
     updateBestScoresDisplay();
 
@@ -59,10 +71,12 @@ function showLevelComplete() {
     // Отдельные победные фразы для специальных режимов
     const victoryText67 = 'Поздравляю, вы победили 67!';
     const victoryTextO4ko = 'Поздравляю, вы победили Очко!';
+    const victoryTextNosok = `Победа! 10/10 голов за ${formatNosokTime(Math.max(1, nosokFinalTimeMs || Math.round(nosokElapsedTime * 1000)))}`;
     const victoryTextDefault = 'Поздравляем, уровень пройден. Букин освобождён.';
     const victoryText = (gameMode === '67')
         ? victoryText67
-        : (gameMode === 'o4ko') ? victoryTextO4ko : victoryTextDefault;
+        : (gameMode === 'o4ko') ? victoryTextO4ko
+            : (gameMode === 'nosok') ? victoryTextNosok : victoryTextDefault;
     msg.innerText = victoryText + (isNew ? ' — Новый рекорд!' : '');
     Object.assign(msg.style, { fontSize: '20px', marginBottom: '18px', color: '#222', opacity: '0', transform: 'translateY(12px)' });
 
@@ -85,26 +99,9 @@ function showLevelComplete() {
         if (typeof window.clearGameInputs === 'function') {
             window.clearGameInputs();
         }
+        if (typeof clearScheduledEnemySpawns === 'function') clearScheduledEnemySpawns();
+        if (typeof resetGameStateForMenu === 'function') resetGameStateForMenu();
         // Вернуться в меню
-        running = false;
-        levelCompleteShown = false;
-        // очистим состояние игры
-        enemies = [];
-        bullets = [];
-        enemyBullets = [];
-        bottles = [];
-        hearts = [];
-        bananaBonuses = [];
-        o4koVictoryBeers = [];
-        o4koVictorySequenceActive = false;
-        boss = null;
-        bossO4ko = null;
-        bukinTablet = null;
-        o4koHitStreak = 0;
-        o4koRandomDropTimer = 0;
-        o4koVulnHitCount = 0;
-        o4koLivesLost = 0;
-        o4koPityHeartUsed = false;
         document.getElementById('game').style.display = 'none';
         document.getElementById('menu').style.display = 'block';
         // Показываем выбор персонажа (скрываем выбор режима)
@@ -148,16 +145,21 @@ function showLevelCompleteMessage() {
     if (typeof window.clearGameInputs === 'function') {
         window.clearGameInputs();
     }
+    if (typeof clearScheduledEnemySpawns === 'function') clearScheduledEnemySpawns();
     if (typeof window.setGameTouchControlsVisible === 'function') {
         window.setGameTouchControlsVisible(false);
     }
 
-    const key = 'bh_bestScore_' + (selectedChar || 'kuzy') + '_' + (gameMode || 'normal');
-    const best = parseInt(localStorage.getItem(key) || '0', 10) || 0;
+    const isNosokMode = gameMode === 'nosok';
+    let key = '';
     let isNew = false;
-    if (score > best) {
-        localStorage.setItem(key, String(score));
-        isNew = true;
+    if (!isNosokMode) {
+        key = 'bh_bestScore_' + (selectedChar || 'kuzy') + '_' + (gameMode || 'normal');
+        const best = parseInt(localStorage.getItem(key) || '0', 10) || 0;
+        if (score > best) {
+            localStorage.setItem(key, String(score));
+            isNew = true;
+        }
     }
     updateBestScoresDisplay();
 
@@ -212,28 +214,8 @@ function showLevelCompleteMessage() {
         if (typeof window.clearGameInputs === 'function') {
             window.clearGameInputs();
         }
-        running = false;
-        levelCompleteShown = false;
-        enemies = [];
-        bullets = [];
-        enemyBullets = [];
-        bottles = [];
-        hearts = [];
-        bananaBonuses = [];
-        o4koVictoryBeers = [];
-        o4koVictorySequenceActive = false;
-        platforms = [];
-        boss = null;
-        bossO4ko = null;
-        bukinTablet = null;
-        enemy67 = null;
-        platformRuby = null;
-        platformCup = null;
-        o4koHitStreak = 0;
-        o4koRandomDropTimer = 0;
-        o4koVulnHitCount = 0;
-        o4koLivesLost = 0;
-        o4koPityHeartUsed = false;
+        if (typeof clearScheduledEnemySpawns === 'function') clearScheduledEnemySpawns();
+        if (typeof resetGameStateForMenu === 'function') resetGameStateForMenu();
         document.getElementById('game').style.display = 'none';
         document.getElementById('menu').style.display = 'block';
         updateBestScoresDisplay();
@@ -277,6 +259,7 @@ function updateBestScoresDisplay() {
         { id: 'survival', name: 'Выживание' },
         { id: '67', name: 'Режим 67' },
         { id: 'o4ko', name: 'Очко' },
+        { id: 'nosok', name: 'Носок' },
         { id: 'platforms', name: 'Платформы' }
     ];
     
@@ -286,6 +269,11 @@ function updateBestScoresDisplay() {
         html += `<div style="color:#fff; font-size:14px;"><b>${c.name}:</b> `;
         // Формируем строку рекордов по режимам; m — объект режима
         const scores = modes.map(m => {
+            if (m.id === 'nosok') {
+                const bestTime = parseInt(localStorage.getItem('bh_bestTime_' + c.id + '_nosok') || '0', 10) || 0;
+                const shown = bestTime > 0 ? formatNosokTime(bestTime) : '—';
+                return `${m.name}: <b>${shown}</b>`;
+            }
             const best = parseInt(localStorage.getItem('bh_bestScore_' + c.id + '_' + m.id) || '0', 10) || 0;
             return `${m.name}: <b>${best}</b>`;
         }).join(' | ');
@@ -304,16 +292,21 @@ function showGameOver() {
     if (typeof window.clearGameInputs === 'function') {
         window.clearGameInputs();
     }
+    if (typeof clearScheduledEnemySpawns === 'function') clearScheduledEnemySpawns();
     if (typeof window.setGameTouchControlsVisible === 'function') {
         window.setGameTouchControlsVisible(false);
     }
 
-    const key = 'bh_bestScore_' + (selectedChar || 'kuzy') + '_' + (gameMode || 'normal');
-    const best = parseInt(localStorage.getItem(key) || '0', 10) || 0;
+    const isNosokMode = gameMode === 'nosok';
+    let key = '';
     let isNew = false;
-    if (score > best) {
-        localStorage.setItem(key, String(score));
-        isNew = true;
+    if (!isNosokMode) {
+        key = 'bh_bestScore_' + (selectedChar || 'kuzy') + '_' + (gameMode || 'normal');
+        const best = parseInt(localStorage.getItem(key) || '0', 10) || 0;
+        if (score > best) {
+            localStorage.setItem(key, String(score));
+            isNew = true;
+        }
     }
     updateBestScoresDisplay();
 
@@ -345,15 +338,24 @@ function showGameOver() {
     Object.assign(title.style, { fontSize: '34px', fontWeight: '700', marginBottom: '12px' });
 
     const scoreLine = document.createElement('div');
-    scoreLine.innerText = `Очки: ${score}`;
+    if (isNosokMode) {
+        scoreLine.innerText = `Голы: ${nosokGoals}/${nosokTargetGoals}   Время: ${formatNosokTime(Math.round(nosokElapsedTime * 1000))}`;
+    } else {
+        scoreLine.innerText = `Очки: ${score}`;
+    }
     Object.assign(scoreLine.style, { fontSize: '20px', marginBottom: '6px' });
 
     const bestLine = document.createElement('div');
-    const bestVal = parseInt(localStorage.getItem(key) || '0', 10) || 0;
     const displayName = (charNames && charNames[selectedChar]) ? charNames[selectedChar] : selectedChar;
-    const modeNames = { 'normal': 'Обычный', 'survival': 'Выживание', '67': 'Режим 67', 'o4ko': 'Очко', 'platforms': 'Платформы' };
+    const modeNames = { 'normal': 'Обычный', 'survival': 'Выживание', '67': 'Режим 67', 'o4ko': 'Очко', 'nosok': 'Носок', 'platforms': 'Платформы' };
     const modeName = modeNames[gameMode] || gameMode;
-    bestLine.innerText = `Рекорд (${displayName}, ${modeName}): ${bestVal}` + (isNew ? ' — Новый рекорд!' : '');
+    if (isNosokMode) {
+        const bestTime = parseInt(localStorage.getItem('bh_bestTime_' + (selectedChar || 'kuzy') + '_nosok') || '0', 10) || 0;
+        bestLine.innerText = `Лучшее время (${displayName}, ${modeName}): ${bestTime > 0 ? formatNosokTime(bestTime) : '—'}`;
+    } else {
+        const bestVal = parseInt(localStorage.getItem(key) || '0', 10) || 0;
+        bestLine.innerText = `Рекорд (${displayName}, ${modeName}): ${bestVal}` + (isNew ? ' — Новый рекорд!' : '');
+    }
     Object.assign(bestLine.style, { fontSize: '16px', marginBottom: '18px', color: isNew ? '#ffd54f' : '#ddd' });
 
     const buttons = document.createElement('div');
@@ -367,93 +369,10 @@ function showGameOver() {
         if (typeof window.clearGameInputs === 'function') {
             window.clearGameInputs();
         }
-        enemies = [];
-        bullets = [];
-        enemyBullets = [];
-        bottles = [];
-        hearts = [];
-        bananaBonuses = [];
-        o4koVictoryBeers = [];
-        o4koVictorySequenceActive = false;
-        platforms = [];
-        boss = null;
-        bossO4ko = null;
-        bukinTablet = null;
-        enemy67 = null;
-        score = 0;
-        combo = 0;
-        bonusShots = 0;
-        lives = PLAYER_LIVES;
-        invuln = INVULN_TIME;
-        levelCompleteShown = false;
-        gameOverShown = false;
-        bossDefeated = false;
-        // Сбрасываем счетчики режима выживания
-        killCount = 0;
-        survivalEnemySpeedIncrease = 0;
-        survivalBulletSpeedIncrease = 0;
-        survivalSpeedUps = 0;
-        survivalBulletMultiplier = 1;
-        survivalWaveSpawning = false;
-        o4koHitStreak = 0;
-        o4koRandomDropTimer = 0;
-        o4koVulnHitCount = 0;
-        o4koLivesLost = 0;
-        o4koPityHeartUsed = false;
-        // Сбрасываем счетчики режима платформ
-        platform67HitCount = 0;
-        homePlatform = null;
-        bossPlatform = null;
-        platformRuby = null;
-        platformCup = null;
-        player = new Player(selectedChar);
-        // Спавним врагов только если не специальный режим
-        if (gameMode !== '67' && gameMode !== 'o4ko' && gameMode !== 'platforms') {
-            bgImg.src = 'img/forest.png';
-            spawnEnemies();
-            playerBulletDir = 'up';
-        } else if (gameMode === '67') {
-            enemies = [];
-            bgImg.src = 'img/forest2.png';
-            enemy67 = new Enemy67(player.x, player.y);
-            // Позиция игрока почти с левого угла для режима 67
-            player.x = 20;
-            // Направление пуль по умолчанию направо для режима 67
-            playerBulletDir = 'right';
-        } else if (gameMode === 'o4ko') {
-            enemies = [];
-            bgImg.src = 'img/bg-avs.png';
-            player.x = 20;
-            playerBulletDir = 'right';
-            bossO4ko = new BossO4ko(player.x, player.y);
-        } else if (gameMode === 'platforms') {
-            enemies = [];
-            bgImg.src = 'img/pl-bg.png';
-            playerBulletDir = 'right';
-            // Инициализация платформ для режима платформ
-            initPlatformLevel();
-            // Инициализация отслеживания неподвижности
-            platformPlayerLastX = 0;
-            platformInactivityTimer = 0;
-            // Позиционируем игрока в центр платформы homePlatform
-            if (homePlatform) {
-                player.x = homePlatform.x + (homePlatform.w - player.w) / 2;
-                player.y = homePlatform.y - player.h;
-                player.onPlatform = true; // Игрок стартует на платформе, может прыгать
-                platformPlayerLastX = player.x;
-            }
-            // Спавним врага 67 на платформе bossPlatform
-            if (bossPlatform) {
-                enemy67 = new Enemy67(player.x, player.y, true);
-                platform67HitCount = 0;
-            }
-        }
+        beginGameRun(gameMode, true);
         document.getElementById('menu').style.display = 'none';
         document.getElementById('game').style.display = 'block';
         overlay.remove();
-        running = true;
-        last = performance.now();
-        requestAnimationFrame(loop);
         if (typeof window.setGameTouchControlsVisible === 'function') {
             window.setGameTouchControlsVisible(true);
         }
@@ -467,30 +386,8 @@ function showGameOver() {
         if (typeof window.clearGameInputs === 'function') {
             window.clearGameInputs();
         }
-        enemies = [];
-        bullets = [];
-        enemyBullets = [];
-        bottles = [];
-        hearts = [];
-        bananaBonuses = [];
-        o4koVictoryBeers = [];
-        o4koVictorySequenceActive = false;
-        boss = null;
-        bossO4ko = null;
-        bukinTablet = null;
-        score = 0;
-        combo = 0;
-        bonusShots = 0;
-        lives = PLAYER_LIVES;
-        invuln = INVULN_TIME;
-        o4koHitStreak = 0;
-        o4koRandomDropTimer = 0;
-        o4koVulnHitCount = 0;
-        o4koLivesLost = 0;
-        o4koPityHeartUsed = false;
-        levelCompleteShown = false;
-        gameOverShown = false;
-        running = false;
+        if (typeof clearScheduledEnemySpawns === 'function') clearScheduledEnemySpawns();
+        if (typeof resetGameStateForMenu === 'function') resetGameStateForMenu();
         document.getElementById('game').style.display = 'none';
         document.getElementById('menu').style.display = 'block';
         // Показываем выбор персонажа (скрываем выбор режима)

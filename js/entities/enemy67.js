@@ -3,6 +3,45 @@
  * Враг 67: декоративный противник с анимацией и покачиванием.
  */
 class Enemy67 {
+    // Совместимость со старым вызовом из draw.js.
+    static hideGifOverlay() {}
+
+    /**
+     * Возвращает кэш альфа-канала для указанного прямоугольника источника.
+     * @param {HTMLImageElement} img - изображение.
+     * @param {number} sx - X источника.
+     * @param {number} sy - Y источника.
+     * @param {number} sw - ширина источника.
+     * @param {number} sh - высота источника.
+     * @returns {{w:number,h:number,data:Uint8ClampedArray}|null}
+     */
+    static getAlphaMask(img, sx, sy, sw, sh) {
+        if (!img || sw <= 0 || sh <= 0) return null;
+        if (!Enemy67._alphaCache) Enemy67._alphaCache = new Map();
+        const key = `${img.src || 'img'}|${sx}|${sy}|${sw}|${sh}`;
+        const cached = Enemy67._alphaCache.get(key);
+        if (cached) return cached;
+
+        const c = document.createElement('canvas');
+        c.width = sw;
+        c.height = sh;
+        const cctx = c.getContext('2d', { willReadFrequently: true });
+        if (!cctx) return null;
+
+        cctx.clearRect(0, 0, sw, sh);
+        cctx.drawImage(img, sx, sy, sw, sh, 0, 0, sw, sh);
+        let data = null;
+        try {
+            data = cctx.getImageData(0, 0, sw, sh).data;
+        } catch (err) {
+            return null;
+        }
+
+        const result = { w: sw, h: sh, data };
+        Enemy67._alphaCache.set(key, result);
+        return result;
+    }
+
     /**
      * Создает врага 67 в зависимости от режима игры.
      * @param {number} playerX - начальная X позиция игрока (для ориентира).
@@ -16,10 +55,11 @@ class Enemy67 {
         // Позиция: почти с правого угла или на платформе
         this.x = platformMode ? (bossPlatform.x + (bossPlatform.w - this.w) / 2) : (canvas.width - this.w - 20);
         this.y = platformMode ? (bossPlatform.y - this.h * 0.92) : (canvas.height - this.h - 20);
-        // Анимация: 2 кадра, 0.3 сек на кадр
+        // Анимация: отдельные интервалы для старого sheet и для покадрового tp.
         this.frame = 0;
         this.timer = 0;
-        this.animInterval = 0.3;
+        this.animIntervalSheet = 0.3;  // прежняя скорость старого спрайта 67
+        this.animIntervalTp = 0.075;   // скорость покадровой PNG-анимации
         // Покачивание: сохраняем базовую позицию
         this.baseX = this.x;
         this.baseY = this.y;
@@ -47,10 +87,14 @@ class Enemy67 {
      */
     update(dt) {
         // Анимация кадров
+        const profile = this.getRenderProfile();
+        const isTp = !!(profile && profile.type === 'tpFrames' && Array.isArray(profile.frames) && profile.frames.length > 0);
+        const frameCount = isTp ? profile.frames.length : 2;
+        const animInterval = isTp ? this.animIntervalTp : this.animIntervalSheet;
         this.timer += dt;
-        if (this.timer >= this.animInterval) {
-            this.frame = (this.frame + 1) % 2; // 0 -> 1 -> 0 -> 1...
-            this.timer = 0;
+        while (this.timer >= animInterval) {
+            this.frame = (this.frame + 1) % frameCount;
+            this.timer -= animInterval;
         }
         
         // Атака
@@ -114,11 +158,10 @@ class Enemy67 {
     shoot() {
         // Выбираем случайное эмодзи для пули
         const emoji = this.bulletEmojis[Math.floor(Math.random() * this.bulletEmojis.length)];
-        // Пуля появляется из случайной части врага
-        const offsetX = this.w * (0.2 + Math.random() * 0.6);
-        const offsetY = this.h * (0.2 + Math.random() * 0.6);
-        const bx = this.x + offsetX;
-        const by = this.y + offsetY;
+        // Пуля появляется из непрозрачной точки фигурки (без прозрачного фона).
+        const spawn = this.getRandomOpaquePoint();
+        const bx = spawn.x;
+        const by = spawn.y;
         
         // Наводим на игрока
         const dx = player.x + player.w / 2 - bx;
@@ -130,22 +173,199 @@ class Enemy67 {
         
         enemyBullets.push({ x: bx, y: by, w: 16, h: 24, emoji, vx, vy });
     }
+
+    /**
+     * Возвращает текущий источник рендера врага 67 с учетом perf-настроек.
+     * @returns {{type:'sheet', img: HTMLImageElement}|{type:'tpFrames', frames: HTMLImageElement[]}|null}
+     */
+    getRenderProfile() {
+        const perf = window.BHBulletPerf;
+        const renderMode = (perf && typeof perf.enemy67RenderMode === 'function')
+            ? perf.enemy67RenderMode()
+            : 'sheet';
+        const spriteVariant = (perf && typeof perf.enemy67SpriteVariant === 'function')
+            ? perf.enemy67SpriteVariant()
+            : 'default';
+
+        if (renderMode === 'tp' && Array.isArray(enemy67TpFrames) && enemy67TpFramesReady > 0) {
+            return { type: 'tpFrames', frames: enemy67TpFrames };
+        }
+
+        if (spriteVariant === 'alt' && enemy67AltSpriteReady && enemy67AltImg && enemy67AltImg.complete) {
+            return { type: 'sheet', img: enemy67AltImg };
+        }
+
+        if (enemy67SpriteReady && enemy67Img && enemy67Img.complete) {
+            return { type: 'sheet', img: enemy67Img };
+        }
+
+        if (Array.isArray(enemy67TpFrames) && enemy67TpFramesReady > 0) {
+            return { type: 'tpFrames', frames: enemy67TpFrames };
+        }
+
+        return null;
+    }
+
+    /**
+     * Возвращает активный кадр источника для рендера/коллизии.
+     * @returns {{img:HTMLImageElement,sx:number,sy:number,sw:number,sh:number}|null}
+     */
+    getCurrentSourceFrame() {
+        const profile = this.getRenderProfile();
+        if (!profile) return null;
+
+        if (profile.type === 'tpFrames' && Array.isArray(profile.frames) && profile.frames.length > 0) {
+            const frameImg = profile.frames[this.frame % profile.frames.length];
+            const img = (frameImg && frameImg.complete) ? frameImg : profile.frames.find(f => f && f.complete);
+            if (!img) return null;
+            const sw = img.naturalWidth || img.width || 0;
+            const sh = img.naturalHeight || img.height || 0;
+            if (sw <= 0 || sh <= 0) return null;
+            return { img, sx: 0, sy: 0, sw, sh };
+        }
+
+        if (profile.type === 'sheet' && profile.img && profile.img.complete) {
+            const img = profile.img;
+            const srcNaturalW = img.naturalWidth || img.width || 0;
+            const srcNaturalH = img.naturalHeight || img.height || 0;
+            if (srcNaturalW <= 0 || srcNaturalH <= 0) return null;
+            if (srcNaturalW >= srcNaturalH * 1.8) {
+                const sw = Math.max(1, Math.floor(srcNaturalW / 2));
+                const sh = srcNaturalH;
+                const sx = (this.frame % 2) * sw;
+                return { img, sx, sy: 0, sw, sh };
+            }
+            return { img, sx: 0, sy: 0, sw: srcNaturalW, sh: srcNaturalH };
+        }
+
+        return null;
+    }
+
+    /**
+     * Рисует кадр с сохранением пропорций внутри хитбокса врага.
+     * @param {HTMLImageElement} img - изображение-источник.
+     * @param {number} sx - X источника.
+     * @param {number} sy - Y источника.
+     * @param {number} sw - ширина источника.
+     * @param {number} sh - высота источника.
+     */
+    drawContained(img, sx, sy, sw, sh) {
+        const rect = this.getContainedRect(sw, sh);
+        const dw = rect.w;
+        const dh = rect.h;
+        const dx = rect.x;
+        const dy = rect.y;
+        ctx.drawImage(img, sx, sy, sw, sh, dx, dy, dw, dh);
+    }
+
+    /**
+     * Считает прямоугольник вписывания источника внутрь контейнера врага.
+     * @param {number} sw - ширина источника.
+     * @param {number} sh - высота источника.
+     * @returns {{x:number,y:number,w:number,h:number}}
+     */
+    getContainedRect(sw, sh) {
+        const fit = Math.min(this.w / Math.max(1, sw), this.h / Math.max(1, sh));
+        const dw = sw * fit;
+        const dh = sh * fit;
+        const dx = this.x + (this.w - dw) * 0.5;
+        const dy = this.y + (this.h - dh) * 0.5;
+        return { x: dx, y: dy, w: dw, h: dh };
+    }
+
+    /**
+     * Возвращает видимый хитбокс врага (без прозрачных полей контейнера).
+     * Используется для точной коллизии попаданий.
+     * @returns {{x:number,y:number,w:number,h:number,cx:number,cy:number}}
+     */
+    getVisibleHitbox() {
+        const fallback = {
+            x: this.x,
+            y: this.y,
+            w: this.w,
+            h: this.h,
+            cx: this.x + this.w * 0.5,
+            cy: this.y + this.h * 0.5
+        };
+
+        const src = this.getCurrentSourceFrame();
+        if (!src) return fallback;
+
+        const rect = this.getContainedRect(src.sw, src.sh);
+        return {
+            x: rect.x,
+            y: rect.y,
+            w: rect.w,
+            h: rect.h,
+            cx: rect.x + rect.w * 0.5,
+            cy: rect.y + rect.h * 0.5
+        };
+    }
+
+    /**
+     * Проверяет, попадает ли точка в непрозрачный пиксель текущего кадра врага.
+     * @param {number} px - X точки в координатах canvas.
+     * @param {number} py - Y точки в координатах canvas.
+     * @param {number} alphaThreshold - порог альфы (0-255).
+     * @returns {boolean}
+     */
+    isOpaquePoint(px, py, alphaThreshold = 12) {
+        const src = this.getCurrentSourceFrame();
+        if (!src) return false;
+        const rect = this.getContainedRect(src.sw, src.sh);
+        if (px < rect.x || px > rect.x + rect.w || py < rect.y || py > rect.y + rect.h) return false;
+
+        const mask = Enemy67.getAlphaMask(src.img, src.sx, src.sy, src.sw, src.sh);
+        if (!mask) return true; // фолбек, если чтение пикселей недоступно
+
+        const u = (px - rect.x) / Math.max(1e-6, rect.w);
+        const v = (py - rect.y) / Math.max(1e-6, rect.h);
+        const ix = Math.max(0, Math.min(src.sw - 1, Math.floor(u * src.sw)));
+        const iy = Math.max(0, Math.min(src.sh - 1, Math.floor(v * src.sh)));
+        const alpha = mask.data[(iy * src.sw + ix) * 4 + 3];
+        return alpha >= alphaThreshold;
+    }
+
+    /**
+     * Возвращает случайную непрозрачную точку текущего кадра врага.
+     * @param {number} alphaThreshold - порог альфы (0-255).
+     * @param {number} maxAttempts - число попыток случайного выбора.
+     * @returns {{x:number,y:number}}
+     */
+    getRandomOpaquePoint(alphaThreshold = 12, maxAttempts = 40) {
+        const src = this.getCurrentSourceFrame();
+        if (!src) {
+            return { x: this.x + this.w * 0.5, y: this.y + this.h * 0.5 };
+        }
+
+        const rect = this.getContainedRect(src.sw, src.sh);
+        const mask = Enemy67.getAlphaMask(src.img, src.sx, src.sy, src.sw, src.sh);
+        if (!mask) {
+            return { x: rect.x + rect.w * 0.5, y: rect.y + rect.h * 0.5 };
+        }
+
+        for (let i = 0; i < maxAttempts; i++) {
+            const ix = Math.floor(Math.random() * src.sw);
+            const iy = Math.floor(Math.random() * src.sh);
+            const alpha = mask.data[(iy * src.sw + ix) * 4 + 3];
+            if (alpha >= alphaThreshold) {
+                return {
+                    x: rect.x + ((ix + 0.5) / src.sw) * rect.w,
+                    y: rect.y + ((iy + 0.5) / src.sh) * rect.h
+                };
+            }
+        }
+
+        return { x: rect.x + rect.w * 0.5, y: rect.y + rect.h * 0.5 };
+    }
+
     /**
      * Отрисовывает врага 67 на canvas.
      */
     draw() {
-        if (!enemy67SpriteReady) return;
-        ctx.drawImage(
-            enemy67Img,
-            this.frame * FRAME_67_W, // исходный X: 0 или 326
-            0,                         // исходный Y
-            FRAME_67_W,               // ширина источника: 326
-            FRAME_67_H,               // высота источника: 326
-            this.x,                   // X назначения
-            this.y,                   // Y назначения
-            this.w,                   // ширина назначения
-            this.h                    // высота назначения
-        );
+        const src = this.getCurrentSourceFrame();
+        if (!src) return;
+        this.drawContained(src.img, src.sx, src.sy, src.sw, src.sh);
     }
 }
 

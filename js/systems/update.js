@@ -50,6 +50,12 @@ function startO4koVictorySequence() {
  * @param {number} dt - прошедшее время кадра в секундах.
  */
 function update(dt) {
+    // Отдельный игровой цикл уровня "Носок".
+    if (gameMode === 'nosok') {
+        updateNosokMode(dt);
+        return;
+    }
+
     if (invuln > 0) invuln -= dt;
     
     // Обновляем платформы в режиме платформ
@@ -472,7 +478,22 @@ function update(dt) {
         
         // Проверка попадания по врагу 67
         if (enemy67 && enemy67.hp > 0) {
-            if (b.x > enemy67.x && b.x < enemy67.x + enemy67.w && b.y > enemy67.y && b.y < enemy67.y + enemy67.h) {
+            const enemy67Hitbox = (typeof enemy67.getVisibleHitbox === 'function')
+                ? enemy67.getVisibleHitbox()
+                : {
+                    x: enemy67.x,
+                    y: enemy67.y,
+                    w: enemy67.w,
+                    h: enemy67.h,
+                    cx: enemy67.x + enemy67.w * 0.5,
+                    cy: enemy67.y + enemy67.h * 0.5
+                };
+
+            const insideVisibleRect = b.x > enemy67Hitbox.x && b.x < enemy67Hitbox.x + enemy67Hitbox.w && b.y > enemy67Hitbox.y && b.y < enemy67Hitbox.y + enemy67Hitbox.h;
+            const insideOpaqueShape = insideVisibleRect && (
+                (typeof enemy67.isOpaquePoint === 'function') ? enemy67.isOpaquePoint(b.x, b.y) : true
+            );
+            if (insideOpaqueShape) {
                 // Бонусный выстрел Кузи и Дрона наносит 2 урона
                 const damage = (b.isBonus && (player.type === 'kuzy' || player.type === 'dron')) ? 2 : 1;
                 enemy67.hp -= damage;
@@ -545,16 +566,16 @@ function update(dt) {
                 // Пуля исчезает после попадания, включая бонусную пулю Дрона
                 bullets.splice(bi, 1);
                 score += 5;
-                // Маленький взрыв при попадании
+                // Маленький взрыв в точке попадания на видимой части спрайта 67.
                 explosions.push({ x: b.x, y: b.y, timer: 0 });
                 
                 if (enemy67.hp <= 0) {
                     // Большой взрыв размером с врага
                     explosions.push({ 
-                        x: enemy67.x + enemy67.w / 2, 
-                        y: enemy67.y + enemy67.h / 2, 
+                        x: enemy67Hitbox.cx, 
+                        y: enemy67Hitbox.cy, 
                         timer: 0,
-                        size: enemy67.w * 0.8 // размер взрыва как размер врага
+                        size: Math.max(enemy67Hitbox.w, enemy67Hitbox.h) * 0.8 // размер взрыва как размер врага
                     });
                     
                     // В режиме платформ: взрываем всех врагов и пули врагов
@@ -982,12 +1003,10 @@ function update(dt) {
         const o4koPhaseInfo = (gameMode === 'o4ko' && bossO4ko)
             ? `   Фаза: ${bossO4ko.getPhaseLabel()}`
             : '';
+        const bonusClass = (bonusMode && bonusShots > 0) ? 'hud-bonus active' : 'hud-bonus';
+        const bonusHtml = `<span class="${bonusClass}"><span>Бонус:</span><span class="hud-bonus-value">${Math.max(0, bonusShots)}</span></span>`;
         let hudHtml = '';
-        if (bonusMode && bonusShots > 0) {
-            hudHtml = `${playerName} | Жизни: ${cachedLivesStr}<br>Очки: ${score}   Комбо: ${combo}   <span style="color:black">Бонус: ${bonusShots}</span>   Пули: ${dirIcon} ${modeIndicator}${o4koPhaseInfo}`;
-        } else {
-            hudHtml = `${playerName} | Жизни: ${cachedLivesStr}<br>Очки: ${score}   Комбо: ${combo}   Бонус: ${bonusShots}   Пули: ${dirIcon} ${modeIndicator}${o4koPhaseInfo}`;
-        }
+        hudHtml = `${playerName} | Жизни: ${cachedLivesStr}<br>Очки: ${score}   Комбо: ${combo}   ${bonusHtml}   Пули: ${dirIcon} ${modeIndicator}${o4koPhaseInfo}`;
         if (hudHtml !== lastHudHtml) {
             hudEl.innerHTML = hudHtml;
             lastHudHtml = hudHtml;

@@ -17,6 +17,8 @@
 
     let bulletRenderMode = 'png'; // режим отрисовки пуль: 'emoji' | 'png'
     let bulletRotationEnabled = true;
+    let enemy67RenderMode = 'sheet'; // 'sheet' | 'tp'
+    let enemy67SpriteVariant = 'default'; // 'default' | 'alt'
 
     const EMOJI_SOURCES = {
         // Пули игрока
@@ -110,6 +112,14 @@
         }
         if (key === 'r') {
             bulletRotationEnabled = !bulletRotationEnabled;
+            return;
+        }
+        if (key === 'g') {
+            enemy67RenderMode = (enemy67RenderMode === 'sheet') ? 'tp' : 'sheet';
+            return;
+        }
+        if (key === 'k') {
+            enemy67SpriteVariant = (enemy67SpriteVariant === 'default') ? 'alt' : 'default';
         }
     }
 
@@ -176,7 +186,7 @@
         ctx.textAlign = 'left';
         ctx.textBaseline = 'top';
         ctx.fillStyle = 'rgba(0,0,0,0.6)';
-        ctx.fillRect(10, 10, 280, 86);
+        ctx.fillRect(10, 10, 300, 100);
         ctx.fillStyle = '#fff';
         ctx.font = '12px monospace';
         ctx.fillText(`FPS: ${PERF.avg.fps.toFixed(1)}`, 18, 28);
@@ -184,6 +194,7 @@
         ctx.fillText(`Update: ${PERF.avg.bulletUpdate.toFixed(3)} ms`, 18, 56);
         ctx.fillText(`Draw: ${PERF.avg.bulletDraw.toFixed(3)} ms`, 18, 70);
         ctx.fillText(`Mode: ${bulletRenderMode} rot:${bulletRotationEnabled ? 'on' : 'off'}`, 18, 84);
+        ctx.fillText(`E67: ${enemy67RenderMode}/${enemy67SpriteVariant}`, 18, 98);
         ctx.restore();
     }
 
@@ -195,6 +206,10 @@
         bulletRenderMode: () => bulletRenderMode,
         // Возвращает, включено ли вращение пуль
         bulletRotationEnabled: () => bulletRotationEnabled,
+        // Возвращает режим рендера врага 67
+        enemy67RenderMode: () => enemy67RenderMode,
+        // Возвращает выбранный вариант спрайта врага 67
+        enemy67SpriteVariant: () => enemy67SpriteVariant,
         // Возвращает PNG-иконку для эмодзи
         getEmojiBitmap,
         // Хук начала измерения обновления пуль

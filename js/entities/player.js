@@ -37,23 +37,27 @@ class Player {
         this.facingDir = 'right';
         // Режим платформ: флаг стояния на платформе (для проверки прыжка)
         this.onPlatform = false;
+        // Кэш alpha-масок для коллизий мяча/пуль по непрозрачной части спрайта.
+        this.maskCache = new Map();
     }
         /**
      * Обновляет движение, анимацию и стрельбу игрока.
      * @param {number} dt - прошедшее время кадра в секундах.
      */
     update(dt) {
+        const nosokMoveMul = (gameMode === 'nosok') ? 1.5 : 1;
+        const nosokJumpMul = (gameMode === 'nosok') ? 1.5 : 1;
         // Альтернативный режим стрельбы: стрелки меняют направление
         if (altShootMode) {
             if (keys["ArrowLeft"]) {
                 playerBulletDir = 'left';
                 this.facingDir = 'left';
-                this.x -= this.speed;
+                this.x -= this.speed * nosokMoveMul;
             }
             if (keys["ArrowRight"]) {
                 playerBulletDir = 'right';
                 this.facingDir = 'right';
-                this.x += this.speed;
+                this.x += this.speed * nosokMoveMul;
             }
             // Клавиша ArrowDown стреляет вверх в альтернативном режиме
             if (keys["ArrowDown"]) {
@@ -65,10 +69,10 @@ class Player {
         } else {
             // Обычный режим: только горизонтальное движение
             if (keys["ArrowLeft"]) {
-                this.x -= this.speed;
+                this.x -= this.speed * nosokMoveMul;
             }
             if (keys["ArrowRight"]) {
-                this.x += this.speed;
+                this.x += this.speed * nosokMoveMul;
             }
         }
         this.x = Math.max(10, Math.min(canvas.width - this.w - 10, this.x));
@@ -87,12 +91,13 @@ class Player {
             if (this.jumpStyle === 'max') {
                 // линейный прыжок фиксированной высоты (без зарядки)
                 this.jumpHeight = this.jumpMaxHeight;
+                this.jumpDuration = 2.0 / nosokJumpMul;
                 // Устанавливаем отрицательное vy чтобы логика платформ знала что Max прыгает вверх
-                this.vy = -1;
+                this.vy = -1 * nosokJumpMul;
             } else {
                 // физические стили: задаем гравитацию и стартовую скорость вверх по минимальной высоте
-                this.gravity = 2 * this.jumpMaxHeight;
-                const v0 = 2 * this.jumpMinHeight;
+                this.gravity = 2 * this.jumpMaxHeight * nosokJumpMul * nosokJumpMul;
+                const v0 = 2 * this.jumpMinHeight * nosokJumpMul;
                 this.vy = -v0;
             }
         }
@@ -191,7 +196,7 @@ class Player {
                     this.jumpHoldTimer = Math.min(this.jumpHoldMax, this.jumpHoldTimer + dt);
                     const k = this.jumpHoldTimer / this.jumpHoldMax;
                     const desiredPeak = this.jumpMinHeight + (this.jumpMaxHeight - this.jumpMinHeight) * k;
-                    const desiredV0 = 2 * desiredPeak;
+                    const desiredV0 = 2 * desiredPeak * nosokJumpMul;
                     if (-this.vy < desiredV0) this.vy = -desiredV0;
                 }
                 this.vy += this.gravity * dt;
@@ -211,7 +216,7 @@ class Player {
                     this.jumpHoldTimer = Math.min(this.jumpHoldMax, this.jumpHoldTimer + dt);
                     const k = this.jumpHoldTimer / this.jumpHoldMax;
                     const desiredPeak = this.jumpMinHeight + (this.jumpMaxHeight - this.jumpMinHeight) * k;
-                    const desiredV0 = 2 * desiredPeak;
+                    const desiredV0 = 2 * desiredPeak * nosokJumpMul;
                     const desiredVy = -desiredV0;
                     // Плавно приближаем vy к целевому
                     this.vy += (desiredVy - this.vy) * Math.min(1, this.jumpRampFactor * dt);
@@ -326,6 +331,142 @@ class Player {
             }
         }
     }
+    /**
+     * Возвращает параметры текущего кадра для alpha-коллизии.
+     * @returns {{
+     *   img:HTMLImageElement,
+     *   direct:boolean,
+     *   sx:number,
+     *   sy:number,
+     *   sw:number,
+     *   sh:number
+     * }|null}
+     */
+    getCollisionSpriteInfo() {
+        const isFalling = (gameMode === 'platforms') && !this.onPlatform && !this.isJumping;
+        let useShootFiles = false;
+        let useShootUpFiles = false;
+        let currentSprite = kuzyImg;
+        let spriteIsReady = spriteReady;
+
+        if ((this.isJumping || isFalling) && this.shooting) {
+            if (playerBulletDir === 'up') {
+                useShootUpFiles = true;
+                spriteIsReady = (shootUpSpritesReady === 7);
+            } else {
+                currentSprite = kuzyJumpImg;
+                spriteIsReady = jumpSpriteReady;
+            }
+        } else if ((this.isJumping || isFalling) && !this.shooting) {
+            currentSprite = kuzyJumpImg;
+            spriteIsReady = jumpSpriteReady;
+        } else if (!this.isJumping && this.shooting) {
+            if (playerBulletDir === 'up') {
+                useShootUpFiles = true;
+                spriteIsReady = (shootUpSpritesReady === 7);
+            } else {
+                useShootFiles = true;
+                spriteIsReady = (shootSpritesReady === 5);
+            }
+        }
+
+        if (!spriteIsReady) return null;
+
+        if (useShootFiles) {
+            const shootFrame = Math.min(this.frame, 4);
+            return {
+                img: kuzyShootImgs[shootFrame],
+                direct: true,
+                sx: 0,
+                sy: 0,
+                sw: 0,
+                sh: 0
+            };
+        }
+
+        if (useShootUpFiles) {
+            let shootFrame = this.frame;
+            if (this.isJumping || isFalling) {
+                shootFrame = Math.max(5, Math.min(this.frame, 6));
+            } else {
+                shootFrame = Math.min(this.frame, 4);
+            }
+            return {
+                img: kuzyShootUpImgs[shootFrame],
+                direct: true,
+                sx: 0,
+                sy: 0,
+                sw: 0,
+                sh: 0
+            };
+        }
+
+        return {
+            img: currentSprite,
+            direct: false,
+            sx: this.frame * FRAME_W,
+            sy: 0,
+            sw: FRAME_W,
+            sh: FRAME_H
+        };
+    }
+
+    /**
+     * Возвращает кэш alpha-маски текущего кадра (с учетом зеркалирования).
+     * @returns {{data: Uint8ClampedArray, w: number, h: number}|null}
+     */
+    getCollisionMask() {
+        const info = this.getCollisionSpriteInfo();
+        if (!info || !info.img || !info.img.complete) return null;
+        const flip = (this.facingDir === 'left') ? 'L' : 'R';
+        const key = `${info.img.src}|${info.direct ? 'D' : `${info.sx}:${info.sy}:${info.sw}:${info.sh}`}|${flip}|${Math.round(this.w)}|${Math.round(this.h)}`;
+        if (this.maskCache.has(key)) return this.maskCache.get(key);
+
+        const c = document.createElement('canvas');
+        c.width = Math.max(1, Math.round(this.w));
+        c.height = Math.max(1, Math.round(this.h));
+        const cctx = c.getContext('2d');
+        cctx.clearRect(0, 0, c.width, c.height);
+
+        if (this.facingDir === 'left') {
+            cctx.save();
+            cctx.translate(c.width, 0);
+            cctx.scale(-1, 1);
+            if (info.direct) {
+                cctx.drawImage(info.img, 0, 0, c.width, c.height);
+            } else {
+                cctx.drawImage(info.img, info.sx, info.sy, info.sw, info.sh, 0, 0, c.width, c.height);
+            }
+            cctx.restore();
+        } else if (info.direct) {
+            cctx.drawImage(info.img, 0, 0, c.width, c.height);
+        } else {
+            cctx.drawImage(info.img, info.sx, info.sy, info.sw, info.sh, 0, 0, c.width, c.height);
+        }
+
+        const id = cctx.getImageData(0, 0, c.width, c.height);
+        const mask = { data: id.data, w: c.width, h: c.height };
+        if (this.maskCache.size > 40) this.maskCache.clear();
+        this.maskCache.set(key, mask);
+        return mask;
+    }
+
+    /**
+     * Проверяет непрозрачность пикселя спрайта игрока в мировой точке.
+     * @param {number} wx - мировая координата X.
+     * @param {number} wy - мировая координата Y.
+     * @returns {boolean}
+     */
+    isOpaqueAtWorld(wx, wy) {
+        if (wx < this.x || wy < this.y || wx >= this.x + this.w || wy >= this.y + this.h) return false;
+        const mask = this.getCollisionMask();
+        if (!mask) return false;
+        const lx = Math.max(0, Math.min(mask.w - 1, Math.floor(wx - this.x)));
+        const ly = Math.max(0, Math.min(mask.h - 1, Math.floor(wy - this.y)));
+        const a = mask.data[(ly * mask.w + lx) * 4 + 3];
+        return a > 24;
+    }
+
     /**
      * Отрисовывает спрайт игрока на canvas
      */

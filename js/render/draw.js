@@ -11,6 +11,58 @@ function draw() {
         ctx.fillRect(0, 0, canvas.width, canvas.height);
     }
 
+    if (gameMode === 'nosok' && nosokGoalSensor && nosokCrossbar) {
+        // Ворота уровня "Носок": стойка + верхняя перекладина (форма "Г").
+        const netX = nosokGoalSensor.x + nosokGoalSensor.w;
+        const netY = nosokCrossbar.y + nosokCrossbar.h;
+        const netW = Math.max(0, canvas.width - netX);
+        const netH = Math.max(0, (canvas.height - 20) - netY);
+        if (netW > 0 && netH > 0) {
+            ctx.save();
+            if (goalNetReady && goalNetImg.complete) {
+                const pattern = ctx.createPattern(goalNetImg, 'repeat');
+                if (pattern) {
+                    ctx.fillStyle = pattern;
+                    ctx.fillRect(netX, netY, netW, netH);
+                } else {
+                    ctx.globalAlpha = 0.28;
+                    ctx.fillStyle = '#d9e2ec';
+                    ctx.fillRect(netX, netY, netW, netH);
+                }
+            } else {
+                // Временный фолбек до появления PNG-сетки.
+                ctx.globalAlpha = 0.22;
+                ctx.strokeStyle = '#d9e2ec';
+                ctx.lineWidth = 1;
+                const step = Math.max(10, Math.round(canvas.width * 0.012));
+                for (let x = netX; x <= netX + netW; x += step) {
+                    ctx.beginPath();
+                    ctx.moveTo(x, netY);
+                    ctx.lineTo(x, netY + netH);
+                    ctx.stroke();
+                }
+                for (let y = netY; y <= netY + netH; y += step) {
+                    ctx.beginPath();
+                    ctx.moveTo(netX, y);
+                    ctx.lineTo(netX + netW, y);
+                    ctx.stroke();
+                }
+            }
+            ctx.restore();
+        }
+        nosokGoalSensor.draw();
+        nosokCrossbar.draw();
+        if (nosokGoalFlashTimer > 0) {
+            const flash = 0.18 + 0.2 * Math.sin(performance.now() * 0.03);
+            ctx.save();
+            ctx.globalAlpha = Math.max(0, flash);
+            ctx.fillStyle = '#eaff9d';
+            ctx.fillRect(nosokGoalSensor.x, nosokGoalSensor.y, nosokGoalSensor.w, nosokGoalSensor.h);
+            ctx.fillRect(nosokCrossbar.x, nosokCrossbar.y, nosokCrossbar.w, nosokCrossbar.h);
+            ctx.restore();
+        }
+    }
+
     // Рисуем платформы в режиме платформ
     if (gameMode === 'platforms') {
         // Рисуем каждую платформу; p — объект платформы
@@ -137,14 +189,37 @@ function draw() {
     // Рисуем пули врагов; b — объект пули врага
     enemyBullets.forEach(b => {
         const isO4koPoop = !!b.o4koPoop;
+        const isNosokSock = !!b.nosokSock;
+        const isNosokFish = !!b.nosokFish;
+        const isNosokStink = isNosokSock || isNosokFish;
         const w = b.w || 24;
         const h = b.h || 24;
         const cx = b.x + w / 2;
         const cy = b.y + h / 2;
         const angle = (typeof b.rotation === 'number') ? b.rotation : 0;
 
+        if (isNosokStink && Array.isArray(b.fumePuffs)) {
+            b.fumePuffs.forEach(p => {
+                const lifeK = 1 - (p.timer / Math.max(0.001, p.life));
+                ctx.save();
+                ctx.globalAlpha = Math.max(0, lifeK * (p.alpha || 0.82));
+                ctx.globalCompositeOperation = 'source-over';
+                ctx.shadowBlur = 12 * lifeK;
+                ctx.shadowColor = 'rgba(36,46,18,0.55)';
+                const g = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.r);
+                g.addColorStop(0, p.colorCore || 'rgba(66,63,44,0.98)');
+                g.addColorStop(0.56, p.colorMid || 'rgba(92,109,49,0.62)');
+                g.addColorStop(1, p.colorEdge || 'rgba(19,22,14,0)');
+                ctx.fillStyle = g;
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+            });
+        }
+
         if (b.img && b.img.complete) {
-            if (isO4koPoop && typeof b.rotation === 'number') {
+            if ((isO4koPoop || isNosokStink) && typeof b.rotation === 'number') {
                 ctx.save();
                 ctx.translate(cx, cy);
                 ctx.rotate(angle);
@@ -155,11 +230,11 @@ function draw() {
             }
             return;
         }
-        const emoji = b.emoji || "🍃";
-        const size = isO4koPoop ? Math.max(w, h) : (b.h || 12) * 2.4;
+        const emoji = isNosokSock ? "🧦" : (isNosokFish ? "🐟" : (b.emoji || "🍃"));
+        const size = (isO4koPoop || isNosokStink) ? Math.max(w, h) : (b.h || 12) * 2.4;
         const bulletImg = getEmojiBitmap ? getEmojiBitmap(emoji) : null;
         if (renderMode === 'png' && bulletImg) {
-            if (isO4koPoop && typeof b.rotation === 'number') {
+            if ((isO4koPoop || isNosokStink) && typeof b.rotation === 'number') {
                 ctx.save();
                 ctx.translate(cx, cy);
                 ctx.rotate(angle);
@@ -169,7 +244,7 @@ function draw() {
                 ctx.drawImage(bulletImg, b.x, b.y, size, size);
             }
         } else {
-            if (isO4koPoop && typeof b.rotation === 'number') {
+            if ((isO4koPoop || isNosokStink) && typeof b.rotation === 'number') {
                 ctx.save();
                 ctx.translate(cx, cy);
                 ctx.rotate(angle);
@@ -235,14 +310,42 @@ function draw() {
         }
     });
 
-    // Рисуем врагов сирень; e — объект врага
-    enemies.forEach(e => {
-        drawLilacCached(e);
+    // Рисуем спец-бонусы уровня "Носок": лед и динамит.
+    nosokSpecialBonuses.forEach(b => {
+        const size = b.h || 44;
+        if (b.type === 'ice' && iceCubeImg && iceCubeImg.complete) {
+            ctx.drawImage(iceCubeImg, b.x, b.y, size, size);
+            return;
+        }
+        if (b.type === 'dynamite' && dynamiteImg && dynamiteImg.complete) {
+            ctx.drawImage(dynamiteImg, b.x, b.y, size, size);
+            return;
+        }
+        const fallback = b.type === 'ice' ? "🧊" : "🧨";
+        const img = getEmojiBitmap ? getEmojiBitmap(fallback) : null;
+        if (renderMode === 'png' && img) {
+            ctx.drawImage(img, b.x, b.y, size, size);
+        } else {
+            ctx.font = `${size}px serif`;
+            ctx.textAlign = "left";
+            ctx.textBaseline = "top";
+            ctx.fillText(fallback, b.x, b.y);
+        }
     });
+
+    // Рисуем врагов сирень только в режимах, где они предусмотрены сценарием.
+    const lilacAllowed = (gameMode === 'normal' || gameMode === 'survival' || gameMode === 'platforms');
+    if (lilacAllowed) {
+        enemies.forEach(e => {
+            drawLilacCached(e);
+        });
+    }
 
     // Отрисовываем врага 67
     if (enemy67) {
         enemy67.draw();
+    } else if (typeof Enemy67 !== 'undefined' && typeof Enemy67.hideGifOverlay === 'function') {
+        Enemy67.hideGifOverlay();
     }
     // Отрисовываем босса режима "Очко"
     if (bossO4ko) {
@@ -272,6 +375,87 @@ function draw() {
         ctx.restore();
     }
 
+    // Отрисовываем босса уровня "Носок".
+    if (bossNosok) {
+        if (gameMode === 'nosok' && nosokGoals >= nosokTargetGoals) {
+            const w = Math.max(36, bossNosok.w * 0.88);
+            const h = Math.max(30, bossNosok.h * 0.78);
+            const x = bossNosok.x + bossNosok.w * 0.5 - w * 0.5;
+            const y = bossNosok.y + bossNosok.h * 0.5 - h * 0.45;
+            const cx = x + w * 0.5;
+            const topY = y + h * 0.18;
+            const img = (o4koPoopImgs && o4koPoopImgs[0]) ? o4koPoopImgs[0] : null;
+            if (img && img.complete) {
+                ctx.save();
+                ctx.translate(x + w * 0.5, y + h * 0.5);
+                ctx.rotate(Math.sin(performance.now() * 0.004) * 0.08);
+                ctx.drawImage(img, -w * 0.5, -h * 0.5, w, h);
+                ctx.restore();
+            } else {
+                ctx.save();
+                ctx.font = `${Math.max(36, h)}px serif`;
+                ctx.textAlign = "center";
+                ctx.textBaseline = "middle";
+                ctx.fillText("💩", x + w * 0.5, y + h * 0.5);
+                ctx.restore();
+            }
+
+            // Плотная темная вонь вверх от "говна": базовое облако + верхние шлейфы.
+            const now = performance.now() * 0.001;
+
+            // Тяжелое облако у основания.
+            for (let i = 0; i < 5; i++) {
+                const sway = Math.sin(now * (1.7 + i * 0.23) + i * 1.9);
+                const bx = cx + sway * (w * 0.08 + i * 1.1);
+                const by = topY + h * (0.08 + i * 0.02);
+                const br = h * (0.12 + i * 0.028);
+                const ba = 0.2 + 0.07 * (1 + sway);
+
+                ctx.save();
+                ctx.globalAlpha = Math.min(0.62, ba);
+                ctx.shadowBlur = 14;
+                ctx.shadowColor = 'rgba(20,24,12,0.7)';
+                const gb = ctx.createRadialGradient(bx, by, 0, bx, by, br);
+                gb.addColorStop(0, 'rgba(48,58,26,0.96)');
+                gb.addColorStop(0.5, 'rgba(66,78,35,0.7)');
+                gb.addColorStop(1, 'rgba(16,20,10,0)');
+                ctx.fillStyle = gb;
+                ctx.beginPath();
+                ctx.arc(bx, by, br, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+            }
+
+            // Верхние шлейфы.
+            for (let i = 0; i < 12; i++) {
+                const period = 1.35 + i * 0.08;
+                const phase = (now + i * 0.22) % period;
+                const t = phase / period;
+                const rise = h * (0.16 + t * 1.55);
+                const sx = cx + Math.sin(now * 2.5 + i * 1.35) * (w * 0.11 + i * 1.35);
+                const sy = topY - rise;
+                const r = (h * 0.064 + i * 0.54) * (0.78 + t * 1.08);
+                const alpha = Math.max(0, 0.64 * (1 - t));
+
+                ctx.save();
+                ctx.globalAlpha = alpha;
+                ctx.shadowBlur = 12;
+                ctx.shadowColor = 'rgba(18,22,12,0.65)';
+                const g = ctx.createRadialGradient(sx, sy, 0, sx, sy, r);
+                g.addColorStop(0, 'rgba(56,66,30,0.94)');
+                g.addColorStop(0.52, 'rgba(86,104,46,0.62)');
+                g.addColorStop(1, 'rgba(14,18,10,0)');
+                ctx.fillStyle = g;
+                ctx.beginPath();
+                ctx.arc(sx, sy, r, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+            }
+        } else {
+            bossNosok.draw();
+        }
+    }
+
     // Рисуем босса-сосиску
     if (boss) {
         ctx.save();
@@ -288,6 +472,76 @@ function draw() {
         ctx.fillRect(boss.x, boss.y - 18, boss.w * (boss.hp / 11), 12);
         ctx.strokeStyle = "#222";
         ctx.strokeRect(boss.x, boss.y - 18, boss.w, 12);
+        ctx.restore();
+    }
+
+    // Рисуем футбольный мяч режима "Носок".
+    if (gameMode === 'nosok' && nosokBall) {
+        ctx.save();
+        ctx.translate(nosokBall.x, nosokBall.y);
+        ctx.rotate(nosokBall.angle || 0);
+        const d = nosokBall.r * 2;
+        if (soccerBallImg && soccerBallImg.complete) {
+            ctx.drawImage(soccerBallImg, -nosokBall.r, -nosokBall.r, d, d);
+        } else {
+            ctx.fillStyle = '#fff';
+            ctx.beginPath();
+            ctx.arc(0, 0, nosokBall.r, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = '#111';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+        }
+        ctx.restore();
+    }
+
+    // Сигнализация гола: конфетти сыпется сверху ~2 секунды.
+    if (gameMode === 'nosok' && Array.isArray(nosokGoalConfetti) && nosokGoalConfetti.length > 0) {
+        nosokGoalConfetti.forEach(c => {
+            const k = 1 - (c.timer / Math.max(0.001, c.life));
+            ctx.save();
+            ctx.translate(c.x, c.y);
+            ctx.rotate(c.rot || 0);
+            ctx.globalAlpha = Math.max(0.12, k);
+            ctx.fillStyle = c.color || '#ffd166';
+            if (c.size > 8 && Math.random() < 0.3) {
+                ctx.fillRect(-c.size * 0.5, -c.size * 0.16, c.size, c.size * 0.32);
+            } else {
+                ctx.fillRect(-c.size * 0.5, -c.size * 0.5, c.size, c.size);
+            }
+            ctx.restore();
+        });
+    }
+
+    // Пульсирующая надпись "ГОЛ" на время конфетти-сигнала.
+    if (gameMode === 'nosok' && (nosokGoalConfettiTimer > 0 || (Array.isArray(nosokGoalConfetti) && nosokGoalConfetti.length > 0))) {
+        const now = performance.now() * 0.001;
+        const total = 2.0;
+        const k = Math.max(0, Math.min(1, nosokGoalConfettiTimer / total));
+        const envelope = Math.sin((1 - k) * Math.PI); // плавное появление/затухание
+        const pulse = 0.55 + 0.45 * (0.5 + 0.5 * Math.sin(now * 12));
+        const alpha = Math.max(0.15, envelope * pulse);
+        const scale = 1 + 0.08 * Math.sin(now * 9.5);
+
+        ctx.save();
+        ctx.translate(canvas.width * 0.5, Math.max(80, canvas.height * 0.17));
+        ctx.scale(scale, scale);
+        ctx.globalAlpha = alpha;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.font = `900 ${Math.round(Math.max(48, canvas.width * 0.085))}px Arial`;
+        ctx.lineJoin = 'round';
+        ctx.lineWidth = 8;
+        ctx.strokeStyle = 'rgba(26,32,44,0.85)';
+        ctx.shadowBlur = 16;
+        ctx.shadowColor = 'rgba(255,214,79,0.7)';
+        ctx.strokeText('ГОЛ', 0, 0);
+        const g = ctx.createLinearGradient(0, -42, 0, 42);
+        g.addColorStop(0, '#fff8e1');
+        g.addColorStop(0.45, '#ffd54f');
+        g.addColorStop(1, '#ff8f00');
+        ctx.fillStyle = g;
+        ctx.fillText('ГОЛ', 0, 0);
         ctx.restore();
     }
 
@@ -423,6 +677,27 @@ function draw() {
 
         ctx.restore();
     });
+
+    if (gameMode === 'nosok') {
+        // Верхнее табло режима "Носок": голы и таймер.
+        const timerStr = formatNosokTime(Math.round(nosokElapsedTime * 1000));
+        const panelW = Math.max(250, canvas.width * 0.32);
+        const panelH = 54;
+        const panelX = (canvas.width - panelW) * 0.5;
+        const panelY = 8;
+        ctx.save();
+        ctx.fillStyle = 'rgba(15,23,42,0.64)';
+        ctx.fillRect(panelX, panelY, panelW, panelH);
+        ctx.strokeStyle = 'rgba(255,255,255,0.35)';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(panelX, panelY, panelW, panelH);
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 17px Arial';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(`Голы: ${nosokGoals}/${nosokTargetGoals}   Время: ${timerStr}`, panelX + panelW / 2, panelY + panelH / 2);
+        ctx.restore();
+    }
 
     // (рубин и кубок теперь рисуются перед игроком)
     
