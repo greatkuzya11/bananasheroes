@@ -60,6 +60,7 @@ let explosions = [];
 
 let running = false;
 let paused = false;
+let animFrameId = null;
 let levelCompleteShown = false;
 let gameOverShown = false;
 let last = 0;
@@ -133,7 +134,9 @@ function resetGameRuntimeCore() {
     ctrlHeld = false;
 
     gameMode = 'normal';
-    selectedChar = 'kuzy';
+    if (typeof resetLibraryLevelState === 'function') resetLibraryLevelState();
+    // selectedChar НЕ сбрасывается здесь — он задаётся при выборе персонажа в меню
+    // и сбрасывается только в resetGameStateForMenu()
     o4koHitStreak = 0;
     o4koRandomDropTimer = 0;
     o4koVulnHitCount = 0;
@@ -166,6 +169,7 @@ function resetGameRuntimeCore() {
     cachedLivesStr = '';
 
     if (typeof resetNosokLevelState === 'function') resetNosokLevelState();
+    if (typeof resetLovlyuLevelState === 'function') resetLovlyuLevelState();
 }
 
 /**
@@ -220,6 +224,14 @@ function initRunWorldByMode(mode) {
         return;
     }
 
+    if (startMode === 'lovlyu') {
+        bgImg.src = 'img/avs-bg.png';
+        playerBulletDir = 'up';
+        initLovlyuLevel();
+        player.y = canvas.height - player.h - 20;
+        return;
+    }
+
     if (startMode === 'platforms') {
         bgImg.src = 'img/pl-bg.png';
         playerBulletDir = 'right';
@@ -242,6 +254,15 @@ function initRunWorldByMode(mode) {
         return;
     }
 
+    if (startMode === 'library') {
+        bgImg.src = 'img/lb2-bg.png';
+        playerBulletDir = 'right';
+        initLibraryLevel();
+        player.x = canvas.width / 2 - player.w / 2;
+        player.y = canvas.height - player.h - 20;
+        return;
+    }
+
     bgImg.src = 'img/forest.png';
     playerBulletDir = 'up';
     spawnEnemies();
@@ -253,6 +274,11 @@ function initRunWorldByMode(mode) {
  * @param {boolean} startLoop - true, если нужно запустить requestAnimationFrame(loop).
  */
 function beginGameRun(mode, startLoop) {
+    // Отменяем старый цикл, чтобы не было двойного loop при повторе
+    if (animFrameId) {
+        cancelAnimationFrame(animFrameId);
+        animFrameId = null;
+    }
     resetGameStateForRun(mode);
     initRunWorldByMode(gameMode);
     levelCompleteShown = false;

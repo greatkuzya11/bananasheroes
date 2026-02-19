@@ -188,54 +188,6 @@ function createIceCubeTexture() {
     return img;
 }
 
-/**
- * Создает PNG-текстуру бонуса "Динамит".
- * @returns {HTMLImageElement}
- */
-function createDynamiteTexture() {
-    const c = document.createElement('canvas');
-    c.width = 200;
-    c.height = 200;
-    const cctx = c.getContext('2d');
-
-    cctx.fillStyle = 'rgba(0,0,0,0.35)';
-    cctx.beginPath();
-    cctx.ellipse(98, 146, 62, 20, 0, 0, Math.PI * 2);
-    cctx.fill();
-
-    const body = cctx.createLinearGradient(28, 72, 170, 140);
-    body.addColorStop(0, '#ed2d2d');
-    body.addColorStop(1, '#ad1010');
-    cctx.fillStyle = body;
-    cctx.beginPath();
-    cctx.roundRect(28, 78, 144, 64, 20);
-    cctx.fill();
-
-    cctx.fillStyle = '#f9d24a';
-    cctx.fillRect(38, 94, 124, 10);
-    cctx.fillRect(38, 120, 124, 10);
-
-    cctx.strokeStyle = '#2b1b08';
-    cctx.lineWidth = 5;
-    cctx.beginPath();
-    cctx.moveTo(164, 86);
-    cctx.quadraticCurveTo(186, 64, 172, 34);
-    cctx.stroke();
-
-    const spark = cctx.createRadialGradient(172, 28, 2, 172, 28, 14);
-    spark.addColorStop(0, '#fff5cf');
-    spark.addColorStop(0.5, '#ffd54f');
-    spark.addColorStop(1, 'rgba(255,167,38,0)');
-    cctx.fillStyle = spark;
-    cctx.beginPath();
-    cctx.arc(172, 28, 14, 0, Math.PI * 2);
-    cctx.fill();
-
-    const img = new Image();
-    img.src = c.toDataURL('image/png');
-    return img;
-}
-
 // Реальные PNG-текстуры уровня "Носок" (без canvas/fallback)
 const soccerBallImg = new Image();
 soccerBallImg.src = "img/nosok/soccer_ball.png";
@@ -244,5 +196,8 @@ stinkySockImg.src = "img/nosok/stinky_sock.png";
 const rottenFishImg = new Image();
 rottenFishImg.src = "img/nosok/rotten_fish.png";
 const iceCubeImg = createIceCubeTexture();
-const dynamiteImg = createDynamiteTexture();
+// Бонус "Динамит" в режиме "Носок":
+// используем тот же PNG, что и у пули-бомбы врага 67 (🧨).
+const dynamiteImg = new Image();
+dynamiteImg.src = "img/emoji/1f9e8.png";
 

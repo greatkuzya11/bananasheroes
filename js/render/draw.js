@@ -3,6 +3,12 @@
  * Отрисовывает текущий кадр игры на canvas.
  */
 function draw() {
+    // Отдельная отрисовка уровня "Ловлю".
+    if (gameMode === 'lovlyu') {
+        drawLovlyuMode();
+        return;
+    }
+
     // Рисуем адаптивный фон
     if (bgReady) {
         ctx.drawImage(bgImg, 0, 0, canvas.width, canvas.height);
@@ -111,6 +117,55 @@ function draw() {
     const rotationEnabled = perf ? perf.bulletRotationEnabled() : true;
     const getEmojiBitmap = perf ? perf.getEmojiBitmap : null;
 
+    /**
+     * Рисует стилизованную полосу HP босса с заметной подписью.
+     * @param {string} label Подпись босса над полосой.
+     * @param {number} hp Текущее здоровье босса.
+     * @param {number} maxHp Максимальное здоровье босса.
+     * @param {number} barY Вертикальная позиция полосы.
+     */
+    function drawStyledBossHpBar(label, hp, maxHp, barY) {
+        const safeMaxHp = Math.max(1, Number(maxHp) || 1);
+        const safeHp = Math.max(0, Number(hp) || 0);
+        const hpRatio = Math.max(0, Math.min(1, safeHp / safeMaxHp));
+        const barW = Math.max(220, canvas.width * 0.34);
+        const barH = 16;
+        const barX = (canvas.width - barW) * 0.5;
+
+        ctx.save();
+
+        // Подпись в стиле активного бонуса HUD: золотой цвет + тень.
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'bottom';
+        ctx.font = '900 15px Arial';
+        ctx.fillStyle = '#ffd54f';
+        ctx.shadowColor = 'rgba(0,0,0,0.85)';
+        ctx.shadowBlur = 4;
+        ctx.fillText(label, barX + barW / 2, barY - 8);
+
+        // Полоса HP в стиле босса "Очко".
+        ctx.shadowBlur = 0;
+        ctx.fillStyle = 'rgba(0,0,0,0.45)';
+        ctx.fillRect(barX - 2, barY - 2, barW + 4, barH + 4);
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(barX, barY, barW, barH);
+        ctx.fillStyle = '#e53935';
+        ctx.fillRect(barX, barY, barW * hpRatio, barH);
+        ctx.strokeStyle = '#111';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(barX, barY, barW, barH);
+
+        // Текущее здоровье по центру полосы.
+        ctx.fillStyle = '#fff';
+        ctx.shadowColor = 'rgba(0,0,0,0.7)';
+        ctx.shadowBlur = 2;
+        ctx.textBaseline = 'middle';
+        ctx.font = 'bold 13px Arial';
+        ctx.fillText(`${Math.ceil(safeHp)}/${Math.ceil(safeMaxHp)}`, barX + barW / 2, barY + barH / 2);
+
+        ctx.restore();
+    }
+
     // Финальные бутылки победы в уровне "Очко":
     // рисуем в фоновом слое, чтобы не перекрывать игрока и его пули.
     o4koVictoryBeers.forEach(b => {
@@ -142,6 +197,9 @@ function draw() {
     
     player.draw();
     ctx.globalAlpha = 1; // Восстановить прозрачность
+
+    // Рисуем книги в режиме "Библиотека"
+    if (gameMode === 'library') drawLibraryBooks();
 
     if (perf && perf.isEnabled()) perf.beforeBulletDraw();
     // Рисуем все пули игрока; b — объект пули
@@ -350,29 +408,7 @@ function draw() {
     // Отрисовываем босса режима "Очко"
     if (bossO4ko) {
         bossO4ko.draw();
-        // Красная полоса HP босса "Очко"
-        const hpRatio = Math.max(0, Math.min(1, bossO4ko.hp / Math.max(1, bossO4ko.maxHp)));
-        const barW = Math.max(220, canvas.width * 0.34);
-        const barH = 16;
-        const barX = (canvas.width - barW) * 0.5;
-        const barY = 16;
-
-        ctx.save();
-        ctx.fillStyle = 'rgba(0,0,0,0.45)';
-        ctx.fillRect(barX - 2, barY - 2, barW + 4, barH + 4);
-        ctx.fillStyle = '#ffffff';
-        ctx.fillRect(barX, barY, barW, barH);
-        ctx.fillStyle = '#e53935';
-        ctx.fillRect(barX, barY, barW * hpRatio, barH);
-        ctx.strokeStyle = '#111';
-        ctx.lineWidth = 2;
-        ctx.strokeRect(barX, barY, barW, barH);
-        ctx.fillStyle = '#fff';
-        ctx.font = 'bold 14px Arial';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'bottom';
-        ctx.fillText(`Очко HP: ${bossO4ko.hp}/${bossO4ko.maxHp}`, barX + barW / 2, barY - 2);
-        ctx.restore();
+        drawStyledBossHpBar('Босс: Очко', bossO4ko.hp, bossO4ko.maxHp, 24);
     }
 
     // Отрисовываем босса уровня "Носок".
@@ -465,14 +501,9 @@ function draw() {
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
         ctx.fillText(bossEmoji, boss.x + boss.w / 2, boss.y + boss.h / 2);
-        // Полоса HP
-        ctx.fillStyle = "#fff";
-        ctx.fillRect(boss.x, boss.y - 18, boss.w, 12);
-        ctx.fillStyle = "#e53935";
-        ctx.fillRect(boss.x, boss.y - 18, boss.w * (boss.hp / 11), 12);
-        ctx.strokeStyle = "#222";
-        ctx.strokeRect(boss.x, boss.y - 18, boss.w, 12);
         ctx.restore();
+
+        drawStyledBossHpBar('Босс: Сосиска', boss.hp, boss.maxHp || 11, 24);
     }
 
     // Рисуем футбольный мяч режима "Носок".
@@ -695,7 +726,8 @@ function draw() {
         ctx.font = 'bold 17px Arial';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        ctx.fillText(`Голы: ${nosokGoals}/${nosokTargetGoals}   Время: ${timerStr}`, panelX + panelW / 2, panelY + panelH / 2);
+        const shownGoals = Math.min(nosokTargetGoals, nosokGoals);
+        ctx.fillText(`Голы: ${shownGoals}/${nosokTargetGoals}   Время: ${timerStr}`, panelX + panelW / 2, panelY + panelH / 2);
         ctx.restore();
     }
 

@@ -56,6 +56,12 @@ function update(dt) {
         return;
     }
 
+    // Отдельный игровой цикл уровня "Ловлю".
+    if (gameMode === 'lovlyu') {
+        updateLovlyuMode(dt);
+        return;
+    }
+
     if (invuln > 0) invuln -= dt;
     
     // Обновляем платформы в режиме платформ
@@ -220,6 +226,9 @@ function update(dt) {
     // Фильтруем бананы по вертикали
     bananaBonuses = bananaBonuses.filter(b => b.y < canvas.height + 20);
 
+    // Обновляем книги в режиме "Библиотека"
+    if (gameMode === 'library') updateLibraryBooks(dt);
+
     const leafEmojis = ["🍃", "🍂", "🍁", "🌿", "🌱"];
 
     // РЕЖИМ ВЫЖИВАНИЯ: новая волна, если врагов меньше 12
@@ -234,7 +243,7 @@ function update(dt) {
     }
 
     // ЛОГИКА БОССА
-    if (gameMode !== 'survival' && gameMode !== '67' && gameMode !== 'o4ko' && gameMode !== 'platforms' && !boss && !bossDefeated && enemies.length === 0) {
+    if (gameMode !== 'survival' && gameMode !== '67' && gameMode !== 'o4ko' && gameMode !== 'platforms' && gameMode !== 'library' && !boss && !bossDefeated && enemies.length === 0) {
         // Создаем босса-сосиску после уничтожения всех врагов
         const baseSize = canvas.height * 0.08;
         boss = {

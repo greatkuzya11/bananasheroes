@@ -679,7 +679,7 @@ function updateNosokBall(dt) {
     if (nosokGoalSensor) {
         const crossed = (ball.lastX + ball.r < nosokGoalSensor.x) && (ball.x + ball.r >= nosokGoalSensor.x);
         const withinY = (ball.y > nosokGoalSensor.y + ball.r * 0.2) && (ball.y < nosokGoalSensor.y + nosokGoalSensor.h - ball.r * 0.2);
-        if (crossed && withinY && nosokGoalPauseTimer <= 0 && !nosokGoalRespawnPending) {
+        if (crossed && withinY && nosokGoalPauseTimer <= 0 && !nosokGoalRespawnPending && nosokGoals < nosokTargetGoals && !levelCompleteShown) {
             // Блокировка автогола после клиренса головой у ворот.
             if ((ball.noOwnGoalTimer || 0) > 0 || bossForcedClearance) {
                 ball.x = nosokGoalSensor.x + nosokGoalSensor.w + ball.r * 0.8;
@@ -691,7 +691,7 @@ function updateNosokBall(dt) {
                 ball.noOwnGoalTimer = Math.max(ball.noOwnGoalTimer || 0, 0.15);
                 return;
             }
-            nosokGoals += 1;
+            nosokGoals = Math.min(nosokTargetGoals, nosokGoals + 1);
             nosokGoalFlashTimer = 0.9;
             nosokGoalConfettiTimer = 2.0;
             spawnNosokGoalConfetti(44);
@@ -1049,7 +1049,8 @@ function updateNosokHud() {
     const bonusClass = (bonusMode && bonusShots > 0) ? 'hud-bonus active' : 'hud-bonus';
     const bonusHtml = `<span class="${bonusClass}"><span>Бонус:</span><span class="hud-bonus-value">${Math.max(0, bonusShots)}</span></span>`;
     let hudHtml = '';
-    hudHtml = `${playerName} | Жизни: ${cachedLivesStr}<br>Голы: ${nosokGoals}/${nosokTargetGoals}   Время: ${timerStr}   ${bonusHtml}   Пули: ${dirIcon} ${modeIndicator}`;
+    const shownGoals = Math.min(nosokTargetGoals, nosokGoals);
+    hudHtml = `${playerName} | Жизни: ${cachedLivesStr}<br>Голы: ${shownGoals}/${nosokTargetGoals}   Время: ${timerStr}   ${bonusHtml}   Пули: ${dirIcon} ${modeIndicator}`;
     if (hudHtml !== lastHudHtml) {
         hudEl.innerHTML = hudHtml;
         lastHudHtml = hudHtml;

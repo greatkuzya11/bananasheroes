@@ -72,11 +72,13 @@ function showLevelComplete() {
     const victoryText67 = 'Поздравляю, вы победили 67!';
     const victoryTextO4ko = 'Поздравляю, вы победили Очко!';
     const victoryTextNosok = `Победа! 10/10 голов за ${formatNosokTime(Math.max(1, nosokFinalTimeMs || Math.round(nosokElapsedTime * 1000)))}`;
-    const victoryTextDefault = 'Поздравляем, уровень пройден. Букин освобождён.';
+    const victoryTextLibrary = 'Поздравляем, уровень "Библиотека" пройден!';
+    const victoryTextDefault = 'Поздравляем, уровень "Сирень и Букин" пройден. Букин освобождён.';
     const victoryText = (gameMode === '67')
         ? victoryText67
         : (gameMode === 'o4ko') ? victoryTextO4ko
-            : (gameMode === 'nosok') ? victoryTextNosok : victoryTextDefault;
+            : (gameMode === 'nosok') ? victoryTextNosok
+                : (gameMode === 'library') ? victoryTextLibrary : victoryTextDefault;
     msg.innerText = victoryText + (isNew ? ' — Новый рекорд!' : '');
     Object.assign(msg.style, { fontSize: '20px', marginBottom: '18px', color: '#222', opacity: '0', transform: 'translateY(12px)' });
 
@@ -90,6 +92,19 @@ function showLevelComplete() {
 
     const buttons = document.createElement('div');
     Object.assign(buttons.style, { display: 'flex', gap: '12px', justifyContent: 'center' });
+
+    const btnRetry = document.createElement('button');
+    btnRetry.innerText = 'Повторить';
+    Object.assign(btnRetry.style, { padding: '8px 14px', fontSize: '16px', cursor: 'pointer' });
+    btnRetry.onclick = () => {
+        if (typeof window.clearGameInputs === 'function') window.clearGameInputs();
+        if (typeof clearScheduledEnemySpawns === 'function') clearScheduledEnemySpawns();
+        beginGameRun(gameMode, true);
+        document.getElementById('menu').style.display = 'none';
+        document.getElementById('game').style.display = 'block';
+        overlay.remove();
+        if (typeof window.setGameTouchControlsVisible === 'function') window.setGameTouchControlsVisible(true);
+    };
 
     const btnMain = document.createElement('button');
     btnMain.innerText = 'Главный экран';
@@ -117,6 +132,7 @@ function showLevelComplete() {
     btnNext.disabled = true;
     Object.assign(btnNext.style, { padding: '8px 14px', fontSize: '16px', opacity: '0.6', cursor: 'not-allowed' });
 
+    buttons.appendChild(btnRetry);
     buttons.appendChild(btnMain);
     buttons.appendChild(btnNext);
 
@@ -206,6 +222,19 @@ function showLevelCompleteMessage() {
     const buttons = document.createElement('div');
     Object.assign(buttons.style, { display: 'flex', gap: '12px', justifyContent: 'center' });
 
+    const btnRetryPlatforms = document.createElement('button');
+    btnRetryPlatforms.innerText = 'Повторить';
+    Object.assign(btnRetryPlatforms.style, { padding: '10px 16px', fontSize: '16px', cursor: 'pointer' });
+    btnRetryPlatforms.onclick = () => {
+        if (typeof window.clearGameInputs === 'function') window.clearGameInputs();
+        if (typeof clearScheduledEnemySpawns === 'function') clearScheduledEnemySpawns();
+        beginGameRun('platforms', true);
+        document.getElementById('menu').style.display = 'none';
+        document.getElementById('game').style.display = 'block';
+        overlay.remove();
+        if (typeof window.setGameTouchControlsVisible === 'function') window.setGameTouchControlsVisible(true);
+    };
+
     const btnMain = document.createElement('button');
     btnMain.innerText = 'Главный экран';
     Object.assign(btnMain.style, { padding: '10px 16px', fontSize: '16px', cursor: 'pointer' });
@@ -225,7 +254,14 @@ function showLevelCompleteMessage() {
         overlay.remove();
     };
 
+    const btnNextPlatforms = document.createElement('button');
+    btnNextPlatforms.innerText = 'Следующий уровень';
+    btnNextPlatforms.disabled = true;
+    Object.assign(btnNextPlatforms.style, { padding: '10px 16px', fontSize: '16px', opacity: '0.6', cursor: 'not-allowed' });
+
+    buttons.appendChild(btnRetryPlatforms);
     buttons.appendChild(btnMain);
+    buttons.appendChild(btnNextPlatforms);
     box.appendChild(iconsRow);
     box.appendChild(msg);
     box.appendChild(buttons);
@@ -255,12 +291,14 @@ function updateBestScoresDisplay() {
         { id: 'kuzy', name: 'Кузя' }
     ];
     const modes = [
-        { id: 'normal', name: 'Обычный' },
+        { id: 'normal', name: 'Сирень и Букин' },
         { id: 'survival', name: 'Выживание' },
         { id: '67', name: 'Режим 67' },
         { id: 'o4ko', name: 'Очко' },
         { id: 'nosok', name: 'Носок' },
-        { id: 'platforms', name: 'Платформы' }
+        { id: 'platforms', name: 'Платформы' },
+        { id: 'lovlyu', name: 'Ловлю' },
+        { id: 'library', name: 'Библиотека' }
     ];
     
     let html = '<div style="display:flex; flex-direction:column; gap:8px;">';
@@ -347,7 +385,7 @@ function showGameOver() {
 
     const bestLine = document.createElement('div');
     const displayName = (charNames && charNames[selectedChar]) ? charNames[selectedChar] : selectedChar;
-    const modeNames = { 'normal': 'Обычный', 'survival': 'Выживание', '67': 'Режим 67', 'o4ko': 'Очко', 'nosok': 'Носок', 'platforms': 'Платформы' };
+    const modeNames = { 'normal': 'Сирень и Букин', 'survival': 'Выживание', '67': 'Режим 67', 'o4ko': 'Очко', 'nosok': 'Носок', 'platforms': 'Платформы', 'lovlyu': 'Ловлю', 'library': 'Библиотека' };
     const modeName = modeNames[gameMode] || gameMode;
     if (isNosokMode) {
         const bestTime = parseInt(localStorage.getItem('bh_bestTime_' + (selectedChar || 'kuzy') + '_nosok') || '0', 10) || 0;

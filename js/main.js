@@ -11,7 +11,7 @@ function loop(ts) {
         update(dt);
     }
     draw();
-    requestAnimationFrame(loop);
+    animFrameId = requestAnimationFrame(loop);
 }
 
 /**
@@ -472,7 +472,7 @@ document.addEventListener('DOMContentLoaded', () => {
             paused = false;
             clearInputSource('keyboard');
             clearTouchInputs();
-            beginGameRun(gameMode, false);
+            beginGameRun(gameMode, true);
             setTouchControlsVisible(true);
         };
         overlay.appendChild(btnRestart);
