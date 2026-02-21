@@ -1,36 +1,36 @@
-﻿// ==== РљР›РђРЎРЎ Р‘РћРЎРЎРђ "РћР§РљРћ" ====
+﻿// ==== КЛАСС БОССА "ОЧКО" ====
 /**
- * Р‘РѕСЃСЃ СЂРµР¶РёРјР° "РћС‡РєРѕ":
- * - фазы боя, телеграфы, волна, рывок, стрельба
+ * Босс режима "Очко":
+ * - фазы HP, телеграфы, прыжки, рывки, уязвимость
  */
 class BossO4ko {
     /**
-     * РЎРѕР·РґР°РµС‚ Р±РѕСЃСЃР° "РћС‡РєРѕ".
-     * @param {number} playerX - СЃС‚Р°СЂС‚РѕРІР°СЏ РєРѕРѕСЂРґРёРЅР°С‚Р° РёРіСЂРѕРєР° X (РЅРµ РёСЃРїРѕР»СЊР·СѓРµС‚СЃСЏ РЅР°РїСЂСЏРјСѓСЋ, РѕСЃС‚Р°РІР»РµРЅР° РґР»СЏ СЃРѕРІРјРµСЃС‚РёРјРѕСЃС‚Рё).
-     * @param {number} playerY - СЃС‚Р°СЂС‚РѕРІР°СЏ РєРѕРѕСЂРґРёРЅР°С‚Р° РёРіСЂРѕРєР° Y (РЅРµ РёСЃРїРѕР»СЊР·СѓРµС‚СЃСЏ РЅР°РїСЂСЏРјСѓСЋ, РѕСЃС‚Р°РІР»РµРЅР° РґР»СЏ СЃРѕРІРјРµСЃС‚РёРјРѕСЃС‚Рё).
+     * Создает босса "Очко".
+     * @param {number} playerX - стартовая координата игрока X (не используется напрямую, оставлена для совместимости).
+     * @param {number} playerY - стартовая координата игрока Y (не используется напрямую, оставлена для совместимости).
      */
     constructor(playerX, playerY) {
-        // Р Р°Р·РјРµСЂ Р±РѕСЃСЃР° = 1.5 СЂРѕСЃС‚Р° РёРіСЂРѕРєР°.
+        // Размер босса = 1.5 роста игрока.
         this.h = Math.max(48, player.h * 1.5);
         this.w = this.h;
 
-        // РџСЂР°РІР°СЏ Р·РѕРЅР° РґРІРёР¶РµРЅРёСЏ: РѕС‚ 55% С€РёСЂРёРЅС‹ СЌРєСЂР°РЅР° РґРѕ РїСЂР°РІРѕР№ РіСЂР°РЅРёС†С‹.
-        // Левая четверть экрана недоступна боссу, по остальным 3/4 он может двигаться.
+        // Правая зона движения: от 55% ширины экрана до правой границы.
+        // Левая четверть экрана недоступна боссу, остальная часть доступна.
         this.rightZoneStartRatio = 0.25;
         this.minX = 0;
         this.maxX = 0;
         this.refreshBounds();
-        this.x = this.maxX; // СЃРїР°РІРЅ СЃРїСЂР°РІР°
+        this.x = this.maxX; // спавн справа
         this.y = this.baseY;
 
-        // РҐРѕРґСЊР±Р°.
+        // Ходьба.
         this.baseWalkSpeed = Math.max(70, canvas.width * 0.07); // px/s
-        this.dir = -1; // СЃС‚Р°СЂС‚ РІР»РµРІРѕ
+        this.dir = -1; // старт влево
         this.facingDir = 'left';
         this.dirTimer = 0;
         this.nextDirChange = this.rand(1.2, 2.6);
 
-        // РџСЂС‹Р¶РѕРє.
+        // Прыжок.
         this.isJumping = false;
         this.jumpTimer = 0;
         this.jumpDuration = 0.95;
@@ -39,14 +39,14 @@ class BossO4ko {
         this.jumpCooldown = this.rand(0.9, 1.6);
         this.landingCount = 0;
 
-        // РЎРѕСЃС‚РѕСЏРЅРёСЏ СЃРїРµС†РґРµР№СЃС‚РІРёР№.
+        // Состояния спецдействий.
         this.state = 'normal'; // normal | slamTelegraph | dashTelegraph | dashing
         this.stateTimer = 0;
         this.pendingSlam = false;
         this.pendingDash = false;
         this.pendingShortDash = false;
 
-        // Р’РѕР»РЅР° РѕС‚ СѓРґР°СЂР° Рѕ Р·РµРјР»СЋ.
+        // Волна от удара о землю.
         this.groundWave = {
             active: false,
             timer: 0,
@@ -57,14 +57,14 @@ class BossO4ko {
             groundY: canvas.height - 20
         };
 
-        // Р С‹РІРѕРє.
+        // Рывок.
         this.dashFromX = this.x;
         this.dashToX = this.x;
         this.dashDuration = 0.25;
         this.dashTelegraphDuration = 0.35;
         this.dashFinishedSignal = false;
 
-        // Р¤Р°Р·С‹ Рё СѓСЏР·РІРёРјРѕСЃС‚СЊ.
+        // Фазы и уязвимость.
         this.hp = 120;
         this.maxHp = 120;
         this.phase = 1;
@@ -72,19 +72,19 @@ class BossO4ko {
         this.vulnerabilityTimer = 0;
         this.vulnerabilityFlashSeed = Math.random() * 10;
 
-        // Р РµР¶РёРј СЏСЂРѕСЃС‚Рё (Р¤4): С‡РёС‚Р°РµРјС‹Р№ С†РёРєР».
+        // Режим ярости (Ф4): читаемый цикл.
         this.rageState = 'inactive';
         this.rageTimer = 0;
         this.ultFrequencyMul = 2;
 
-        // РЎС‚СЂРµР»СЊР±Р°.
+        // Стрельба.
         this.attackDelay = 1.35;
         this.attackTimer = 0;
         this.shootTimer = 0;
         this.shootInterval = 1.4;
         this.basePoopSize = 28;
 
-        // РђРЅРёРјР°С†РёСЏ РєР°РґСЂРѕРІ.
+        // Анимация кадров.
         this.frame = 0;
         this.animTimer = 0;
         this.animIntervalWalk = 0.11;
@@ -93,9 +93,9 @@ class BossO4ko {
     }
 
     /**
-     * Р’РѕР·РІСЂР°С‰Р°РµС‚ СЃР»СѓС‡Р°Р№РЅРѕРµ С‡РёСЃР»Рѕ РІ РґРёР°РїР°Р·РѕРЅРµ.
-     * @param {number} min - РјРёРЅРёРјСѓРј.
-     * @param {number} max - РјР°РєСЃРёРјСѓРј.
+     * Возвращает случайное число в диапазоне.
+     * @param {number} min - минимум.
+     * @param {number} max - максимум.
      * @returns {number}
      */
     rand(min, max) {
@@ -103,7 +103,7 @@ class BossO4ko {
     }
 
     /**
-     * РћР±РЅРѕРІР»СЏРµС‚ РіСЂР°РЅРёС†С‹ РґРІРёР¶РµРЅРёСЏ РІ РїСЂР°РІРѕР№ С‡Р°СЃС‚Рё СЌРєСЂР°РЅР°.
+     * Обновляет границы движения в правой части экрана.
      */
     refreshBounds() {
         const rightStart = canvas.width * this.rightZoneStartRatio;
@@ -114,7 +114,7 @@ class BossO4ko {
     }
 
     /**
-     * Р’РѕР·РІСЂР°С‰Р°РµС‚ РЅРѕРјРµСЂ С„Р°Р·С‹ РїРѕ С‚РµРєСѓС‰РµРјСѓ HP.
+     * Возвращает номер фазы по текущему HP.
      * @returns {1|2|3|4}
      */
     getPhaseByHp() {
@@ -126,8 +126,8 @@ class BossO4ko {
     }
 
     /**
-     * Р’РѕР·РІСЂР°С‰Р°РµС‚ РєРѕРЅС„РёРі С‚РµРєСѓС‰РµР№ С„Р°Р·С‹.
-     * @param {number} [phase] - РЅРѕРјРµСЂ С„Р°Р·С‹.
+     * Возвращает конфиг текущей фазы.
+     * @param {number} [phase] - номер фазы.
      * @returns {{
      *   speedMult:number,
      *   jumpCdMin:number, jumpCdMax:number,
@@ -192,7 +192,7 @@ class BossO4ko {
     }
 
     /**
-     * Р’РѕР·РІСЂР°С‰Р°РµС‚ РєРѕСЂРѕС‚РєСѓСЋ РјРµС‚РєСѓ С„Р°Р·С‹ РґР»СЏ HUD.
+     * Возвращает короткую метку фазы для HUD.
      * @returns {string}
      */
     getPhaseLabel() {
@@ -201,7 +201,7 @@ class BossO4ko {
     }
 
     /**
-     * Р’РѕР·РІСЂР°С‰Р°РµС‚ true, РµСЃР»Рё СЃ РїСЂРѕС€Р»РѕРіРѕ РєР°РґСЂР° Р±С‹Р»Р° СЃРјРµРЅР° С„Р°Р·С‹.
+     * Возвращает true, если с прошлого кадра была смена фазы.
      * @returns {boolean}
      */
     consumePhaseTransition() {
@@ -211,7 +211,7 @@ class BossO4ko {
     }
 
     /**
-     * Р’РѕР·РІСЂР°С‰Р°РµС‚ true, РµСЃР»Рё РѕС‚РєСЂС‹С‚ РїРµСЂРёРѕРґ СѓСЏР·РІРёРјРѕСЃС‚Рё.
+     * Возвращает true, если открыт период уязвимости.
      * @returns {boolean}
      */
     isVulnerable() {
@@ -219,7 +219,7 @@ class BossO4ko {
     }
 
     /**
-     * Р’РѕР·РІСЂР°С‰Р°РµС‚ true, РµСЃР»Рё Р±РѕСЃСЃ РІ РІРѕР·РґСѓС…Рµ.
+     * Возвращает true, если босс в воздухе.
      * @returns {boolean}
      */
     isInAir() {
@@ -227,7 +227,7 @@ class BossO4ko {
     }
 
     /**
-     * Р’РѕР·РІСЂР°С‰Р°РµС‚ РјРЅРѕР¶РёС‚РµР»СЊ СѓСЂРѕРЅР° С„Р°Р·С‹.
+     * Возвращает множитель урона фазы.
      * @returns {number}
      */
     getPhaseDamageMultiplier() {
@@ -235,8 +235,8 @@ class BossO4ko {
     }
 
     /**
-     * Р Р°СЃСЃС‡РёС‚С‹РІР°РµС‚ Рё РїСЂРёРјРµРЅСЏРµС‚ СѓСЂРѕРЅ РїРѕ Р±РѕСЃСЃСѓ СЃ СѓС‡РµС‚РѕРј СЃРѕСЃС‚РѕСЏРЅРёСЏ Рё С„Р°Р·С‹.
-     * @param {number} baseDamage - Р±Р°Р·РѕРІС‹Р№ СѓСЂРѕРЅ (РѕР±С‹С‡РЅРѕ 1, Р±РѕРЅСѓСЃРЅР°СЏ РїСѓР»СЏ 2).
+     * Рассчитывает и применяет урон по боссу с учетом состояния и фазы.
+     * @param {number} baseDamage - базовый урон (обычно 1, бонусная пуля 2).
      * @returns {{damage:number, vulnerable:boolean, killed:boolean}}
      */
     takeHit(baseDamage) {
@@ -255,39 +255,39 @@ class BossO4ko {
     }
 
     /**
-     * РћС‚РєСЂС‹РІР°РµС‚ РѕРєРЅРѕ СѓСЏР·РІРёРјРѕСЃС‚Рё.
-     * @param {number} seconds - РґР»РёС‚РµР»СЊРЅРѕСЃС‚СЊ РѕРєРЅР°.
+     * Открывает окно уязвимости.
+     * @param {number} seconds - длительность окна.
      */
     openVulnerability(seconds) {
         this.vulnerabilityTimer = Math.max(this.vulnerabilityTimer, seconds);
     }
 
     /**
-     * Р—Р°РїСѓСЃРєР°РµС‚ РЅРµР»РёРЅРµР№РЅС‹Р№ "С‡РµР»РѕРІРµС‡РµСЃРєРёР№" РїСЂС‹Р¶РѕРє.
-     * @param {number|null} duration - РґР»РёС‚РµР»СЊРЅРѕСЃС‚СЊ РїСЂС‹Р¶РєР°.
-     * @param {number|null} height - РІС‹СЃРѕС‚Р° РїСЂС‹Р¶РєР°.
+     * Запускает нелинейный "человеческий" прыжок.
+     * @param {number|null} duration - длительность прыжка.
+     * @param {number|null} height - высота прыжка.
      */
     startJump(duration = null, height = null) {
         this.isJumping = true;
         this.jumpTimer = 0;
         this.jumpDuration = duration || this.rand(0.8, 1.25);
         const minH = this.h * 0.62;
-        const maxH = this.h * 1.0; // РЅРµ РІС‹С€Рµ СЃРѕР±СЃС‚РІРµРЅРЅРѕРіРѕ СЂРѕСЃС‚Р°
+        const maxH = this.h * 1.0; // не выше собственного роста
         this.jumpHeight = Math.min(this.h, Math.max(minH, height || this.rand(minH, maxH)));
         this.jumpAscentRatio = this.rand(0.40, 0.48);
     }
 
     /**
-     * РћР±РЅРѕРІР»СЏРµС‚ С‚РµРєСѓС‰РёР№ РїСЂС‹Р¶РѕРє.
-     * @param {number} dt - РІСЂРµРјСЏ РєР°РґСЂР°, СЃРµРє.
-     * @returns {boolean} true, РµСЃР»Рё РїСЂРѕРёР·РѕС€Р»Р° РїРѕСЃР°РґРєР°.
+     * Обновляет текущий прыжок.
+     * @param {number} dt - время кадра, сек.
+     * @returns {boolean} true, если произошла посадка.
      */
     updateJump(dt) {
         if (!this.isJumping) return false;
         this.jumpTimer += dt;
         const t = Math.min(1, this.jumpTimer / this.jumpDuration);
 
-        // РќРµР»РёРЅРµР№РЅР°СЏ РґСѓРіР°: Р±С‹СЃС‚СЂС‹Р№ РЅР°Р±РѕСЂ РІС‹СЃРѕС‚С‹ Рё Р±РѕР»РµРµ "С‚СЏР¶РµР»РѕРµ" РїР°РґРµРЅРёРµ.
+        // Нелинейная дуга: быстрый набор высоты и более "тяжелое" падение.
         let k = 0;
         if (t < this.jumpAscentRatio) {
             const p = t / this.jumpAscentRatio;
@@ -308,9 +308,9 @@ class BossO4ko {
     }
 
     /**
-     * РћР±РЅРѕРІР»СЏРµС‚ СЃР»СѓС‡Р°Р№РЅСѓСЋ СЃРјРµРЅСѓ РЅР°РїСЂР°РІР»РµРЅРёСЏ.
-     * @param {number} dt - РІСЂРµРјСЏ РєР°РґСЂР°, СЃРµРє.
-     * @param {boolean} lowRandomness - СѓРјРµРЅСЊС€РµРЅРЅР°СЏ СЃР»СѓС‡Р°Р№РЅРѕСЃС‚СЊ (РґР»СЏ СЏСЂРѕСЃС‚Рё).
+     * Обновляет случайную смену направления.
+     * @param {number} dt - время кадра, сек.
+     * @param {boolean} lowRandomness - уменьшенная случайность (для ярости).
      */
     updateDirection(dt, lowRandomness = false) {
         this.dirTimer += dt;
@@ -318,7 +318,7 @@ class BossO4ko {
             this.dirTimer = 0;
             this.nextDirChange = lowRandomness ? this.rand(1.6, 2.3) : this.rand(1.1, 2.4);
 
-            // Р’ СЂРµР¶РёРјРµ СЏСЂРѕСЃС‚Рё РЅР°РїСЂР°РІР»РµРЅРёРµ С‡Р°С‰Рµ РІС‹Р±РёСЂР°РµС‚СЃСЏ РІ СЃС‚РѕСЂРѕРЅСѓ РёРіСЂРѕРєР°.
+            // В режиме ярости направление чаще выбирается в сторону игрока.
             if (lowRandomness && Math.random() < 0.75) {
                 const px = player.x + player.w * 0.5;
                 const bx = this.x + this.w * 0.5;
@@ -330,9 +330,9 @@ class BossO4ko {
     }
 
     /**
-     * РџСЂРёРјРµРЅСЏРµС‚ РіРѕСЂРёР·РѕРЅС‚Р°Р»СЊРЅРѕРµ РґРІРёР¶РµРЅРёРµ Рё СѓРґРµСЂР¶РёРІР°РµС‚ Р±РѕСЃСЃР° РІ РїСЂР°РІРѕР№ Р·РѕРЅРµ.
-     * @param {number} dt - РІСЂРµРјСЏ РєР°РґСЂР°, СЃРµРє.
-     * @param {number} speedMult - РјРЅРѕР¶РёС‚РµР»СЊ СЃРєРѕСЂРѕСЃС‚Рё.
+     * Применяет горизонтальное движение и удерживает босса в правой зоне.
+     * @param {number} dt - время кадра, сек.
+     * @param {number} speedMult - множитель скорости.
      */
     moveHorizontally(dt, speedMult) {
         this.x += this.dir * this.baseWalkSpeed * speedMult * dt;
@@ -347,7 +347,7 @@ class BossO4ko {
     }
 
     /**
-     * Р—Р°РїСѓСЃРєР°РµС‚ С‚РµР»РµРіСЂР°С„ СѓРґР°СЂР° Рѕ Р·РµРјР»СЋ.
+     * Запускает телеграф удара о землю.
      */
     startGroundSlamTelegraph() {
         if (this.state !== 'normal') return;
@@ -356,7 +356,7 @@ class BossO4ko {
     }
 
     /**
-     * РђРєС‚РёРІРёСЂСѓРµС‚ РІРѕР»РЅСѓ СѓРґР°СЂР° Рѕ Р·РµРјР»СЋ.
+     * Активирует волну удара о землю.
      */
     activateGroundWave() {
         this.groundWave.active = true;
@@ -369,8 +369,8 @@ class BossO4ko {
     }
 
     /**
-     * Р—Р°РїСѓСЃРєР°РµС‚ С‚РµР»РµРіСЂР°С„ СЂС‹РІРєР°.
-     * @param {boolean} shortDash - РєРѕСЂРѕС‚РєРёР№ СЂС‹РІРѕРє (РёСЃРїРѕР»СЊР·СѓРµС‚СЃСЏ РІ СЏСЂРѕСЃС‚Рё).
+     * Запускает телеграф рывка.
+     * @param {boolean} shortDash - короткий рывок (используется в ярости).
      */
     startDashTelegraph(shortDash = false) {
         if (this.state !== 'normal') return;
@@ -381,8 +381,8 @@ class BossO4ko {
     }
 
     /**
-     * Р—Р°РїСѓСЃРєР°РµС‚ СЂС‹РІРѕРє РїРѕСЃР»Рµ С‚РµР»РµРіСЂР°С„Р°.
-     * @param {boolean} shortDash - РєРѕСЂРѕС‚РєРёР№ СЂС‹РІРѕРє.
+     * Запускает рывок после телеграфа.
+     * @param {boolean} shortDash - короткий рывок.
      */
     startDash(shortDash = false) {
         this.state = 'dashing';
@@ -403,7 +403,7 @@ class BossO4ko {
             dashLen = Math.min(maxLen, rightRoom);
         }
 
-        // Р•СЃР»Рё РІ РІС‹Р±СЂР°РЅРЅРѕРј РЅР°РїСЂР°РІР»РµРЅРёРё РјРµСЃС‚Р° РјР°Р»Рѕ, РїСЂРѕР±СѓРµРј РїСЂРѕС‚РёРІРѕРїРѕР»РѕР¶РЅРѕРµ.
+        // Если в выбранном направлении места мало, пробуем противоположное.
         if (dashLen < 24) {
             preferredDir *= -1;
             if (preferredDir < 0) dashLen = Math.min(maxLen, leftRoom);
@@ -418,9 +418,9 @@ class BossO4ko {
     }
 
     /**
-     * РћР±РЅРѕРІР»СЏРµС‚ Р°РєС‚РёРІРЅС‹Рµ СЃРїРµС†-СЃРѕСЃС‚РѕСЏРЅРёСЏ.
-     * @param {number} dt - РІСЂРµРјСЏ РєР°РґСЂР°, СЃРµРє.
-     * @returns {boolean} true, РµСЃР»Рё РѕР±С‹С‡РЅР°СЏ Р»РѕРіРёРєР° РґРІРёР¶РµРЅРёСЏ/РїСЂС‹Р¶РєР° РґРѕР»Р¶РЅР° Р±С‹С‚СЊ РїСЂРѕРїСѓС‰РµРЅР°.
+     * Обновляет активные спец-состояния.
+     * @param {number} dt - время кадра, сек.
+     * @returns {boolean} true, если обычная логика движения/прыжка должна быть пропущена.
      */
     updateSpecialStates(dt) {
         if (this.state === 'slamTelegraph') {
@@ -452,7 +452,7 @@ class BossO4ko {
             this.stateTimer = 0;
             this.dashFinishedSignal = true;
 
-            // Р’ Р¤3 СѓСЏР·РІРёРјРѕСЃС‚СЊ РЅР°СЃС‚СѓРїР°РµС‚ РїРѕСЃР»Рµ СЂС‹РІРєР°.
+            // В Ф3 уязвимость наступает после рывка.
             if (this.phase === 3) {
                 this.openVulnerability(0.55);
             }
@@ -463,8 +463,8 @@ class BossO4ko {
     }
 
     /**
-     * РћР±РЅРѕРІР»СЏРµС‚ РІРѕР»РЅСѓ СѓРґР°СЂР° Рѕ Р·РµРјР»СЋ.
-     * @param {number} dt - РІСЂРµРјСЏ РєР°РґСЂР°, СЃРµРє.
+     * Обновляет волну удара о землю.
+     * @param {number} dt - время кадра, сек.
      */
     updateGroundWave(dt) {
         if (!this.groundWave.active) return;
@@ -479,7 +479,7 @@ class BossO4ko {
     }
 
     /**
-     * Р’РѕР·РІСЂР°С‰Р°РµС‚ true, РµСЃР»Рё СЂС‹РІРѕРє СЃРµР№С‡Р°СЃ РЅР°РЅРѕСЃРёС‚ РєРѕРЅС‚Р°РєС‚РЅС‹Р№ СѓСЂРѕРЅ.
+     * Возвращает true, если рывок сейчас наносит контактный урон.
      * @returns {boolean}
      */
     isDashDangerActive() {
@@ -487,7 +487,7 @@ class BossO4ko {
     }
 
     /**
-     * Р’РѕР·РІСЂР°С‰Р°РµС‚ С…РёС‚Р±РѕРєСЃ СЂС‹РІРєР°.
+     * Возвращает хитбокс рывка.
      * @returns {{x:number, y:number, w:number, h:number}}
      */
     getDashHitbox() {
@@ -500,14 +500,14 @@ class BossO4ko {
     }
 
     /**
-     * РџСЂРѕРІРµСЂСЏРµС‚, РїРѕРїР°Р» Р»Рё РёРіСЂРѕРє РїРѕРґ РЅР°Р·РµРјРЅСѓСЋ РІРѕР»РЅСѓ.
-     * @param {{x:number,y:number,w:number,h:number}} target - С†РµР»СЊ (РёРіСЂРѕРє).
+     * Проверяет, попал ли игрок под наземную волну.
+     * @param {{x:number,y:number,w:number,h:number}} target - цель (игрок).
      * @returns {boolean}
      */
     isTargetHitByGroundWave(target) {
         if (!this.groundWave.active) return false;
 
-        // Р’РѕР»РЅСѓ РїРѕР»СѓС‡Р°РµС‚ С‚РѕР»СЊРєРѕ С†РµР»СЊ, СЃС‚РѕСЏС‰Р°СЏ РЅР° Р·РµРјР»Рµ.
+        // Волну получает только цель, стоящая на земле.
         const grounded = target.y + target.h >= canvas.height - 25;
         if (!grounded) return false;
 
@@ -517,14 +517,14 @@ class BossO4ko {
     }
 
     /**
-     * РџСЂРёРјРµРЅСЏРµС‚ Р»РѕРіРёРєСѓ РїРѕСЃР°РґРєРё РІ РѕР±С‹С‡РЅС‹С… С„Р°Р·Р°С… (Р¤1-Р¤3).
+     * Применяет логику посадки в обычных фазах (Ф1-Ф3).
      * @param {{
      *   landingVuln:number,
      *   slamEvery:number,
      *   dashEvery:number,
      *   jumpCdMin:number,
      *   jumpCdMax:number
-     * }} cfg - РєРѕРЅС„РёРі С‚РµРєСѓС‰РµР№ С„Р°Р·С‹.
+     * }} cfg - конфиг текущей фазы.
      */
     onLandingStandard(cfg) {
         this.landingCount += 1;
@@ -541,13 +541,13 @@ class BossO4ko {
     }
 
     /**
-     * РћР±РЅРѕРІР»СЏРµС‚ complex-Р»РѕРіРёРєСѓ С„Р°Р· 1-3.
-     * @param {number} dt - РІСЂРµРјСЏ РєР°РґСЂР°, СЃРµРє.
+     * Обновляет complex-логику фаз 1-3.
+     * @param {number} dt - время кадра, сек.
      * @param {{
      *   speedMult:number,
      *   jumpCdMin:number,
      *   jumpCdMax:number
-     * }} cfg - РєРѕРЅС„РёРі С„Р°Р·С‹.
+     * }} cfg - конфиг фазы.
      */
     updateComplexStandard(dt, cfg) {
         const busy = this.updateSpecialStates(dt);
@@ -584,10 +584,10 @@ class BossO4ko {
     }
 
     /**
-     * РћР±РЅРѕРІР»СЏРµС‚ СЃР»РѕР¶РЅС‹Р№ С†РёРєР» С„Р°Р·С‹ СЏСЂРѕСЃС‚Рё (Р¤4).
-     * Р¦РёРєР»: 2 РїСЂС‹Р¶РєР° -> СѓРґР°СЂ Рѕ Р·РµРјР»СЋ -> РєРѕСЂРѕС‚РєРёР№ СЂС‹РІРѕРє -> РґР»РёРЅРЅР°СЏ СѓСЏР·РІРёРјРѕСЃС‚СЊ.
-     * @param {number} dt - РІСЂРµРјСЏ РєР°РґСЂР°, СЃРµРє.
-     * @param {{speedMult:number}} cfg - РєРѕРЅС„РёРі С‚РµРєСѓС‰РµР№ С„Р°Р·С‹.
+     * Обновляет сложный цикл фазы ярости (Ф4).
+     * Цикл: 2 прыжка -> удар о землю -> короткий рывок -> длинная уязвимость.
+     * @param {number} dt - время кадра, сек.
+     * @param {{speedMult:number}} cfg - конфиг текущей фазы.
      */
     updateRageCycle(dt, cfg) {
         const ultRate = Math.max(1, this.ultFrequencyMul || 1);
@@ -663,11 +663,11 @@ class BossO4ko {
                 break;
             }
             case 'dash_wait': {
-                // РћР¶РёРґР°РµРј СЃРёРіРЅР°Р» Р·Р°РІРµСЂС€РµРЅРёСЏ СЂС‹РІРєР°.
+                // Ожидаем сигнал завершения рывка.
                 break;
             }
             case 'recover': {
-                // Р”Р»РёРЅРЅРѕРµ Р±РµР·РѕРїР°СЃРЅРѕРµ РѕРєРЅРѕ РїРѕСЃР»Рµ С†РёРєР»Р°.
+                // Длинное безопасное окно после цикла.
                 if (this.rageTimer >= t(1.95)) {
                     this.rageState = 'jump1_delay';
                     this.rageTimer = 0;
@@ -683,8 +683,8 @@ class BossO4ko {
     }
 
     /**
-     * РћР±РЅРѕРІР»СЏРµС‚ С‡Р°СЃС‚РѕС‚Сѓ СЃС‚СЂРµР»СЊР±С‹ РїРѕ С„Р°Р·Р°Рј.
-     * @param {{shootBase:number, shootJitter:number}} cfg - РєРѕРЅС„РёРі С„Р°Р·С‹.
+     * Обновляет частоту стрельбы по фазам.
+     * @param {{shootBase:number, shootJitter:number}} cfg - конфиг фазы.
      */
     refreshShootInterval(cfg) {
         const hpK = (this.maxHp > 0) ? (this.hp / this.maxHp) : 1;
@@ -693,7 +693,7 @@ class BossO4ko {
     }
 
     /**
-     * Р’РѕР·РІСЂР°С‰Р°РµС‚ РєРѕР»РёС‡РµСЃС‚РІРѕ СЃРЅР°СЂСЏРґРѕРІ РІ Р·Р°Р»РїРµ.
+     * Возвращает количество снарядов в залпе.
      * @returns {number}
      */
     getShotCount() {
@@ -720,7 +720,7 @@ class BossO4ko {
     }
 
     /**
-     * Р’С‹РїСѓСЃРєР°РµС‚ Р·Р°Р»Рї СЃРЅР°СЂСЏРґРѕРІ РІ СЃС‚РѕСЂРѕРЅСѓ РёРіСЂРѕРєР°.
+     * Выпускает залп снарядов в сторону игрока.
      */
     shoot() {
         const bx = this.x + this.w * 0.5;
@@ -766,12 +766,12 @@ class BossO4ko {
     }
 
     /**
-     * РћР±РЅРѕРІР»СЏРµС‚ СЃС‚СЂРµР»СЊР±Сѓ Р±РѕСЃСЃР° РІ complex-СЂРµР¶РёРјРµ.
-     * @param {number} dt - РІСЂРµРјСЏ РєР°РґСЂР°, СЃРµРє.
-     * @param {{shootBase:number, shootJitter:number}} cfg - РєРѕРЅС„РёРі С„Р°Р·С‹.
+     * Обновляет стрельбу босса в complex-режиме.
+     * @param {number} dt - время кадра, сек.
+     * @param {{shootBase:number, shootJitter:number}} cfg - конфиг фазы.
      */
     updateShooting(dt, cfg) {
-        // Р’Рѕ РІСЂРµРјСЏ С‚РµР»РµРіСЂР°С„Р°/СЂС‹РІРєР° СЃС‚СЂРµР»СЊР±Сѓ Р±Р»РѕРєРёСЂСѓРµРј РґР»СЏ С‡РёС‚Р°РµРјРѕСЃС‚Рё.
+        // Во время телеграфа/рывка стрельбу блокируем для читаемости.
         if (this.state !== 'normal') return;
 
         this.attackTimer += dt;
@@ -786,7 +786,7 @@ class BossO4ko {
     }
 
     /**
-     * РћР±РЅРѕРІР»СЏРµС‚ С„Р°Р·Сѓ Рё РїРµСЂРµРІРѕРґРёС‚ СЃРѕСЃС‚РѕСЏРЅРёРµ РїСЂРё СЃРјРµРЅРµ С„Р°Р·С‹.
+     * Обновляет фазу и переводит состояние при смене фазы.
      */
     updatePhase() {
         const nextPhase = this.getPhaseByHp();
@@ -810,8 +810,8 @@ class BossO4ko {
     }
 
     /**
-     * РћР±РЅРѕРІР»СЏРµС‚ Р±РѕСЃСЃР° Р·Р° РєР°РґСЂ.
-     * @param {number} dt - РІСЂРµРјСЏ РєР°РґСЂР°, СЃРµРє.
+     * Обновляет босса за кадр.
+     * @param {number} dt - время кадра, сек.
      */
     update(dt) {
         if (this.hp <= 0) return;
@@ -831,7 +831,7 @@ class BossO4ko {
         }
         this.updateShooting(dt, cfg);
 
-        // РђРЅРёРјР°С†РёСЏ СЃРїСЂР°Р№С‚РѕРІ.
+        // Анимация спрайтов.
         this.animTimer += dt;
         const interval = this.isJumping ? this.animIntervalJump : this.animIntervalWalk;
         if (this.animTimer >= interval) {
@@ -841,12 +841,12 @@ class BossO4ko {
     }
 
     /**
-     * Рисует текущий кадр спрайта с учетом направления.
+     * Рисует кадр спрайта босса с учетом направления.
      * @param {CanvasRenderingContext2D} targetCtx - контекст отрисовки.
      * @param {HTMLImageElement} img - текущий кадр спрайта.
      * @param {number} x - координата X.
      * @param {number} y - координата Y.
-     * @param {boolean} facingLeft - true, если спрайт нужно отзеркалить.
+     * @param {boolean} facingLeft - true, если босс смотрит влево.
      */
     drawSpriteFrame(targetCtx, img, x, y, facingLeft) {
         targetCtx.save();
@@ -861,9 +861,9 @@ class BossO4ko {
     }
 
     /**
-     * Возвращает кэшированный canvas c контуром по альфа-маске спрайта.
+     * Возвращает вспомогательный canvas с контуром по альфа-маске спрайта.
      * @param {HTMLImageElement} img - текущий кадр спрайта.
-     * @param {boolean} facingLeft - true, если спрайт нужно отзеркалить.
+     * @param {boolean} facingLeft - true, если босс смотрит влево.
      * @param {number} thickness - толщина контура.
      * @param {string} color - цвет контура.
      * @returns {HTMLCanvasElement}
@@ -908,7 +908,7 @@ class BossO4ko {
             drawMaskAt(baseX + dx, baseY + dy);
         }
 
-        // Вырезаем внутреннюю часть, чтобы остался только контур.
+        // Удаляем исходный спрайт, чтобы остался только внешний контур.
         octx.save();
         octx.globalCompositeOperation = 'destination-out';
         if (facingLeft) {
@@ -928,7 +928,7 @@ class BossO4ko {
     }
 
     /**
-     * РћС‚СЂРёСЃРѕРІС‹РІР°РµС‚ Р±РѕСЃСЃР°, С‚РµР»РµРіСЂР°С„С‹ Рё РІРѕР»РЅСѓ.
+     * Отрисовывает босса, телеграфы и волну.
      */
     draw() {
         if (o4koSpritesReady < 6 || o4koImgs.length < 6) return;
@@ -936,7 +936,7 @@ class BossO4ko {
         if (!img || !img.complete) return;
         const facingLeft = this.facingDir === 'left';
 
-        // Р РёСЃСѓРµРј РІРѕР»РЅСѓ СѓРґР°СЂР° Рѕ Р·РµРјР»СЋ.
+        // Рисуем волну удара о землю.
         if (this.groundWave.active) {
             const t = Math.min(1, this.groundWave.timer / Math.max(0.0001, this.groundWave.duration));
             const alpha = 0.9 - t * 0.5;
@@ -959,7 +959,7 @@ class BossO4ko {
 
         this.drawSpriteFrame(ctx, img, this.x, this.y, facingLeft);
 
-        // Р’РёР·СѓР°Р»СЊРЅР°СЏ С‚РµР»РµРіСЂР°С„РёСЏ РїРѕ РєРѕРЅС‚СѓСЂСѓ С„РёРіСѓСЂС‹ (Р±РµР· РїСЂСЏРјРѕСѓРіРѕР»СЊРЅРѕР№ СЂР°РјРєРё).
+        // Визуальная телеграфия по контуру фигуры (без прямоугольной рамки).
         if (this.state === 'dashTelegraph' || this.state === 'slamTelegraph') {
             const pulse = 0.35 + 0.25 * Math.sin((performance.now() * 0.012) + this.vulnerabilityFlashSeed);
             const color = (this.state === 'dashTelegraph') ? '#ffb300' : '#ff7043';
@@ -971,7 +971,7 @@ class BossO4ko {
             ctx.restore();
         }
 
-        // Эффект уязвимости: контур только по фигуре, без прямоугольной рамки спрайта.
+        // Окно уязвимости: белый контур по фигуре, без прямоугольной рамки.
         if (this.isVulnerable()) {
             const pulse = 0.25 + 0.25 * Math.sin((performance.now() * 0.015) + this.vulnerabilityFlashSeed);
             const thickness = Math.max(2, Math.round(this.w * 0.03));
