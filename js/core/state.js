@@ -169,6 +169,7 @@ function resetGameRuntimeCore() {
     cachedLivesStr = '';
 
     if (typeof resetNosokLevelState === 'function') resetNosokLevelState();
+    if (typeof resetRunnerLevelState === 'function') resetRunnerLevelState();
     if (typeof resetLovlyuLevelState === 'function') resetLovlyuLevelState();
 }
 
@@ -229,6 +230,13 @@ function initRunWorldByMode(mode) {
         playerBulletDir = 'up';
         initLovlyuLevel();
         player.y = canvas.height - player.h - 20;
+        return;
+    }
+
+    if (startMode === 'runner') {
+        bgImg.src = 'img/ud-bg.png';
+        playerBulletDir = 'right';
+        initRunnerLevel();
         return;
     }
 

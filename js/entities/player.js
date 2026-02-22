@@ -30,7 +30,7 @@ class Player {
         this.jumpMaxHeight = 1.5 * this.h;
         this.jumpHoldTimer = 0;
         this.jumpHoldMax = 0.6; // секунды удержания для увеличения высоты при подъеме
-        // Стиль прыжка по персонажу: 'max' = линейный, 'dron' = физика с мгновенным бустом, 'kuzy' = физика с плавным набором скорости
+        // Стиль прыжка по персонажу: 'max' = баллистика как в режиме "Бегун", 'dron' = физика с мгновенным бустом, 'kuzy' = физика с плавным набором скорости
         this.jumpStyle = (type === 'max') ? 'max' : (type === 'dron') ? 'dron' : 'kuzy';
         this.jumpRampFactor = (type === 'kuzy') ? 4.0 : 6.0; // меньше = плавнее для 'kuzy'
         // Направление взгляда для зеркалирования спрайта: 'left' или 'right'
@@ -89,11 +89,11 @@ class Player {
             this.jumpMinHeight = 0.6 * this.h;
             this.jumpMaxHeight = 1.5 * this.h;
             if (this.jumpStyle === 'max') {
-                // линейный прыжок фиксированной высоты (без зарядки)
-                this.jumpHeight = this.jumpMaxHeight;
-                this.jumpDuration = 2.0 / nosokJumpMul;
-                // Устанавливаем отрицательное vy чтобы логика платформ знала что Max прыгает вверх
-                this.vy = -1 * nosokJumpMul;
+                // Баллистический прыжок Макса (как в "Бегуне"):
+                // фиксированная высота, ускоренная версия в "Носке" через nosokJumpMul.
+                this.gravity = canvas.height * 2.45 * nosokJumpMul * nosokJumpMul;
+                this.jumpHeight = Math.max(this.jumpMaxHeight, canvas.height * 0.28);
+                this.vy = -Math.sqrt(2 * this.gravity * this.jumpHeight);
             } else {
                 // физические стили: задаем гравитацию и стартовую скорость вверх по минимальной высоте
                 this.gravity = 2 * this.jumpMaxHeight * nosokJumpMul * nosokJumpMul;
@@ -173,21 +173,16 @@ class Player {
         if (this.isJumping) {
             this.jumpTimer += dt;
             if (this.jumpStyle === 'max') {
-                // Линейный подъем и спуск за jumpDuration, фиксированная вершина
-                const half = this.jumpDuration / 2;
-                if (this.jumpTimer <= half) {
-                    const t = this.jumpTimer / half;
-                    this.y = this.jumpBaseY - this.jumpHeight * t;
-                } else if (this.jumpTimer <= this.jumpDuration) {
-                    const t = (this.jumpTimer - half) / half;
-                    this.y = this.jumpBaseY - this.jumpHeight * (1 - t);
-                    // Устанавливаем положительное vy по мере падения чтобы коллизия сработала
-                    this.vy = t * 2; // от 0 к 2
-                } else {
+                // Баллистика без удержания: подъем/спуск считаются через vy + gravity.
+                this.vy += this.gravity * dt;
+                this.y += this.vy * dt;
+                // В режиме платформ приземление обработается ниже через коллизию с платформами.
+                if (gameMode !== 'platforms' && this.y >= this.jumpBaseY) {
+                    this.y = this.jumpBaseY;
+                    this.vy = 0;
                     this.isJumping = false;
                     this.jumpTimer = 0;
-                    this.y = this.jumpBaseY;
-                    this.vy = 1; // Положительное значение для коллизии с платформой
+                    this.jumpHoldTimer = 0;
                 }
             } else if (this.jumpStyle === 'dron') {
                 // Физический прыжок с мгновенным бустом при удержании

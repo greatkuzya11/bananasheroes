@@ -72,13 +72,15 @@ function showLevelComplete() {
     const victoryText67 = 'Поздравляю, вы победили 67!';
     const victoryTextO4ko = 'Поздравляю, вы победили Очко!';
     const victoryTextNosok = `Победа! 10/10 голов за ${formatNosokTime(Math.max(1, nosokFinalTimeMs || Math.round(nosokElapsedTime * 1000)))}`;
+    const victoryTextRunner = 'Поздравляю, ты научил Дрона курить!';
     const victoryTextLibrary = 'Поздравляем, уровень "Библиотека" пройден!';
     const victoryTextDefault = 'Поздравляем, уровень "Сирень и Букин" пройден. Букин освобождён.';
     const victoryText = (gameMode === '67')
         ? victoryText67
         : (gameMode === 'o4ko') ? victoryTextO4ko
             : (gameMode === 'nosok') ? victoryTextNosok
-                : (gameMode === 'library') ? victoryTextLibrary : victoryTextDefault;
+                : (gameMode === 'runner') ? victoryTextRunner
+                    : (gameMode === 'library') ? victoryTextLibrary : victoryTextDefault;
     msg.innerText = victoryText + (isNew ? ' — Новый рекорд!' : '');
     Object.assign(msg.style, { fontSize: '20px', marginBottom: '18px', color: '#222', opacity: '0', transform: 'translateY(12px)' });
 
@@ -298,6 +300,7 @@ function updateBestScoresDisplay() {
         { id: 'nosok', name: 'Носок' },
         { id: 'platforms', name: 'Платформы' },
         { id: 'lovlyu', name: 'Ловлю' },
+        { id: 'runner', name: 'Бегун' },
         { id: 'library', name: 'Библиотека' }
     ];
     
@@ -385,7 +388,7 @@ function showGameOver() {
 
     const bestLine = document.createElement('div');
     const displayName = (charNames && charNames[selectedChar]) ? charNames[selectedChar] : selectedChar;
-    const modeNames = { 'normal': 'Сирень и Букин', 'survival': 'Выживание', '67': 'Режим 67', 'o4ko': 'Очко', 'nosok': 'Носок', 'platforms': 'Платформы', 'lovlyu': 'Ловлю', 'library': 'Библиотека' };
+    const modeNames = { 'normal': 'Сирень и Букин', 'survival': 'Выживание', '67': 'Режим 67', 'o4ko': 'Очко', 'nosok': 'Носок', 'platforms': 'Платформы', 'lovlyu': 'Ловлю', 'runner': 'Бегун', 'library': 'Библиотека' };
     const modeName = modeNames[gameMode] || gameMode;
     if (isNosokMode) {
         const bestTime = parseInt(localStorage.getItem('bh_bestTime_' + (selectedChar || 'kuzy') + '_nosok') || '0', 10) || 0;

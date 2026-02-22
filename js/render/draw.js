@@ -9,6 +9,12 @@ function draw() {
         return;
     }
 
+    // Отдельная отрисовка уровня "Бегун".
+    if (gameMode === 'runner') {
+        drawRunnerMode();
+        return;
+    }
+
     // Рисуем адаптивный фон
     if (bgReady) {
         ctx.drawImage(bgImg, 0, 0, canvas.width, canvas.height);

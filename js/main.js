@@ -362,6 +362,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 player.y = Math.min(player.y, canvas.height - player.h - 20);
             }
         }
+        if (gameMode === 'runner' && typeof onRunnerResize === 'function') {
+            onRunnerResize(prevW, prevH);
+        }
     }
 
     /**

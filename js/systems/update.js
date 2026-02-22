@@ -62,6 +62,12 @@ function update(dt) {
         return;
     }
 
+    // Отдельный игровой цикл уровня "Бегун".
+    if (gameMode === 'runner') {
+        updateRunnerMode(dt);
+        return;
+    }
+
     if (invuln > 0) invuln -= dt;
     
     // Обновляем платформы в режиме платформ
