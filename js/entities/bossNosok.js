@@ -335,9 +335,9 @@ class BossNosok {
                 }
             }
 
-            const fishPhase = (typeof nosokGoals === 'number' && nosokGoals >= 7);
+            const fishPhase = (typeof nosokGoals === 'number' && nosokGoals >= 5);
             if (fishPhase) {
-                // После 7 голов босс полностью переключается на тухлую рыбу.
+                // После 5 голов босс полностью переключается на тухлую рыбу.
                 this.volleyTimer = 0;
                 this.fishVolleyTimer += dt;
                 if (this.fishVolleyTimer >= this.nextFishVolley) {
@@ -346,7 +346,7 @@ class BossNosok {
                     this.shootFish();
                 }
             } else {
-                // До 7 голов босс кидается только носками.
+                // До 5 голов босс кидается только носками.
                 this.fishVolleyTimer = 0;
                 this.volleyTimer += dt;
                 if (this.volleyTimer >= this.nextVolley) {

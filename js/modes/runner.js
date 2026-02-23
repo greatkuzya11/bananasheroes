@@ -58,6 +58,7 @@ let runnerEnergyActive = false;
 let runnerEnergyTimer = 0;
 let runnerCigarXLActive = false;
 let runnerCigarXLTimer = 0;
+let runnerScoreDecayTimer = 0;
 
 // Сохраненный старый вариант прыжка (не используется по умолчанию):
 // "фиксированный баллистический прыжок".
@@ -127,6 +128,7 @@ function resetRunnerLevelState() {
     runnerEnergyTimer = 0;
     runnerCigarXLActive = false;
     runnerCigarXLTimer = 0;
+    runnerScoreDecayTimer = 0;
 }
 
 /**
@@ -625,10 +627,10 @@ function updateRunnerBossAi(dt, playerMoving) {
         if (distX < canvas.width * 0.24 && Math.random() < dt * 1.7) {
             runnerBoss.turboTimer = Math.max(runnerBoss.turboTimer, runnerRand(0.35, 0.75));
         }
-        if (runnerBossSlowTimer > 0 && Math.random() < dt * 0.45) {
-            runnerBoss.teaseTimer = runnerRand(0.20, 0.45);
-        } else if (runnerBossSlowTimer <= 0) {
-            runnerBoss.teaseTimer = 0;
+        // Дразнилка: в обычном режиме редко (dt*0.10), в окне замедления чаще (dt*0.48).
+        const teaseChance = runnerBossSlowTimer > 0 ? dt * 0.48 : dt * 0.10;
+        if (Math.random() < teaseChance) {
+            runnerBoss.teaseTimer = runnerRand(0.25, 0.55);
         }
     }
 
@@ -667,8 +669,8 @@ function updateRunnerBossAi(dt, playerMoving) {
         runnerBoss.escapeDir = awayDir;
     }
 
-    // Во время "дразнилки" босс может чуть сократить дистанцию.
-    if (runnerBossSlowTimer > 0 && runnerBoss.teaseTimer > 0 && playerMoving && distX > minSafeDist * 1.8) {
+    // Во время "дразнилки" босс может чуть сократить дистанцию (работает в любом режиме).
+    if (runnerBoss.teaseTimer > 0 && playerMoving && distX > minSafeDist * 1.8) {
         runnerBoss.teaseTimer = Math.max(0, runnerBoss.teaseTimer - dt);
         moveDir *= -1;
         targetSpeed *= 0.58;
@@ -775,13 +777,16 @@ function updateRunnerBossAnimation(dt) {
  * @param {{x:number,y:number,w:number,h:number}} cig - прямоугольник сигареты.
  * @param {number} dt - время кадра.
  */
-function spawnRunnerSmoke(cig, dt) {
+function spawnRunnerSmoke(cig, dt, facingDir) {
     const densityMul = runnerCigarXLActive ? 2.2 : 1.0;
     const count = Math.max(1, Math.floor(dt * 42 * densityMul));
+    // Дым идёт с дальнего конца сигареты (горящего края).
+    // При движении вправо — это правый край (x + w), влево — левый (x).
+    const tipX = (facingDir === 'left') ? cig.x : cig.x + cig.w;
     for (let i = 0; i < count; i++) {
         runnerSmoke.push({
-            x: cig.x + cig.w * runnerRand(0.45, 0.95),
-            y: cig.y + cig.h * runnerRand(0.15, 0.45),
+            x: tipX + runnerRand(-cig.w * 0.12, cig.w * 0.12),
+            y: cig.y + cig.h * runnerRand(0.1, 0.5),
             vx: runnerRand(-18, 18),
             vy: runnerRand(-52, -26),
             r: runnerRand(4, 10),
@@ -1099,13 +1104,18 @@ function updateRunnerHud() {
         lastHudLives = lives;
     }
 
-    const idleVal = Math.min(20, runnerIdleTimer);
-    const idleStr = `${idleVal.toFixed(1)}/20.0с`;
-    const slowStr = runnerBossSlowTimer > 0 ? `${runnerBossSlowTimer.toFixed(1)}с` : '—';
+    // 🐢 — индикатор уловки: появляется только когда уловка заряжена или активна.
+    // Не показываем отладочные числа — только нужный игроку сигнал.
+    let trickStr = '';
+    if (runnerBossSlowTimer > 0) {
+        trickStr = `   🐢 ${runnerBossSlowTimer.toFixed(1)}с`;
+    } else if (runnerIdleArmed) {
+        trickStr = '   🐢 Готово!';
+    }
     const energyStr = runnerEnergyActive ? `   ⚡ ${Math.ceil(runnerEnergyTimer)}с` : '';
     const cigarStr = runnerCigarXLActive ? `   🚬x2 ${Math.ceil(runnerCigarXLTimer)}с` : '';
 
-    const hudHtml = `${playerName} | Жизни: ${cachedLivesStr}<br>Цель: 🚬 по прапору   Простой: ${idleStr}   Окно замедления: ${slowStr}${energyStr}${cigarStr}`;
+    const hudHtml = `${playerName} | Жизни: ${cachedLivesStr}<br>Очки: ${Math.max(0, Math.floor(score))}   Цель: 🚬 по прапору${trickStr}${energyStr}${cigarStr}`;
     if (hudHtml !== lastHudHtml) {
         hudEl.innerHTML = hudHtml;
         lastHudHtml = hudHtml;
@@ -1117,6 +1127,9 @@ function updateRunnerHud() {
  */
 function initRunnerLevel() {
     resetRunnerLevelState();
+    // В режиме "Бегун" очки стартуют со 100 и постепенно убывают от времени.
+    score = 100;
+    runnerScoreDecayTimer = 0;
 
     // Скорости в px/сек.
     runnerPlayerMoveSpeed = player.speed * 60;
@@ -1207,6 +1220,16 @@ function updateRunnerMode(dt) {
 
     if (invuln > 0) invuln -= dt;
 
+    // Таймер очков "Бегуна":
+    // каждые 5 секунд уменьшаем очки на 1, не ниже 0.
+    if (!runnerVictory && !levelCompleteShown && score > 0) {
+        runnerScoreDecayTimer += dt;
+        while (runnerScoreDecayTimer >= 5.0 && score > 0) {
+            runnerScoreDecayTimer -= 5.0;
+            score = Math.max(0, score - 1);
+        }
+    }
+
     // Обновляем движущиеся платформы заранее (нужно для переносов игрока/босса).
     for (let i = 0; i < runnerPlatforms.length; i++) {
         runnerPlatforms[i].update(dt);
@@ -1272,7 +1295,7 @@ function updateRunnerMode(dt) {
     if (smoking) {
         const cigHitRect = getRunnerCigaretteRect();
         const cigVisualRect = getRunnerCigaretteVisualRect();
-        spawnRunnerSmoke(cigVisualRect, dt);
+        spawnRunnerSmoke(cigVisualRect, dt, player.facingDir);
 
         // Условие победы: сигарета коснулась босса.
         if (!runnerVictory && runnerBoss && rect(cigHitRect, runnerBoss) && !levelCompleteShown) {
@@ -1388,13 +1411,35 @@ function drawRunnerBoss() {
     const drawX = runnerBoss.x;
     const drawY = runnerBoss.y;
 
+    // Тень рисуется на поверхности под боссом, а не под спрайтом.
+    let shadowSurfaceY = runnerGround ? runnerGround.y : canvas.height;
+    if (runnerBoss.onGround && runnerBoss.currentPlatform) {
+        shadowSurfaceY = runnerBoss.currentPlatform.y;
+    } else {
+        // Босс в воздухе — ищем ближайшую платформу ниже центра.
+        const bCenterX = drawX + runnerBoss.w * 0.5;
+        const bBottom  = drawY + runnerBoss.h;
+        const surfaces = getRunnerSolidSurfaces();
+        for (let _i = 0; _i < surfaces.length; _i++) {
+            const _p = surfaces[_i];
+            if (!_p) continue;
+            if (bCenterX < _p.x || bCenterX > _p.x + _p.w) continue;
+            if (_p.y >= bBottom && _p.y < shadowSurfaceY) shadowSurfaceY = _p.y;
+        }
+    }
+    const _shadowDist   = Math.max(0, shadowSurfaceY - (drawY + runnerBoss.h));
+    const _shadowScale  = Math.max(0.12, 1 - _shadowDist / (canvas.height * 0.55));
     ctx.save();
-
-    // Небольшая тень.
-    ctx.globalAlpha = 0.25;
+    ctx.globalAlpha = 0.22 * _shadowScale;
     ctx.fillStyle = '#000';
     ctx.beginPath();
-    ctx.ellipse(drawX + runnerBoss.w * 0.5, drawY + runnerBoss.h + 6, runnerBoss.w * 0.34, Math.max(4, runnerBoss.h * 0.08), 0, 0, Math.PI * 2);
+    ctx.ellipse(
+        drawX + runnerBoss.w * 0.5,
+        shadowSurfaceY + 3,
+        runnerBoss.w * 0.34 * _shadowScale,
+        Math.max(3, runnerBoss.h * 0.07 * _shadowScale),
+        0, 0, Math.PI * 2
+    );
     ctx.fill();
     ctx.restore();
 
@@ -1425,19 +1470,71 @@ function drawRunnerBossSpeech() {
     const alpha = Math.max(0, Math.min(1, lifeK));
 
     const text = runnerBossSpeech.text;
-    const fontSize = Math.max(14, Math.round(canvas.width * 0.016));
+    const fontSize = Math.max(13, Math.round(canvas.width * 0.016));
+    const pad = 12;
+    const lineH = fontSize * 1.45;
+    const maxLineW = Math.min(canvas.width * 0.58, 340);
+
     ctx.save();
     ctx.globalAlpha = alpha;
     ctx.font = `bold ${fontSize}px Arial`;
 
-    const textWidth = Math.min(canvas.width * 0.66, ctx.measureText(text).width);
-    const pad = 12;
-    const boxW = textWidth + pad * 2;
-    const boxH = fontSize * 1.9;
+    // Перенос по словам.
+    const words = text.split(' ');
+    const lines = [];
+    let cur = '';
+    for (let _wi = 0; _wi < words.length; _wi++) {
+        const test = cur ? cur + ' ' + words[_wi] : words[_wi];
+        if (cur && ctx.measureText(test).width > maxLineW) {
+            lines.push(cur);
+            cur = words[_wi];
+        } else {
+            cur = test;
+        }
+    }
+    if (cur) lines.push(cur);
+
+    const boxW = Math.min(maxLineW + pad * 2, canvas.width - 20);
+    const boxH = lines.length * lineH + pad * 2;
 
     let bx = runnerBoss.x + runnerBoss.w * 0.5 - boxW * 0.5;
     bx = Math.max(8, Math.min(canvas.width - boxW - 8, bx));
-    const by = Math.max(12, runnerBoss.y - boxH - 18);
+
+    // Стандартная позиция — над боссом.
+    let by = Math.max(12, runnerBoss.y - boxH - 18);
+
+    // Когда активна победная табличка, она занимает примерно центральные 25–75%
+    // высоты canvas. Если облачко попадает в эту зону — сдвигаем его:
+    // пробуем над запретной зоной, потом под боссом, потом под запретной зоной.
+    if (runnerVictory) {
+        const forbidTop    = canvas.height * 0.22;
+        const forbidBottom = canvas.height * 0.78;
+        const bubbleBottom = by + boxH;
+        const overlaps = by < forbidBottom && bubbleBottom > forbidTop;
+        if (overlaps) {
+            // Вариант А: над запретной зоной
+            const aboveBy = forbidTop - boxH - 10;
+            // Вариант Б: под боссом
+            const belowBy = runnerBoss.y + runnerBoss.h + 18;
+            // Вариант В: под запретной зоной
+            const belowForbidBy = forbidBottom + 10;
+
+            // Выбираем ближайший к боссу вариант, который не перекрывает запретную зону
+            const bossMidY = runnerBoss.y + runnerBoss.h * 0.5;
+            const candidates = [];
+            if (aboveBy >= 8) candidates.push({ y: aboveBy, dist: Math.abs(aboveBy + boxH * 0.5 - bossMidY) });
+            if (belowBy + boxH <= canvas.height - 4) candidates.push({ y: belowBy, dist: Math.abs(belowBy + boxH * 0.5 - bossMidY) });
+            if (belowForbidBy + boxH <= canvas.height - 4) candidates.push({ y: belowForbidBy, dist: Math.abs(belowForbidBy + boxH * 0.5 - bossMidY) });
+
+            if (candidates.length > 0) {
+                candidates.sort((a, b) => a.dist - b.dist);
+                by = candidates[0].y;
+            } else {
+                // Крайний случай: прижать к самому низу.
+                by = canvas.height - boxH - 8;
+            }
+        }
+    }
 
     ctx.fillStyle = 'rgba(255,255,255,0.96)';
     ctx.strokeStyle = 'rgba(0,0,0,0.28)';
@@ -1447,7 +1544,8 @@ function drawRunnerBossSpeech() {
     ctx.fill();
     ctx.stroke();
 
-    const tailX = runnerBoss.x + runnerBoss.w * 0.5;
+    // Хвостик привязан к центру спрайта босса, но не вылезает за края облачка.
+    const tailX = Math.max(bx + 16, Math.min(bx + boxW - 16, runnerBoss.x + runnerBoss.w * 0.5));
     const tailY = by + boxH;
     ctx.beginPath();
     ctx.moveTo(tailX - 10, tailY);
@@ -1458,9 +1556,11 @@ function drawRunnerBossSpeech() {
     ctx.stroke();
 
     ctx.fillStyle = '#222';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText(text, bx + boxW * 0.5, by + boxH * 0.53, boxW - pad * 2);
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'top';
+    for (let _li = 0; _li < lines.length; _li++) {
+        ctx.fillText(lines[_li], bx + pad, by + pad + _li * lineH);
+    }
     ctx.restore();
 }
 
@@ -1475,20 +1575,6 @@ function drawRunnerMode() {
         ctx.fillStyle = '#87b36c';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
     }
-
-    // Разделители 4 полос.
-    const stripeH = canvas.height / 4;
-    ctx.save();
-    ctx.strokeStyle = 'rgba(255,255,255,0.16)';
-    ctx.lineWidth = 2;
-    for (let i = 1; i < 4; i++) {
-        const y = stripeH * i;
-        ctx.beginPath();
-        ctx.moveTo(0, y);
-        ctx.lineTo(canvas.width, y);
-        ctx.stroke();
-    }
-    ctx.restore();
 
     // Визуальный слой "земли" отключен: оставляем только фон уровня без коричневой подложки.
 

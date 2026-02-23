@@ -69,6 +69,8 @@ function update(dt) {
     }
 
     if (invuln > 0) invuln -= dt;
+    // Таймер визуального эффекта смены фазы
+    if (normalPhaseEffectTimer > 0) normalPhaseEffectTimer = Math.max(0, normalPhaseEffectTimer - dt);
     
     // Обновляем платформы в режиме платформ
     if (gameMode === 'platforms') {
@@ -248,24 +250,68 @@ function update(dt) {
         }, 12000);
     }
 
-    // ЛОГИКА БОССА
+    // ЛОГИКА ПЕРЕХОДА ФАЗ (режим normal)
+    if (gameMode === 'normal') {
+        // Если идет интерактивный спавн фазы — создаём по одному врагу за 3 секунды
+        if (normalPhaseSpawning) {
+            normalPhaseSpawnTimer += dt;
+            const total = Math.max(1, normalPhaseSpawnTotal || (ENEMY_ROWS * ENEMY_COLS));
+            const interval = 3.0 / total;
+            while (normalPhaseSpawnTimer >= interval && normalPhaseSpawnedCount < total) {
+                normalPhaseSpawnTimer -= interval;
+                spawnOneNormalEnemy(normalPhaseTarget, normalPhaseSpawnedCount);
+                normalPhaseSpawnedCount++;
+            }
+            if (normalPhaseSpawnedCount >= total) {
+                normalPhaseSpawning = false;
+                normalPhase = normalPhaseTarget;
+                // визуальный эффект запускается при убийстве последнего врага — не дублируем здесь
+            }
+        }
+    }
+
+    // ЛОГИКА БОССА (если не normal, либо normal и фазы завершены)
     if (gameMode !== 'survival' && gameMode !== '67' && gameMode !== 'o4ko' && gameMode !== 'platforms' && gameMode !== 'library' && !boss && !bossDefeated && enemies.length === 0) {
-        // Создаем босса-сосиску после уничтожения всех врагов
-        const baseSize = canvas.height * 0.08;
-        boss = {
-            x: canvas.width / 2,
-            y: -baseSize * 5,
-            w: baseSize * 5,
-            h: baseSize * 5,
-            dir: 1,
-            shootTimer: 0,
-            hp: 11,
-            angle: 0,
-            angleSpeed: 0.04 + Math.random()*0.04,
-            centered: false
-        };
-        // Не считаем игрока неуязвимым, пока босс действительно не побежден
-        bossDefeated = false;
+        if (gameMode === 'normal') {
+            // Если ещё не дошли до 4-й фазы — запускаем спавн следующей фазы
+            if (normalPhase < 4 && !normalPhaseSpawning) {
+                startNormalPhaseSpawn(normalPhase + 1);
+            } else if (normalPhase >= 4 && !normalPhaseSpawning) {
+                // Создаем босса-сосиску после уничтожения всех врагов четвёртой фазы
+                const baseSize = canvas.height * 0.08;
+                boss = {
+                    x: canvas.width / 2,
+                    y: -baseSize * 5,
+                    w: baseSize * 5,
+                    h: baseSize * 5,
+                    dir: 1,
+                    shootTimer: 0,
+                    hp: 20,
+                    maxHp: 20,
+                    angle: 0,
+                    angleSpeed: 0.04 + Math.random()*0.04,
+                    centered: false
+                };
+                bossDefeated = false;
+            }
+        } else {
+            // Создаем босса-сосиску после уничтожения всех врагов (не normal)
+            const baseSize = canvas.height * 0.08;
+            boss = {
+                x: canvas.width / 2,
+                y: -baseSize * 5,
+                w: baseSize * 5,
+                h: baseSize * 5,
+                dir: 1,
+                shootTimer: 0,
+                hp: 11,
+                angle: 0,
+                angleSpeed: 0.04 + Math.random()*0.04,
+                centered: false
+            };
+            // Не считаем игрока неуязвимым, пока босс действительно не побежден
+            bossDefeated = false;
+        }
     }
 
     if (boss) {
@@ -374,12 +420,19 @@ function update(dt) {
     // Обновляем состояние всех врагов; e — объект врага
     enemies.forEach(e => {
         if (!e.diving) {
-            e.x += e.dir * (1.2 + survivalEnemySpeedIncrease);
+            const base = 1.2 + survivalEnemySpeedIncrease;
+            const speedMul = (typeof e.speedMul === 'number') ? e.speedMul : 1.0;
+            e.x += e.dir * (base * speedMul);
             if (e.x < 0 || e.x + e.w > canvas.width) {
                 e.dir *= -1;
                 e.y += 20;
             }
-            if (Math.random() < 0.002) {
+            // Вероятность пикирования зависит от фазы (для normal): фазы 1-2 => 0.001, иначе 0.002
+            let diveChance = 0.002;
+            if (gameMode === 'normal' && typeof e.phase === 'number') {
+                if (e.phase === 1 || e.phase === 2) diveChance = 0.001;
+            }
+            if (Math.random() < diveChance) {
                 e.diving = true;
                 e.targetX = player.x + player.w / 2;
             }
@@ -394,7 +447,8 @@ function update(dt) {
         }
 
         e.shootTimer += dt;
-        if (Math.random() < 0.004 && e.shootTimer > 0.9) {
+        const shootMul = (typeof e.shootMul === 'number') ? e.shootMul : (typeof e.shootMul === 'undefined' && typeof e.shootMul === 'undefined' ? 1.0 : 1.0);
+        if (Math.random() < 0.004 * shootMul && e.shootTimer > 0.9) {
             e.shootTimer = 0;
             const bx = e.x + e.w / 2;
             const by = e.y + e.h;
@@ -722,6 +776,14 @@ function update(dt) {
                     // Взрыв на месте врага
                     explosions.push({ x: e.x + e.w / 2, y: e.y + e.h / 2, timer: 0 });
                     enemies.splice(ei, 1);
+                    // Если это был последний враг фазы в режиме normal — показываем эффект и запускаем переход
+                    if (gameMode === 'normal' && enemies.length === 0) {
+                        // Небольшой, неяркий эффект на ~0.6 секунды
+                        normalPhaseEffectTimer = 0.6;
+                        if (normalPhase < 4 && !normalPhaseSpawning) {
+                            startNormalPhaseSpawn(normalPhase + 1);
+                        }
+                    }
                     // Выживание: увеличиваем счетчик убийств и ускоряем игру
                     if (gameMode === 'survival') {
                         killCount++;
@@ -1022,6 +1084,9 @@ function update(dt) {
         const bonusHtml = `<span class="${bonusClass}"><span>Бонус:</span><span class="hud-bonus-value">${Math.max(0, bonusShots)}</span></span>`;
         let hudHtml = '';
         hudHtml = `${playerName} | Жизни: ${cachedLivesStr}<br>Очки: ${score}   Комбо: ${combo}   ${bonusHtml}   Пули: ${dirIcon} ${modeIndicator}${o4koPhaseInfo}`;
+        if (typeof debugMode !== 'undefined' && debugMode) {
+            hudHtml += `<br>DEBUG: Фаза ${normalPhase}   Врагов: ${enemies.length}`;
+        }
         if (hudHtml !== lastHudHtml) {
             hudEl.innerHTML = hudHtml;
             lastHudHtml = hudHtml;

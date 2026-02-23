@@ -207,6 +207,25 @@ function draw() {
     // Рисуем книги в режиме "Библиотека"
     if (gameMode === 'library') drawLibraryBooks();
 
+    // Визуальный эффект при смене фазы в режиме normal (радиальный всплеск)
+    if (gameMode === 'normal' && typeof normalPhaseEffectTimer !== 'undefined' && normalPhaseEffectTimer > 0) {
+        const t = Math.max(0, Math.min(1, normalPhaseEffectTimer / 0.6));
+        const osc = 0.5 + 0.5 * Math.sin(performance.now() * 0.02);
+        const alpha = 0.35 * t * osc; // less bright
+        ctx.save();
+        ctx.globalCompositeOperation = 'lighter';
+        const cx = canvas.width * 0.5;
+        const cy = canvas.height * 0.35;
+        const maxR = Math.max(canvas.width, canvas.height) * 0.6;
+        const g = ctx.createRadialGradient(cx, cy, 10, cx, cy, maxR);
+        g.addColorStop(0, `rgba(255,230,180,${alpha})`);
+        g.addColorStop(0.5, `rgba(255,200,140,${0.28 * t})`);
+        g.addColorStop(1, `rgba(255,200,140,0)`);
+        ctx.fillStyle = g;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.restore();
+    }
+
     if (perf && perf.isEnabled()) perf.beforeBulletDraw();
     // Рисуем все пули игрока; b — объект пули
     bullets.forEach(b => {

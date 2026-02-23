@@ -205,6 +205,106 @@ function spawnEnemies() {
         }
     }
 }
+/**
+ * Создаёт сетку врагов для указанной фазы (1..3).
+ * Фаза влияет на множители скорости и частоты стрельбы.
+ * Если `immediate` === true — создаём всю сетку сразу.
+ */
+function spawnNormalPhase(phase, immediate = true) {
+    const lilacColors = ["#b57edc", "#c084fc", "#a855f7", "#e1bee7", "#ede7f6"];
+    enemies = [];
+    const phaseMap = {
+        1: { speedMul: 0.5, shootMul: 0.5 },
+        2: { speedMul: 0.5, shootMul: 0.5 },
+        3: { speedMul: 1.0, shootMul: 1.0 },
+        4: { speedMul: 1.5, shootMul: 1.5 }
+    };
+    const mul = phaseMap[phase] || phaseMap[2];
+    for (let r = 0; r < ENEMY_ROWS; r++) {
+        for (let c = 0; c < ENEMY_COLS; c++) {
+            const flowers = [];
+            for (let i = 0; i < 18; i++) {
+                const angle = Math.PI * 2 * Math.random();
+                const rad = 0.18 + Math.random() * 0.18;
+                const relX = Math.cos(angle) * 0.22 * (0.7 + Math.random()*0.7);
+                const relY = 0.18 + Math.sin(angle) * 0.22 * (0.7 + Math.random()*0.7);
+                const sizeK = 0.5 + Math.random()*0.5;
+                const color = lilacColors[Math.floor(Math.random() * lilacColors.length)];
+                flowers.push({relX, relY, rad, sizeK, color});
+            }
+            const enemyW = canvas.height * ENEMY_WIDTH_RATIO;
+            const enemyH = canvas.height * ENEMY_HEIGHT_RATIO;
+            const ex = 100 + c * ENEMY_X_SPACING;
+            const ey = ENEMY_START_Y + r * ENEMY_Y_SPACING;
+            enemies.push({
+                x: ex,
+                y: ey,
+                w: enemyW,
+                h: enemyH,
+                dir: 1,
+                diving: false,
+                targetX: 0,
+                shootTimer: 0,
+                flowers,
+                phase: phase,
+                speedMul: mul.speedMul,
+                shootMul: mul.shootMul
+            });
+        }
+    }
+    // Если immediate === false, we will spawn incrementally via spawnOneNormalEnemy
+}
+
+/**
+ * Начинает поодиночный спавн фазы (переход): в `normalPhaseSpawnTotal` будет общее число,
+ * и во время `update` будет происходить по-одному созданию в течение 3 секунд.
+ */
+function startNormalPhaseSpawn(phase) {
+    normalPhaseSpawning = true;
+    normalPhaseSpawnTimer = 0;
+    normalPhaseSpawnedCount = 0;
+    normalPhaseSpawnTotal = ENEMY_ROWS * ENEMY_COLS;
+    normalPhaseTarget = phase;
+}
+
+/**
+ * Создаёт одного врага из сетки для фазы `phase` по индексу `idx` (row-major порядок).
+ */
+function spawnOneNormalEnemy(phase, idx) {
+    const r = Math.floor(idx / ENEMY_COLS);
+    const c = idx % ENEMY_COLS;
+    const lilacColors = ["#b57edc", "#c084fc", "#a855f7", "#e1bee7", "#ede7f6"];
+    const flowers = [];
+    for (let i = 0; i < 18; i++) {
+        const angle = Math.PI * 2 * Math.random();
+        const rad = 0.18 + Math.random() * 0.18;
+        const relX = Math.cos(angle) * 0.22 * (0.7 + Math.random()*0.7);
+        const relY = 0.18 + Math.sin(angle) * 0.22 * (0.7 + Math.random()*0.7);
+        const sizeK = 0.5 + Math.random()*0.5;
+        const color = lilacColors[Math.floor(Math.random() * lilacColors.length)];
+        flowers.push({relX, relY, rad, sizeK, color});
+    }
+    const enemyW = canvas.height * ENEMY_WIDTH_RATIO;
+    const enemyH = canvas.height * ENEMY_HEIGHT_RATIO;
+    const ex = 100 + c * ENEMY_X_SPACING;
+    const ey = ENEMY_START_Y + r * ENEMY_Y_SPACING;
+    const phaseMap = {1: { speedMul: 0.5, shootMul: 0.5 }, 2: { speedMul: 0.5, shootMul: 0.5 }, 3: { speedMul: 1.0, shootMul: 1.0 }, 4: { speedMul: 1.5, shootMul: 1.5 }};
+    const mul = phaseMap[phase] || phaseMap[2];
+    enemies.push({
+        x: ex,
+        y: ey,
+        w: enemyW,
+        h: enemyH,
+        dir: 1,
+        diving: false,
+        targetX: 0,
+        shootTimer: 0,
+        flowers,
+        phase: phase,
+        speedMul: mul.speedMul,
+        shootMul: mul.shootMul
+    });
+}
 // ==== БОНУСЫ / ВОЛНЫ ====
 /**
  * Пытается создать бонус в точке гибели врага.

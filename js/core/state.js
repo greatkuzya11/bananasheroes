@@ -55,6 +55,18 @@ let survivalSpeedUps = 0;
 let survivalBulletMultiplier = 1;
 let survivalWaveSpawning = false;
 
+// Состояние фаз для режима `normal` (фазы сирени)
+let normalPhase = 1; // 1..3, стартуем с фазы 1 (фаза 2 соответствует старому поведению)
+let normalPhaseSpawning = false; // флаг текущего интерактивного спавна фазы
+let normalPhaseSpawnTimer = 0; // таймер между поодиночными спавнами при переходе фазы
+let normalPhaseSpawnedCount = 0; // сколько уже заспавнено в текущем переходе
+let normalPhaseSpawnTotal = 0; // сколько нужно заспавнить (ENEMY_ROWS*ENEMY_COLS)
+let normalPhaseTarget = 0; // номер фазы, которую сейчас спавним
+// Визуальный эффект при смене фазы (секунды)
+let normalPhaseEffectTimer = 0;
+// Отладочный режим
+let debugMode = false;
+
 let speechBalloons = [];
 let explosions = [];
 
@@ -123,6 +135,7 @@ function resetGameRuntimeCore() {
     bossDefeated = false;
     score = 0;
     combo = 0;
+    // стартовое количество жизней при сбросе: едино для всех режимов
     lives = PLAYER_LIVES;
     invuln = INVULN_TIME;
     bonusShots = 0;
@@ -157,6 +170,15 @@ function resetGameRuntimeCore() {
     survivalSpeedUps = 0;
     survivalBulletMultiplier = 1;
     survivalWaveSpawning = false;
+    // Состояние фаз для режима `normal`
+    normalPhase = 1;
+    normalPhaseSpawning = false;
+    normalPhaseSpawnTimer = 0;
+    normalPhaseSpawnedCount = 0;
+    normalPhaseSpawnTotal = 0;
+    normalPhaseTarget = 0;
+    normalPhaseEffectTimer = 0;
+    debugMode = false;
 
     running = false;
     paused = false;
@@ -273,7 +295,13 @@ function initRunWorldByMode(mode) {
 
     bgImg.src = 'img/forest.png';
     playerBulletDir = 'up';
-    spawnEnemies();
+    if (gameMode === 'normal') {
+        // Стартуем с 1-й фазы (облегчённая)
+        normalPhase = 1;
+        spawnNormalPhase(1, true);
+    } else {
+        spawnEnemies();
+    }
 }
 
 /**
