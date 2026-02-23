@@ -200,6 +200,7 @@ function resetGameRuntimeCore() {
  */
 function resetGameStateForMenu() {
     resetGameRuntimeCore();
+    if (typeof resetCampaignSessionForMenu === 'function') resetCampaignSessionForMenu();
     gameMode = 'normal';
     selectedChar = 'kuzy';
 }
@@ -214,6 +215,21 @@ function resetGameStateForRun(mode) {
 }
 
 /**
+ * Устанавливает фон текущего уровня.
+ * При смене файла фона заранее сбрасывает флаг готовности, чтобы не показывать
+ * предыдущую картинку до загрузки новой.
+ * @param {string} src - путь к изображению.
+ */
+function setRunBackground(src) {
+    const next = String(src || '');
+    const current = String((bgImg && bgImg.src) || '');
+    const same = current.endsWith('/' + next) || current.endsWith(next);
+    if (!same) bgReady = false;
+    bgImg.src = next;
+    if (same && bgImg.complete) bgReady = true;
+}
+
+/**
  * Инициализирует объекты и параметры конкретного игрового режима.
  * @param {string} mode - идентификатор режима.
  */
@@ -224,7 +240,7 @@ function initRunWorldByMode(mode) {
     player = new Player(selectedChar);
 
     if (startMode === '67') {
-        bgImg.src = 'img/forest2.png';
+        setRunBackground('img/forest2.png');
         player.x = 20;
         playerBulletDir = 'right';
         enemy67 = new Enemy67(player.x, player.y);
@@ -232,7 +248,7 @@ function initRunWorldByMode(mode) {
     }
 
     if (startMode === 'o4ko') {
-        bgImg.src = 'img/bg-avs.png';
+        setRunBackground('img/bg-avs.png');
         player.x = 20;
         playerBulletDir = 'right';
         bossO4ko = new BossO4ko(player.x, player.y);
@@ -240,7 +256,7 @@ function initRunWorldByMode(mode) {
     }
 
     if (startMode === 'nosok') {
-        bgImg.src = 'img/bn-bg.png';
+        setRunBackground('img/bn-bg.png');
         player.x = 20;
         playerBulletDir = 'right';
         initNosokLevel();
@@ -248,7 +264,7 @@ function initRunWorldByMode(mode) {
     }
 
     if (startMode === 'lovlyu') {
-        bgImg.src = 'img/avs-bg.png';
+        setRunBackground('img/avs-bg.png');
         playerBulletDir = 'up';
         initLovlyuLevel();
         player.y = canvas.height - player.h - 20;
@@ -256,14 +272,14 @@ function initRunWorldByMode(mode) {
     }
 
     if (startMode === 'runner') {
-        bgImg.src = 'img/ud-bg.png';
+        setRunBackground('img/ud-bg.png');
         playerBulletDir = 'right';
         initRunnerLevel();
         return;
     }
 
     if (startMode === 'platforms') {
-        bgImg.src = 'img/pl-bg.png';
+        setRunBackground('img/pl-bg.png');
         playerBulletDir = 'right';
         initPlatformLevel();
         platformPlayerLastX = 0;
@@ -285,7 +301,7 @@ function initRunWorldByMode(mode) {
     }
 
     if (startMode === 'library') {
-        bgImg.src = 'img/lb2-bg.png';
+        setRunBackground('img/lb2-bg.png');
         playerBulletDir = 'right';
         initLibraryLevel();
         player.x = canvas.width / 2 - player.w / 2;
@@ -293,7 +309,7 @@ function initRunWorldByMode(mode) {
         return;
     }
 
-    bgImg.src = 'img/forest.png';
+    setRunBackground('img/forest.png');
     playerBulletDir = 'up';
     if (gameMode === 'normal') {
         // Стартуем с 1-й фазы (облегчённая)

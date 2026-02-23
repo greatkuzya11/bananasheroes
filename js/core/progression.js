@@ -1,0 +1,383 @@
+// ==== ПРОГРЕССИЯ КАМПАНИИ / ОТКРЫТИЕ УРОВНЕЙ ====
+/**
+ * Порядок уровней сюжетного прохождения.
+ * Выживание открывается отдельно после прохождения первого уровня.
+ */
+const CAMPAIGN_LEVEL_ORDER = Object.freeze([
+    'normal',
+    '67',
+    'o4ko',
+    'nosok',
+    'platforms',
+    'lovlyu',
+    'runner',
+    'library'
+]);
+
+/**
+ * Метаданные уровней для меню и стартовой таблички.
+ */
+const CAMPAIGN_LEVEL_META = Object.freeze({
+    normal:    { title: 'Сирень и Букин', desc: 'Описание уровня в разработке.' },
+    survival:  { title: 'Выживание', desc: 'Описание уровня в разработке.' },
+    '67':      { title: 'Режим 67', desc: 'Описание уровня в разработке.' },
+    o4ko:      { title: 'Очко', desc: 'Описание уровня в разработке.' },
+    nosok:     { title: 'Носок', desc: 'Описание уровня в разработке.' },
+    platforms: { title: 'Платформы', desc: 'Описание уровня в разработке.' },
+    lovlyu:    { title: 'Ловлю', desc: 'Описание уровня в разработке.' },
+    runner:    { title: 'Бегун', desc: 'Описание уровня в разработке.' },
+    library:   { title: 'Библиотека', desc: 'Описание уровня в разработке.' }
+});
+
+const PROGRESS_KEYS = Object.freeze({
+    unlockedCampaignIndex: 'bh_campaign_unlocked_index_v1',
+    survivalUnlocked: 'bh_survival_unlocked_v1',
+    survivalNoticeShown: 'bh_survival_unlocked_notice_shown_v1',
+    gameCompletedOnce: 'bh_game_completed_once_v1'
+});
+
+/**
+ * Runtime-состояние текущей игровой сессии кампании.
+ * "Полный проход" считается только если уровни пройдены подряд с первого по последний
+ * и игрок не выходил в главное меню.
+ */
+let campaignSession = {
+    active: false,
+    totalScore: 0,
+    completedLevels: [],
+    fullRunDone: false
+};
+
+/**
+ * Отложенные уведомления, которые должны быть показаны после победы.
+ */
+let pendingProgressNotices = {
+    survivalUnlock: false,
+    gameCompleted: false
+};
+
+/**
+ * Безопасно читает число из localStorage.
+ * @param {string} key - ключ.
+ * @param {number} fallback - значение по умолчанию.
+ * @returns {number}
+ */
+function readIntLS(key, fallback = 0) {
+    try {
+        const raw = localStorage.getItem(key);
+        const n = parseInt(raw || '', 10);
+        return Number.isFinite(n) ? n : fallback;
+    } catch (err) {
+        return fallback;
+    }
+}
+
+/**
+ * Безопасно читает boolean-флаг из localStorage.
+ * @param {string} key - ключ.
+ * @param {boolean} fallback - значение по умолчанию.
+ * @returns {boolean}
+ */
+function readBoolLS(key, fallback = false) {
+    try {
+        const raw = localStorage.getItem(key);
+        if (raw === '1') return true;
+        if (raw === '0') return false;
+        return fallback;
+    } catch (err) {
+        return fallback;
+    }
+}
+
+/**
+ * Безопасно пишет значение в localStorage.
+ * @param {string} key - ключ.
+ * @param {string} value - строковое значение.
+ */
+function writeLS(key, value) {
+    try {
+        localStorage.setItem(key, value);
+    } catch (err) {
+        // Игнорируем браузеры/режимы без доступа к localStorage.
+    }
+}
+
+/**
+ * Возвращает максимальный открытый индекс кампании.
+ * По умолчанию открыт только первый уровень (index 0).
+ * @returns {number}
+ */
+function getUnlockedCampaignIndex() {
+    const maxIdx = CAMPAIGN_LEVEL_ORDER.length - 1;
+    const idx = readIntLS(PROGRESS_KEYS.unlockedCampaignIndex, 0);
+    return Math.max(0, Math.min(maxIdx, idx));
+}
+
+/**
+ * Сохраняет максимальный открытый индекс кампании.
+ * @param {number} idx - индекс.
+ */
+function setUnlockedCampaignIndex(idx) {
+    const maxIdx = CAMPAIGN_LEVEL_ORDER.length - 1;
+    const clamped = Math.max(0, Math.min(maxIdx, Math.floor(idx)));
+    writeLS(PROGRESS_KEYS.unlockedCampaignIndex, String(clamped));
+}
+
+/**
+ * Возвращает true, если режим "Выживание" открыт.
+ * @returns {boolean}
+ */
+function isSurvivalUnlocked() {
+    // Допускаем обратную совместимость: если уже открыт второй сюжетный уровень,
+    // то считаем "Выживание" открытым даже без явного флага.
+    return readBoolLS(PROGRESS_KEYS.survivalUnlocked, false) || getUnlockedCampaignIndex() >= 1;
+}
+
+/**
+ * Помечает режим "Выживание" как открытый.
+ */
+function setSurvivalUnlocked() {
+    writeLS(PROGRESS_KEYS.survivalUnlocked, '1');
+}
+
+/**
+ * Возвращает true, если режим относится к основной кампании.
+ * @param {string} mode - идентификатор режима.
+ * @returns {boolean}
+ */
+function isCampaignMode(mode) {
+    return CAMPAIGN_LEVEL_ORDER.indexOf(mode) >= 0;
+}
+
+/**
+ * Возвращает следующий уровень кампании или null.
+ * @param {string} mode - текущий режим.
+ * @returns {string|null}
+ */
+function getNextCampaignMode(mode) {
+    const idx = CAMPAIGN_LEVEL_ORDER.indexOf(mode);
+    if (idx < 0 || idx >= CAMPAIGN_LEVEL_ORDER.length - 1) return null;
+    return CAMPAIGN_LEVEL_ORDER[idx + 1];
+}
+
+/**
+ * Возвращает отображаемое имя режима.
+ * @param {string} mode - идентификатор режима.
+ * @returns {string}
+ */
+function getModeDisplayName(mode) {
+    const meta = CAMPAIGN_LEVEL_META[mode];
+    return meta ? meta.title : mode;
+}
+
+/**
+ * Возвращает данные таблички старта уровня.
+ * @param {string} mode - идентификатор режима.
+ * @returns {{title:string,desc:string}}
+ */
+function getLevelIntroData(mode) {
+    const meta = CAMPAIGN_LEVEL_META[mode];
+    if (meta) return meta;
+    return { title: getModeDisplayName(mode), desc: 'Описание уровня в разработке.' };
+}
+
+/**
+ * Проверяет, открыт ли режим по прогрессии.
+ * @param {string} mode - идентификатор режима.
+ * @returns {boolean}
+ */
+function isModeUnlockedByProgress(mode) {
+    if (mode === 'survival') return isSurvivalUnlocked();
+    const campaignIdx = CAMPAIGN_LEVEL_ORDER.indexOf(mode);
+    if (campaignIdx >= 0) return campaignIdx <= getUnlockedCampaignIndex();
+    return true;
+}
+
+/**
+ * Обновляет состояние кнопок режимов в меню по текущему прогрессу.
+ */
+function refreshModeButtonsByProgress() {
+    const buttons = document.querySelectorAll('#modes .mode');
+    buttons.forEach(btn => {
+        const mode = btn.dataset.mode || '';
+        const unlocked = isModeUnlockedByProgress(mode);
+        btn.disabled = !unlocked;
+        if (!unlocked) {
+            btn.classList.remove('selected');
+            btn.style.opacity = '0.48';
+            btn.style.cursor = 'not-allowed';
+            btn.title = 'Откроется после прохождения предыдущего уровня';
+        } else {
+            btn.style.opacity = '1';
+            btn.style.cursor = 'pointer';
+            btn.title = '';
+        }
+    });
+}
+
+/**
+ * Запускает новую сессионную кампанию (для начала с первого уровня).
+ */
+function startNewCampaignSession() {
+    campaignSession = {
+        active: true,
+        totalScore: 0,
+        completedLevels: [],
+        fullRunDone: false
+    };
+}
+
+/**
+ * Сбрасывает сессионную кампанию при выходе в главное меню.
+ */
+function resetCampaignSessionForMenu() {
+    campaignSession = {
+        active: false,
+        totalScore: 0,
+        completedLevels: [],
+        fullRunDone: false
+    };
+}
+
+/**
+ * Подготавливает состояние сессионной кампании при запуске режима.
+ * @param {string} mode - запускаемый режим.
+ * @param {'menu'|'next'|'retry'|'pause-restart'} source - источник запуска.
+ */
+function prepareCampaignSessionForStart(mode, source = 'menu') {
+    if (source === 'menu') {
+        if (mode === CAMPAIGN_LEVEL_ORDER[0]) {
+            startNewCampaignSession();
+        } else {
+            resetCampaignSessionForMenu();
+        }
+        return;
+    }
+    // next/retry/pause-restart: сохраняем текущую сессию как есть.
+}
+
+/**
+ * Открывает следующий режим/режимы по факту победы в текущем режиме.
+ * @param {string} mode - пройденный режим.
+ */
+function unlockByCompletedMode(mode) {
+    const idx = CAMPAIGN_LEVEL_ORDER.indexOf(mode);
+    if (idx >= 0 && idx < CAMPAIGN_LEVEL_ORDER.length - 1) {
+        const unlockedIdx = getUnlockedCampaignIndex();
+        const target = idx + 1;
+        if (target > unlockedIdx) {
+            setUnlockedCampaignIndex(target);
+        }
+    }
+
+    if (mode === 'normal') {
+        const wasUnlocked = isSurvivalUnlocked();
+        if (!wasUnlocked) {
+            setSurvivalUnlocked();
+        } else if (!readBoolLS(PROGRESS_KEYS.survivalUnlocked, false)) {
+            // Нормализуем флаг для старых сохранений.
+            setSurvivalUnlocked();
+        }
+
+        if (!readBoolLS(PROGRESS_KEYS.survivalNoticeShown, false)) {
+            pendingProgressNotices.survivalUnlock = true;
+        }
+    }
+}
+
+/**
+ * Регистрирует победу в режиме для прогрессии и сессионного полного счета.
+ * @param {string} mode - идентификатор режима.
+ * @param {number} levelScore - очки, набранные в режиме.
+ */
+function registerCampaignLevelCompletion(mode, levelScore) {
+    unlockByCompletedMode(mode);
+
+    if (campaignSession.active && isCampaignMode(mode)) {
+        const lastCompleted = campaignSession.completedLevels[campaignSession.completedLevels.length - 1] || null;
+        const expected = CAMPAIGN_LEVEL_ORDER[campaignSession.completedLevels.length];
+        // Повторная фиксация уже пройденного уровня не ломает сессионный прогресс.
+        if (mode === lastCompleted) {
+            return;
+        }
+        if (mode === expected) {
+            campaignSession.totalScore += Math.max(0, Math.floor(levelScore || 0));
+            campaignSession.completedLevels.push(mode);
+            if (campaignSession.completedLevels.length === CAMPAIGN_LEVEL_ORDER.length) {
+                campaignSession.fullRunDone = true;
+            }
+        } else {
+            // Последовательность нарушена — полноценный "сквозной" проход не засчитываем.
+            campaignSession.active = false;
+            campaignSession.fullRunDone = false;
+        }
+    }
+
+    if (mode === 'library' && !readBoolLS(PROGRESS_KEYS.gameCompletedOnce, false)) {
+        writeLS(PROGRESS_KEYS.gameCompletedOnce, '1');
+        pendingProgressNotices.gameCompleted = true;
+    }
+}
+
+/**
+ * Возвращает копию сводки текущей сессии кампании.
+ * @returns {{active:boolean,totalScore:number,completedLevels:string[],fullRunDone:boolean}}
+ */
+function getCampaignSessionSummary() {
+    return {
+        active: campaignSession.active,
+        totalScore: campaignSession.totalScore,
+        completedLevels: campaignSession.completedLevels.slice(),
+        fullRunDone: campaignSession.fullRunDone
+    };
+}
+
+/**
+ * Возвращает и сбрасывает уведомление об открытии выживания (если есть).
+ * @returns {string}
+ */
+function consumePendingSurvivalNotice() {
+    if (!pendingProgressNotices.survivalUnlock) return '';
+    pendingProgressNotices.survivalUnlock = false;
+    writeLS(PROGRESS_KEYS.survivalNoticeShown, '1');
+    return 'Открыт новый режим: Выживание!';
+}
+
+/**
+ * Возвращает и сбрасывает уведомление о полном прохождении игры (если есть).
+ * @returns {string}
+ */
+function consumePendingGameCompletedNotice() {
+    if (!pendingProgressNotices.gameCompleted) return '';
+    pendingProgressNotices.gameCompleted = false;
+    return 'Игра Bananas Heroes полностью пройдена!';
+}
+
+/**
+ * Сбрасывает прогресс кампании до состояния "первая игра":
+ * открыт только первый уровень, выживание закрыто, одноразовые уведомления сброшены.
+ */
+function resetCampaignProgressState() {
+    setUnlockedCampaignIndex(0);
+    writeLS(PROGRESS_KEYS.survivalUnlocked, '0');
+    writeLS(PROGRESS_KEYS.survivalNoticeShown, '0');
+    writeLS(PROGRESS_KEYS.gameCompletedOnce, '0');
+    pendingProgressNotices.survivalUnlock = false;
+    pendingProgressNotices.gameCompleted = false;
+    resetCampaignSessionForMenu();
+}
+
+// Экспорт в глобальную область (обычные script-теги).
+window.CAMPAIGN_LEVEL_ORDER = CAMPAIGN_LEVEL_ORDER;
+window.getModeDisplayName = getModeDisplayName;
+window.getLevelIntroData = getLevelIntroData;
+window.isModeUnlockedByProgress = isModeUnlockedByProgress;
+window.refreshModeButtonsByProgress = refreshModeButtonsByProgress;
+window.getNextCampaignMode = getNextCampaignMode;
+window.prepareCampaignSessionForStart = prepareCampaignSessionForStart;
+window.resetCampaignSessionForMenu = resetCampaignSessionForMenu;
+window.registerCampaignLevelCompletion = registerCampaignLevelCompletion;
+window.getCampaignSessionSummary = getCampaignSessionSummary;
+window.consumePendingSurvivalNotice = consumePendingSurvivalNotice;
+window.consumePendingGameCompletedNotice = consumePendingGameCompletedNotice;
+window.resetCampaignProgressState = resetCampaignProgressState;

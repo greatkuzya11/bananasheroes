@@ -524,6 +524,7 @@ document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('game').style.display = 'none';
             document.getElementById('menu').style.display = 'block';
             updateBestScoresDisplay();
+            if (typeof refreshModeButtonsByProgress === 'function') refreshModeButtonsByProgress();
             setTouchControlsVisible(false);
         };
         overlay.appendChild(btnMain);
@@ -579,35 +580,56 @@ document.addEventListener('DOMContentLoaded', () => {
             
             selectedChar = c.dataset.char;
             modes.style.display = 'block';
+            if (typeof refreshModeButtonsByProgress === 'function') refreshModeButtonsByProgress();
         };
     });
 
     // Показываем лучшие результаты в меню
     updateBestScoresDisplay();
+    if (typeof refreshModeButtonsByProgress === 'function') refreshModeButtonsByProgress();
 
     const modeButtons = document.querySelectorAll('.mode');
+    const resetProgressBtn = document.getElementById('reset-progress-btn');
+    if (resetProgressBtn) {
+        resetProgressBtn.onclick = () => {
+            const ok = window.confirm('Сбросить прогресс кампании? Останется открыт только первый уровень.');
+            if (!ok) return;
+            if (typeof resetCampaignProgressState === 'function') {
+                resetCampaignProgressState();
+            }
+            modeButtons.forEach(mb => mb.classList.remove('selected'));
+            if (typeof refreshModeButtonsByProgress === 'function') refreshModeButtonsByProgress();
+        };
+    }
     /**
      * Назначает обработчик выбора режима игры.
      * @param {HTMLElement} m - DOM-элемент кнопки режима.
      */
     modeButtons.forEach(m => {
         // Обрабатываем клик по конкретному режиму игры
-        m.onclick = () => {
+        m.onclick = async () => {
             clearInputSource('keyboard');
             clearTouchInputs();
             paused = false;
+            const targetMode = m.dataset.mode || 'normal';
+            if (typeof isModeUnlockedByProgress === 'function' && !isModeUnlockedByProgress(targetMode)) {
+                return;
+            }
             // Снимаем выделение со всех кнопок режима
             // mb — кнопка режима
             modeButtons.forEach(mb => mb.classList.remove('selected'));
             // Выделяем выбранный
             m.classList.add('selected');
 
-            document.getElementById('menu').style.display = 'none';
-            document.getElementById('game').style.display = 'block';
-            // Устанавливаем режим игры
-            gameMode = m.dataset.mode || 'normal';
-            beginGameRun(gameMode, true);
-            setTouchControlsVisible(true);
+            if (typeof startModeWithIntro === 'function') {
+                await startModeWithIntro(targetMode, { source: 'menu' });
+            } else {
+                document.getElementById('menu').style.display = 'none';
+                document.getElementById('game').style.display = 'block';
+                gameMode = targetMode;
+                beginGameRun(gameMode, true);
+                setTouchControlsVisible(true);
+            }
         };
     });
 });

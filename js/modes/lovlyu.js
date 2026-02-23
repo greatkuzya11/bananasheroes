@@ -601,7 +601,7 @@ function updateLovlyuMode(dt) {
     if (lovlyuSpawnedCount >= lovlyuTotalSpawns && lovlyuChars.length === 0 &&
         lovlyuBatchRemaining <= 0 && !lovlyuVictoryShown && lives > 0) {
         lovlyuVictoryShown = true;
-        showLovlyuLevelComplete();
+        showLevelComplete();
     }
 
     // HUD (стандартный стиль, как в других режимах)

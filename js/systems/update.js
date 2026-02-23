@@ -1064,7 +1064,7 @@ function update(dt) {
         if (distance < minDistance && !platformCup.collisionTriggered) {
             platformCup.collisionTriggered = true;
             levelCompleteShown = true;
-            showLevelCompleteMessage();
+            showLevelComplete();
         }
     }
 

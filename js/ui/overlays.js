@@ -2,6 +2,260 @@
 /**
  * Показывает экран завершения уровня и фиксирует рекорд при необходимости.
  */
+let levelIntroStartTimerId = null;
+let levelIntroFadeTimerId = null;
+
+/**
+ * Возвращает путь к фону уровня для стартовой таблички.
+ * @param {string} mode - идентификатор режима.
+ * @returns {string}
+ */
+function getIntroBackgroundForMode(mode) {
+    const bgByMode = {
+        normal: 'img/forest.png',
+        survival: 'img/forest.png',
+        '67': 'img/forest2.png',
+        o4ko: 'img/bg-avs.png',
+        nosok: 'img/bn-bg.png',
+        platforms: 'img/pl-bg.png',
+        lovlyu: 'img/avs-bg.png',
+        runner: 'img/ud-bg.png',
+        library: 'img/lb2-bg.png'
+    };
+    return bgByMode[mode] || 'img/forest.png';
+}
+
+/**
+ * Ждет готовности фона текущего уровня перед снятием стартовой таблички.
+ * Нужно, чтобы при fade-out не мелькал предыдущий кадр/фон.
+ * @param {number} [maxWaitMs=2500] - максимальное время ожидания.
+ * @returns {Promise<void>}
+ */
+function waitForBgReadyBeforeIntroFade(maxWaitMs = 2500) {
+    return new Promise(resolve => {
+        const startTs = performance.now();
+        const step = () => {
+            if (bgReady) return resolve();
+            if (performance.now() - startTs >= maxWaitMs) return resolve();
+            requestAnimationFrame(step);
+        };
+        step();
+    });
+}
+
+/**
+ * Очищает таймеры и удаляет оверлей стартовой карточки уровня.
+ */
+function clearLevelIntroOverlayState() {
+    if (levelIntroStartTimerId) {
+        clearTimeout(levelIntroStartTimerId);
+        levelIntroStartTimerId = null;
+    }
+    if (levelIntroFadeTimerId) {
+        clearTimeout(levelIntroFadeTimerId);
+        levelIntroFadeTimerId = null;
+    }
+    const existing = document.getElementById('level-intro-overlay');
+    if (existing) existing.remove();
+}
+
+/**
+ * Показывает короткое информационное сообщение по центру экрана.
+ * @param {string} text - текст уведомления.
+ * @param {number} [durationMs=2200] - длительность показа в миллисекундах.
+ * @returns {Promise<void>}
+ */
+function showTransientInfoNotice(text, durationMs = 2200) {
+    return new Promise(resolve => {
+        if (!text) {
+            resolve();
+            return;
+        }
+        const existing = document.getElementById('transient-info-notice');
+        if (existing) existing.remove();
+
+        const overlay = document.createElement('div');
+        overlay.id = 'transient-info-notice';
+        Object.assign(overlay.style, {
+            position: 'fixed',
+            inset: '0',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            pointerEvents: 'none',
+            zIndex: '2500'
+        });
+
+        const box = document.createElement('div');
+        box.innerText = text;
+        Object.assign(box.style, {
+            background: 'rgba(16,22,36,0.94)',
+            color: '#fff',
+            border: '2px solid rgba(255,255,255,0.35)',
+            borderRadius: '12px',
+            padding: '14px 18px',
+            fontSize: '20px',
+            fontWeight: '700',
+            boxShadow: '0 10px 26px rgba(0,0,0,0.42)',
+            opacity: '0',
+            transform: 'translateY(8px)',
+            transition: 'opacity 260ms ease, transform 260ms ease'
+        });
+        overlay.appendChild(box);
+        document.body.appendChild(overlay);
+
+        requestAnimationFrame(() => {
+            box.style.opacity = '1';
+            box.style.transform = 'translateY(0)';
+        });
+
+        const fadeAt = Math.max(400, durationMs - 260);
+        setTimeout(() => {
+            box.style.opacity = '0';
+            box.style.transform = 'translateY(-8px)';
+            setTimeout(() => {
+                if (overlay.parentNode) overlay.remove();
+                resolve();
+            }, 280);
+        }, fadeAt);
+    });
+}
+
+/**
+ * Запускает выбранный режим через стартовую карточку уровня:
+ * 4 секунды показа и плавное исчезновение перед началом игры.
+ * @param {string} mode - идентификатор режима.
+ * @param {{source?:'menu'|'next'|'retry'|'pause-restart'}} [options] - источник запуска.
+ * @returns {Promise<void>}
+ */
+function startModeWithIntro(mode, options = {}) {
+    return new Promise(resolve => {
+        const launchMode = mode || 'normal';
+        const source = options.source || 'menu';
+        let runPrepared = false;
+
+        if (typeof prepareCampaignSessionForStart === 'function') {
+            prepareCampaignSessionForStart(launchMode, source);
+        }
+        if (typeof window.clearGameInputs === 'function') window.clearGameInputs();
+        if (typeof clearScheduledEnemySpawns === 'function') clearScheduledEnemySpawns();
+        if (typeof window.setGameTouchControlsVisible === 'function') {
+            window.setGameTouchControlsVisible(false);
+        }
+        clearLevelIntroOverlayState();
+
+        if (animFrameId) {
+            cancelAnimationFrame(animFrameId);
+            animFrameId = null;
+        }
+        running = false;
+        paused = false;
+
+        const menuEl = document.getElementById('menu');
+        const gameEl = document.getElementById('game');
+        if (menuEl) menuEl.style.display = 'none';
+        if (gameEl) gameEl.style.display = 'block';
+
+        // Подготавливаем новый уровень под оверлеем (без запуска апдейта),
+        // чтобы при плавном исчезновении не просвечивал кадр прошлого уровня.
+        if (typeof resetGameStateForRun === 'function' && typeof initRunWorldByMode === 'function') {
+            resetGameStateForRun(launchMode);
+            initRunWorldByMode(gameMode);
+            levelCompleteShown = false;
+            gameOverShown = false;
+            running = false;
+            paused = false;
+            if (typeof draw === 'function') draw();
+            runPrepared = true;
+        }
+
+        const intro = (typeof getLevelIntroData === 'function')
+            ? getLevelIntroData(launchMode)
+            : { title: launchMode, desc: 'Описание уровня в разработке.' };
+
+        const overlay = document.createElement('div');
+        overlay.id = 'level-intro-overlay';
+        const introBgPath = getIntroBackgroundForMode(launchMode);
+        Object.assign(overlay.style, {
+            position: 'fixed',
+            inset: '0',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            backgroundImage: `linear-gradient(rgba(0,0,0,0.72), rgba(0,0,0,0.72)), url('${introBgPath}')`,
+            // Как в самой игре: фон растягивается на весь экран без сохранения пропорций.
+            backgroundSize: '100% 100%',
+            backgroundPosition: '0 0',
+            backgroundRepeat: 'no-repeat',
+            zIndex: '2400',
+            pointerEvents: 'auto',
+            opacity: '1',
+            transition: 'opacity 520ms ease'
+        });
+
+        const box = document.createElement('div');
+        Object.assign(box.style, {
+            minWidth: 'min(680px, 92vw)',
+            background: 'rgba(12,18,30,0.94)',
+            border: '2px solid rgba(255,255,255,0.28)',
+            borderRadius: '14px',
+            padding: '24px',
+            color: '#fff',
+            textAlign: 'center',
+            boxShadow: '0 16px 40px rgba(0,0,0,0.45)'
+        });
+
+        const title = document.createElement('div');
+        title.innerText = intro.title;
+        Object.assign(title.style, {
+            fontSize: '34px',
+            fontWeight: '900',
+            marginBottom: '10px'
+        });
+
+        const desc = document.createElement('div');
+        desc.innerText = intro.desc || 'Описание уровня в разработке.';
+        Object.assign(desc.style, {
+            fontSize: '20px',
+            opacity: '0.92',
+            lineHeight: '1.4'
+        });
+
+        box.appendChild(title);
+        box.appendChild(desc);
+        overlay.appendChild(box);
+        document.body.appendChild(overlay);
+
+        levelIntroStartTimerId = setTimeout(async () => {
+            await waitForBgReadyBeforeIntroFade(2500);
+            // Важно: после загрузки фона перерисовываем кадр ДО начала fade,
+            // иначе просвечивает старый/временный кадр на один момент.
+            if (typeof draw === 'function') draw();
+            overlay.style.opacity = '0';
+            levelIntroFadeTimerId = setTimeout(() => {
+                if (overlay.parentNode) overlay.remove();
+                levelIntroStartTimerId = null;
+                levelIntroFadeTimerId = null;
+                if (runPrepared) {
+                    running = true;
+                    paused = false;
+                    last = performance.now();
+                    if (typeof loop === 'function') {
+                        animFrameId = requestAnimationFrame(loop);
+                    }
+                } else {
+                    beginGameRun(launchMode, true);
+                }
+                if (typeof window.setGameTouchControlsVisible === 'function') {
+                    window.setGameTouchControlsVisible(true);
+                }
+                resolve();
+            }, 540);
+        }, 4000);
+    });
+}
+window.startModeWithIntro = startModeWithIntro;
+
 function showLevelComplete() {
     if (typeof window.clearGameInputs === 'function') {
         window.clearGameInputs();
@@ -9,6 +263,9 @@ function showLevelComplete() {
     if (typeof clearScheduledEnemySpawns === 'function') clearScheduledEnemySpawns();
     if (typeof window.setGameTouchControlsVisible === 'function') {
         window.setGameTouchControlsVisible(false);
+    }
+    if (typeof registerCampaignLevelCompletion === 'function') {
+        registerCampaignLevelCompletion(gameMode, score);
     }
 
     // Показываем оверлей, игра может продолжаться; урон отключен после смерти босса.
@@ -32,6 +289,9 @@ function showLevelComplete() {
         }
     }
     updateBestScoresDisplay();
+    if (typeof refreshModeButtonsByProgress === 'function') {
+        refreshModeButtonsByProgress();
+    }
 
     // Если уже есть — удалим старое
     const existing = document.getElementById('level-complete-overlay');
@@ -69,28 +329,46 @@ function showLevelComplete() {
 
     const msg = document.createElement('div');
     // Отдельные победные фразы для специальных режимов
-    const victoryText67 = 'Поздравляю, вы победили 67!';
-    const victoryTextO4ko = 'Поздравляю, вы победили Очко!';
-    const victoryTextNosok = `Победа! 10/10 голов за ${formatNosokTime(Math.max(1, nosokFinalTimeMs || Math.round(nosokElapsedTime * 1000)))}`;
-    const victoryTextRunner = 'Поздравляю, ты научил Дрона курить!';
-    const victoryTextLibrary = 'Поздравляем, уровень "Библиотека" пройден!';
-    const victoryTextDefault = 'Поздравляем, уровень "Сирень и Букин" пройден. Букин освобождён.';
-    const victoryText = (gameMode === '67')
-        ? victoryText67
-        : (gameMode === 'o4ko') ? victoryTextO4ko
-            : (gameMode === 'nosok') ? victoryTextNosok
-                : (gameMode === 'runner') ? victoryTextRunner
-                    : (gameMode === 'library') ? victoryTextLibrary : victoryTextDefault;
+    const victoryTexts = {
+        normal: 'Поздравляем, уровень "Сирень и Букин" пройден. Букин освобождён.',
+        '67': 'Поздравляю, вы победили 67!',
+        o4ko: 'Поздравляю, вы победили Очко!',
+        nosok: `Победа! 10/10 голов за ${formatNosokTime(Math.max(1, nosokFinalTimeMs || Math.round(nosokElapsedTime * 1000)))}`,
+        platforms: 'Поздравляем, уровень "Платформы" пройден!',
+        lovlyu: 'Поздравляем, уровень "Ловлю" пройден!',
+        runner: 'Поздравляю, ты научил Дрона курить!',
+        library: 'Поздравляем, уровень "Библиотека" пройден!'
+    };
+    const victoryText = victoryTexts[gameMode] || victoryTexts.normal;
     msg.innerText = victoryText + (isNew ? ' — Новый рекорд!' : '');
     Object.assign(msg.style, { fontSize: '20px', marginBottom: '18px', color: '#222', opacity: '0', transform: 'translateY(12px)' });
 
+    const campaignSummary = (typeof getCampaignSessionSummary === 'function')
+        ? getCampaignSessionSummary()
+        : null;
+    const showFullRunTotal = (gameMode === 'library' && campaignSummary && campaignSummary.fullRunDone);
+    const campaignTotalLine = document.createElement('div');
+    if (showFullRunTotal) {
+        campaignTotalLine.innerText = `Суммарные очки полного прохождения: ${campaignSummary.totalScore}`;
+        Object.assign(campaignTotalLine.style, {
+            fontSize: '18px',
+            marginBottom: '14px',
+            color: '#1a237e',
+            fontWeight: '700'
+        });
+    }
+
     // Добавляем простые CSS-анимации (появление и подпрыгивание иконок)
-    const styleTag = document.createElement('style');
-    styleTag.innerHTML = `
-        @keyframes popIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
-        @keyframes bounceIcon { 0% { transform: translateY(-6px); } 50% { transform: translateY(0); } 100% { transform: translateY(-3px); } }
-    `;
-    document.head.appendChild(styleTag);
+    const styleId = 'level-complete-anim-style';
+    if (!document.getElementById(styleId)) {
+        const styleTag = document.createElement('style');
+        styleTag.id = styleId;
+        styleTag.innerHTML = `
+            @keyframes popIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+            @keyframes bounceIcon { 0% { transform: translateY(-6px); } 50% { transform: translateY(0); } 100% { transform: translateY(-3px); } }
+        `;
+        document.head.appendChild(styleTag);
+    }
 
     const buttons = document.createElement('div');
     Object.assign(buttons.style, { display: 'flex', gap: '12px', justifyContent: 'center' });
@@ -98,21 +376,20 @@ function showLevelComplete() {
     const btnRetry = document.createElement('button');
     btnRetry.innerText = 'Повторить';
     Object.assign(btnRetry.style, { padding: '8px 14px', fontSize: '16px', cursor: 'pointer' });
-    btnRetry.onclick = () => {
-        if (typeof window.clearGameInputs === 'function') window.clearGameInputs();
-        if (typeof clearScheduledEnemySpawns === 'function') clearScheduledEnemySpawns();
-        beginGameRun(gameMode, true);
-        document.getElementById('menu').style.display = 'none';
-        document.getElementById('game').style.display = 'block';
+    btnRetry.onclick = async () => {
         overlay.remove();
-        if (typeof window.setGameTouchControlsVisible === 'function') window.setGameTouchControlsVisible(true);
+        if (typeof startModeWithIntro === 'function') {
+            await startModeWithIntro(gameMode, { source: 'retry' });
+        } else {
+            beginGameRun(gameMode, true);
+        }
     };
 
     const btnMain = document.createElement('button');
     btnMain.innerText = 'Главный экран';
     Object.assign(btnMain.style, { padding: '8px 14px', fontSize: '16px', cursor: 'pointer' });
     // Обработчик клика по кнопке "Главный экран"
-    btnMain.onclick = () => {
+    btnMain.onclick = async () => {
         if (typeof window.clearGameInputs === 'function') {
             window.clearGameInputs();
         }
@@ -127,19 +404,62 @@ function showLevelComplete() {
             window.setGameTouchControlsVisible(false);
         }
         overlay.remove();
+
+        if (typeof refreshModeButtonsByProgress === 'function') {
+            refreshModeButtonsByProgress();
+        }
+        const survivalText = (typeof consumePendingSurvivalNotice === 'function')
+            ? consumePendingSurvivalNotice()
+            : '';
+        if (survivalText) {
+            await showTransientInfoNotice(survivalText, 2400);
+        }
+        const completedText = (typeof consumePendingGameCompletedNotice === 'function')
+            ? consumePendingGameCompletedNotice()
+            : '';
+        if (completedText) {
+            await showTransientInfoNotice(completedText, 3000);
+        }
     };
 
+    const nextMode = (typeof getNextCampaignMode === 'function')
+        ? getNextCampaignMode(gameMode)
+        : null;
     const btnNext = document.createElement('button');
     btnNext.innerText = 'Следующий уровень';
-    btnNext.disabled = true;
-    Object.assign(btnNext.style, { padding: '8px 14px', fontSize: '16px', opacity: '0.6', cursor: 'not-allowed' });
+    Object.assign(btnNext.style, { padding: '8px 14px', fontSize: '16px', cursor: 'pointer' });
+    if (!nextMode) {
+        btnNext.disabled = true;
+        btnNext.style.opacity = '0.6';
+        btnNext.style.cursor = 'not-allowed';
+    } else {
+        btnNext.onclick = async () => {
+            overlay.remove();
+            const survivalText = (typeof consumePendingSurvivalNotice === 'function')
+                ? consumePendingSurvivalNotice()
+                : '';
+            if (survivalText) {
+                await showTransientInfoNotice(survivalText, 2400);
+            }
+            if (typeof startModeWithIntro === 'function') {
+                await startModeWithIntro(nextMode, { source: 'next' });
+            } else {
+                beginGameRun(nextMode, true);
+            }
+        };
+    }
 
     buttons.appendChild(btnRetry);
     buttons.appendChild(btnMain);
-    buttons.appendChild(btnNext);
+    if (nextMode) {
+        buttons.appendChild(btnNext);
+    }
 
     box.appendChild(iconsRow);
     box.appendChild(msg);
+    if (showFullRunTotal) {
+        box.appendChild(campaignTotalLine);
+    }
     box.appendChild(buttons);
     overlay.appendChild(box);
     document.body.appendChild(overlay);
@@ -322,6 +642,9 @@ function updateBestScoresDisplay() {
     });
     html += '</div>';
     el.innerHTML = html;
+    if (typeof refreshModeButtonsByProgress === 'function') {
+        refreshModeButtonsByProgress();
+    }
 }
 /**
  * Показывает экран Game Over и останавливает игру.
@@ -407,13 +730,11 @@ function showGameOver() {
     Object.assign(btnRetry.style, { padding: '10px 16px', fontSize: '16px', cursor: 'pointer' });
     // Обработчик клика по кнопке "Повторить"
     btnRetry.onclick = () => {
+        overlay.remove();
         if (typeof window.clearGameInputs === 'function') {
             window.clearGameInputs();
         }
         beginGameRun(gameMode, true);
-        document.getElementById('menu').style.display = 'none';
-        document.getElementById('game').style.display = 'block';
-        overlay.remove();
         if (typeof window.setGameTouchControlsVisible === 'function') {
             window.setGameTouchControlsVisible(true);
         }
@@ -434,6 +755,7 @@ function showGameOver() {
         // Показываем выбор персонажа (скрываем выбор режима)
         if (modes) modes.style.display = 'none';
         updateBestScoresDisplay();
+        if (typeof refreshModeButtonsByProgress === 'function') refreshModeButtonsByProgress();
         if (typeof window.setGameTouchControlsVisible === 'function') {
             window.setGameTouchControlsVisible(false);
         }

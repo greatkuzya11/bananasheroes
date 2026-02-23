@@ -70,7 +70,8 @@ class Enemy67 {
         this.swaySpeedX = 1.2;
         this.swaySpeedY = 1.5;
         // Здоровье (HP) и атака
-        this.hp = platformMode ? 40 : 20; // 40 попаданий в режиме платформ
+        this.hp = platformMode ? 76 : 67; // 76 попаданий в режиме платформ
+        this.maxHp = this.hp; // максимальное HP для полосы
         this.attackTimer = 0; // начинаем с 0
         this.attackDelay = platformMode ? 0 : 5.0; // в режиме 67 ждем 5 сек, на платформе сразу
         this.shootTimer = 0;
