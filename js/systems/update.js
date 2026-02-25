@@ -961,11 +961,11 @@ function update(dt) {
         // Урон от контакта с боссом "Очко" и его спец-действий.
         if (gameMode === 'o4ko' && bossO4ko && bossO4ko.hp > 0) {
             const bossRect = { x: bossO4ko.x, y: bossO4ko.y, w: bossO4ko.w, h: bossO4ko.h };
-            if (rect(bossRect, player)) {
+            if (playerHitTest(bossRect)) {
                 applyPlayerDamage();
             }
             if (invuln <= 0 && bossO4ko.isDashDangerActive()) {
-                if (rect(bossO4ko.getDashHitbox(), player)) {
+                if (playerHitTest(bossO4ko.getDashHitbox())) {
                     applyPlayerDamage();
                 }
             }
@@ -978,7 +978,7 @@ function update(dt) {
         for (let ei = enemyBullets.length - 1; ei >= 0 && invuln <= 0; ei--) {
             const eb = enemyBullets[ei];
             if (bossDefeated) continue; // после победы по старым правилам пули игнорируем
-            if (rect(eb, player)) {
+            if (playerHitTest(eb)) {
                 enemyBullets.splice(ei, 1);
                 applyPlayerDamage();
                 break;
@@ -988,7 +988,7 @@ function update(dt) {
         // Контакт с обычными врагами.
         for (let i = 0; i < enemies.length && invuln <= 0; i++) {
             const e = enemies[i];
-            if (rect({ x: e.x, y: e.y, w: e.w, h: e.h }, player)) {
+            if (playerHitTest({ x: e.x, y: e.y, w: e.w, h: e.h })) {
                 applyPlayerDamage();
                 break;
             }

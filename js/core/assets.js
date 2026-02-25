@@ -41,6 +41,35 @@ let jumpSpriteReady = false;
 kuzyJumpImg.onload = () => { jumpSpriteReady = true; };
 kuzyJumpImg.src = "img/kuzy_jump.png";
 
+// PNG Sequences анимации для персонажа Кузя
+const kuzyAnimDefs = {
+    idle:      { folder: 'Idle',                prefix: '0_Bloody_Alchemist_Idle',                count: 18 },
+    walk:      { folder: 'Walking',             prefix: '0_Bloody_Alchemist_Walking',             count: 24 },
+    run:       { folder: 'Running',             prefix: '0_Bloody_Alchemist_Running',             count: 12 },
+    jumpStart: { folder: 'Jump Start',          prefix: '0_Bloody_Alchemist_Jump Start',          count: 6  },
+    jumpLoop:  { folder: 'Jump Loop',           prefix: '0_Bloody_Alchemist_Jump Loop',           count: 6  },
+    fallDown:  { folder: 'Falling Down',        prefix: '0_Bloody_Alchemist_Falling Down',        count: 6  },
+    throw:     { folder: 'Throwing',            prefix: '0_Bloody_Alchemist_Throwing',            count: 12 },
+    throwAir:  { folder: 'Throwing in The Air', prefix: '0_Bloody_Alchemist_Throwing in The Air', count: 12 },
+    runThrow:  { folder: 'Run Throwing',        prefix: '0_Bloody_Alchemist_Run Throwing',        count: 12 },
+    hurt:      { folder: 'Hurt',                prefix: '0_Bloody_Alchemist_Hurt',               count: 12 },
+    dying:     { folder: 'Dying',               prefix: '0_Bloody_Alchemist_Dying',              count: 15 },
+};
+const kuzyAnims = {};
+let kuzyAnimsReady = 0;
+let kuzyAnimsTotal = 0;
+for (const [animName, def] of Object.entries(kuzyAnimDefs)) {
+    kuzyAnims[animName] = [];
+    for (let i = 0; i < def.count; i++) {
+        kuzyAnimsTotal++;
+        const img = new Image();
+        img.onload = () => { kuzyAnimsReady++; };
+        const idx = String(i).padStart(3, '0');
+        img.src = `img/PNG Sequences/${def.folder}/${def.prefix}_${idx}.png`;
+        kuzyAnims[animName].push(img);
+    }
+}
+
 // Спрайт врага 67
 const enemy67Img = new Image();
 let enemy67SpriteReady = false;

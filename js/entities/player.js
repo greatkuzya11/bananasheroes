@@ -39,6 +39,14 @@ class Player {
         this.onPlatform = false;
         // Кэш alpha-масок для коллизий мяча/пуль по непрозрачной части спрайта.
         this.maskCache = new Map();
+        // Эффективная ширина спрайта для коллизий: для Кузи сужена из-за прозрачных полей
+        // Спрайты Кузи 900x900, но контент примерно 60% ширины (слева/справа ~20% прозрачных полей)
+        this.effectiveW = (type === 'kuzy') ? this.w * 0.6 : this.w;
+        // PNG Sequences анимация для Кузи
+        this.kAnim = 'idle';
+        this.kFrame = 0;
+        this.kTimer = 0;
+        this.kDying = false;
     }
         /**
      * Обновляет движение, анимацию и стрельбу игрока.
@@ -325,7 +333,80 @@ class Player {
                 }
             }
         }
+        // Обновляем анимацию Кузи из PNG Sequences (не в режиме runner — там своя логика)
+        if (this.type === 'kuzy' && gameMode !== 'runner') {
+            const isMovingH = keys['ArrowLeft'] || keys['ArrowRight'];
+            this._updateKuzyAnim(dt, null, false, isMovingH);
+        }
     }
+
+    /**
+     * Обновляет покадровую анимацию PNG Sequences для персонажа Кузя.
+     * @param {number} dt - время кадра
+     * @param {boolean|null} forceInAir - явно задать «в воздухе», null = авто
+     * @param {boolean} isRunning - true в режиме runner (бег вместо ходьбы)
+     * @param {boolean} movingHoriz - игрок движется по горизонтали
+     */
+    _updateKuzyAnim(dt, forceInAir, isRunning, movingHoriz) {
+        const isFallingPlatform = (gameMode === 'platforms') && !this.onPlatform && !this.isJumping;
+        const inAir = (forceInAir !== null && forceInAir !== undefined)
+            ? forceInAir
+            : (this.isJumping || isFallingPlatform);
+
+        let target;
+        if (this.kDying) {
+            target = 'dying';
+        } else if (invuln > 0 && invuln < INVULN_TIME) {
+            target = 'hurt';
+        } else if (inAir && this.shooting) {
+            target = 'throwAir';
+        } else if (inAir) {
+            // Падение вниз — используем fallDown, иначе jumpStart/jumpLoop
+            const fallingDown = isFallingPlatform || (this.vy !== undefined && this.vy > 80);
+            if (fallingDown) {
+                target = 'fallDown';
+            } else if (this.jumpTimer < 0.25) {
+                target = 'jumpStart';
+            } else {
+                target = 'jumpLoop';
+            }
+        } else if (movingHoriz && this.shooting && isRunning) {
+            target = 'runThrow';
+        } else if (this.shooting) {
+            target = 'throw';
+        } else if (movingHoriz && isRunning) {
+            target = 'run';
+        } else if (movingHoriz) {
+            target = 'walk';
+        } else {
+            target = 'idle';
+        }
+
+        if (target !== this.kAnim) {
+            this.kAnim = target;
+            this.kFrame = 0;
+            this.kTimer = 0;
+        }
+
+        // Для ходьбы и бега более частая смена кадров, чтобы не было эффекта скольжения
+        // Для стрельбы ускоряем в 5 раз, чтобы анимация успевала за пулями
+        const fps = (this.kAnim === 'walk' || this.kAnim === 'run') ? 100
+                  : (this.kAnim === 'throw' || this.kAnim === 'throwAir' || this.kAnim === 'runThrow') ? 30
+                  : 12;
+        this.kTimer += dt;
+        if (this.kTimer >= 1 / fps) {
+            this.kTimer -= 1 / fps;
+            const def = kuzyAnimDefs[this.kAnim];
+            const count = def ? def.count : 1;
+            // Dying останавливается на последнем кадре
+            if (this.kAnim === 'dying') {
+                this.kFrame = Math.min(this.kFrame + 1, count - 1);
+            } else {
+                this.kFrame = (this.kFrame + 1) % count;
+            }
+        }
+    }
+
     /**
      * Возвращает параметры текущего кадра для alpha-коллизии.
      * @returns {{
@@ -338,6 +419,14 @@ class Player {
      * }|null}
      */
     getCollisionSpriteInfo() {
+        // Кузя: используем текущий кадр PNG Sequences анимации
+        if (this.type === 'kuzy') {
+            const frames = kuzyAnims[this.kAnim];
+            if (!frames || !frames.length) return null;
+            const img = frames[Math.min(this.kFrame, frames.length - 1)];
+            if (!img || !img.complete || !img.naturalWidth) return null;
+            return { img, direct: true, sx: 0, sy: 0, sw: 0, sh: 0 };
+        }
         const isFalling = (gameMode === 'platforms') && !this.onPlatform && !this.isJumping;
         let useShootFiles = false;
         let useShootUpFiles = false;
@@ -463,12 +552,30 @@ class Player {
     }
 
     /**
-     * Отрисовывает спрайт игрока на canvas
-     */
-    /**
      * Отрисовывает игрока на холсте canvas с учетом состояния.
      */
     draw() {
+        // Кузя: отрисовка через PNG Sequences кадры
+        if (this.type === 'kuzy') {
+            const frames = kuzyAnims[this.kAnim];
+            if (!frames || !frames.length) return;
+            const img = frames[Math.min(this.kFrame, frames.length - 1)];
+            if (!img || !img.complete || !img.naturalWidth) return;
+            // Спрайты PNG Sequences имеют прозрачное поле снизу (~11% высоты).
+            // Сдвигаем отрисовку вниз, чтобы ноги совпадали с землёй/платформой.
+            const PAD_BOTTOM = 99 / 900;
+            const drawY = this.y + this.h * PAD_BOTTOM;
+            ctx.save();
+            if (this.facingDir === 'left') {
+                ctx.translate(this.x + this.w, drawY);
+                ctx.scale(-1, 1);
+                ctx.drawImage(img, 0, 0, this.w, this.h);
+            } else {
+                ctx.drawImage(img, this.x, drawY, this.w, this.h);
+            }
+            ctx.restore();
+            return;
+        }
         // В режиме платформ: если не на платформе и не прыгаем = падаем
         const isFalling = (gameMode === 'platforms') && !this.onPlatform && !this.isJumping;
         

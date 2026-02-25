@@ -145,6 +145,41 @@
             box-shadow: 0 0 15px rgba(255,152,0,0.6);
         }
 
+        .char.menu-kb-focus {
+            outline: 3px solid #fff;
+            transform: scale(1.1);
+            box-shadow: 0 0 22px rgba(255,255,255,0.8);
+        }
+
+        #modes button.menu-kb-focus {
+            outline: 3px solid #fff;
+            transform: scale(1.08);
+            box-shadow: 0 0 22px rgba(255,255,255,0.8);
+        }
+
+        #help-btn.menu-kb-focus,
+        #reset-progress-btn.menu-kb-focus {
+            outline: 3px solid #fff;
+            transform: scale(1.08);
+            box-shadow: 0 0 22px rgba(255,255,255,0.8);
+        }
+
+        /* Кнопки паузы */
+        #pauseOverlay button.menu-kb-focus {
+            outline: 3px solid #fff !important;
+            transform: scale(1.08) !important;
+            box-shadow: 0 0 22px rgba(255,255,255,0.8) !important;
+            background: #ff9800 !important;
+        }
+
+        /* Кнопки таблички завершения уровня / game over */
+        #level-complete-overlay button.menu-kb-focus,
+        #game-over-overlay button.menu-kb-focus {
+            outline: 3px solid #1976d2;
+            box-shadow: 0 0 16px rgba(25,118,210,0.7);
+            transform: scale(1.08);
+        }
+
         #modes {
             margin-top: 20px;
             display: none;
@@ -464,6 +499,167 @@
                 font-size: clamp(12px, 3.4vw, 14px);
             }
         }
+
+        /* ==== HELP BUTTON ==== */
+        #help-btn {
+            position: fixed;
+            left: 20px;
+            bottom: 20px;
+            z-index: 3;
+            cursor: pointer;
+            font-size: 18px;
+            padding: 12px 16px;
+            border-radius: 10px;
+            border: 3px solid transparent;
+            background: #4fc3f7;
+            color: #000;
+            font-weight: 700;
+            transition: all 0.2s ease;
+        }
+        #help-btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+        }
+        #help-btn:active {
+            transform: scale(0.95);
+        }
+
+        /* ==== HELP SCREEN ==== */
+        #help-screen {
+            position: fixed;
+            inset: 0;
+            z-index: 1000;
+            background: transparent;
+            color: #fff;
+            overflow: hidden;
+            display: none;
+        }
+        #help-screen::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: rgba(0,0,0,0.55);
+            pointer-events: none;
+            z-index: 0;
+        }
+        .help-inner {
+            position: relative;
+            z-index: 1;
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            max-width: 760px;
+            margin: 0 auto;
+            padding: 18px 20px 14px;
+            box-sizing: border-box;
+        }
+        .help-inner h2 {
+            text-align: center;
+            font-size: 28px;
+            margin: 0 0 14px;
+            flex-shrink: 0;
+            text-shadow: 0 2px 8px rgba(0,0,0,0.7);
+        }
+        .help-scroll {
+            flex: 1;
+            overflow-y: auto;
+            padding-right: 6px;
+            scrollbar-width: thin;
+            scrollbar-color: rgba(255,255,255,0.3) transparent;
+        }
+        .help-scroll::-webkit-scrollbar { width: 6px; }
+        .help-scroll::-webkit-scrollbar-track { background: transparent; }
+        .help-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.25); border-radius: 3px; }
+        .help-scroll section { margin-bottom: 22px; }
+        .help-scroll h3 {
+            font-size: 20px;
+            margin: 0 0 8px;
+            padding-bottom: 4px;
+            border-bottom: 2px solid rgba(255,204,0,0.5);
+            color: #ffd54f;
+        }
+        .help-scroll h4 {
+            font-size: 15px;
+            margin: 10px 0 6px;
+            color: #ffcc80;
+        }
+        .help-scroll p {
+            margin: 4px 0 8px;
+            line-height: 1.45;
+            font-size: 14px;
+        }
+        .help-scroll ul {
+            margin: 4px 0 8px 18px;
+            padding: 0;
+            font-size: 14px;
+            line-height: 1.45;
+        }
+        .help-hint {
+            font-size: 13px;
+            color: #bbb;
+            font-style: italic;
+        }
+        .help-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 6px 0 10px;
+            font-size: 14px;
+        }
+        .help-table td {
+            padding: 5px 8px;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            vertical-align: top;
+        }
+        .help-table td:first-child {
+            white-space: nowrap;
+            font-weight: 700;
+            color: #ffd54f;
+            width: 140px;
+        }
+        .help-char, .help-mode {
+            background: rgba(0,0,0,0.25);
+            border-radius: 8px;
+            padding: 10px 12px;
+            margin-bottom: 8px;
+        }
+        .help-char strong, .help-mode strong { font-size: 16px; }
+        .help-char ul { margin: 4px 0 2px 16px; }
+        #help-back-btn {
+            flex-shrink: 0;
+            margin-top: 10px;
+            align-self: center;
+            cursor: pointer;
+            font-size: 20px;
+            padding: 12px 32px;
+            border-radius: 10px;
+            border: 3px solid transparent;
+            background: #ffcc00;
+            color: #000;
+            font-weight: 700;
+            transition: all 0.2s ease;
+        }
+        #help-back-btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+        }
+        #help-back-btn:active {
+            transform: scale(0.95);
+        }
+        #help-back-btn.menu-kb-focus {
+            outline: 3px solid #fff;
+            transform: scale(1.08);
+            box-shadow: 0 0 22px rgba(255,255,255,0.8);
+            background: #ff9800;
+            border-color: #fff;
+        }
+        @media (max-width: 600px) {
+            .help-inner { padding: 12px 10px 10px; }
+            .help-inner h2 { font-size: 22px; margin-bottom: 10px; }
+            .help-scroll h3 { font-size: 17px; }
+            .help-table td:first-child { width: auto; }
+            #help-back-btn { font-size: 17px; padding: 10px 24px; }
+            #help-btn { font-size: 15px; padding: 10px 12px; left: 12px; bottom: 12px; }
+        }
     </style>
 </head>
 <body>
@@ -497,7 +693,135 @@
             <button class="mode" data-mode="library">📚 Библиотека</button>
         </div>
     </div>
+    <button id="help-btn" type="button" title="Как играть">❓ Help</button>
     <button id="reset-progress-btn" type="button" title="Сбросить открытые уровни">Сбросить прогресс</button>
+</div>
+
+<div id="help-screen">
+    <div class="help-inner">
+        <h2>📖 Как играть</h2>
+        <div class="help-scroll">
+
+            <section>
+                <h3>🎮 Управление (клавиатура)</h3>
+                <table class="help-table">
+                    <tr><td>← / →</td><td>Движение влево / вправо</td></tr>
+                    <tr><td>↑</td><td>Прыжок (удерживай для большей высоты)</td></tr>
+                    <tr><td>Пробел</td><td>Стрельба</td></tr>
+                    <tr><td>↓</td><td>Переключить направление пули (←/→/↑)</td></tr>
+                    <tr><td>Shift</td><td>Включить бонусный режим стрельбы</td></tr>
+                    <tr><td>Ctrl</td><td>Альтернативная стрельба (удерживай ↓ = стреляем вверх)</td></tr>
+                    <tr><td>Escape</td><td>Пауза</td></tr>
+                </table>
+                <p class="help-hint">На мобильных устройствах используйте экранные кнопки.</p>
+            </section>
+
+            <section>
+                <h3>👤 Персонажи</h3>
+                <div class="help-char">
+                    <strong>Кузя 💦</strong>
+                    <ul>
+                        <li><b>Пуля:</b> большая 💦, медленная (скорость 5, радиус 18)</li>
+                        <li><b>Прыжок:</b> плавный набор высоты — чем дольше держишь ↑, тем выше; набирает скорость постепенно</li>
+                        <li><b>Бонусная пуля:</b> при попадании по врагу — убивает ещё одного ближайшего врага. При попадании по пуле врага — уничтожает ещё 3 ближайшие пули. Урон ×2 по боссам</li>
+                    </ul>
+                </div>
+                <div class="help-char">
+                    <strong>Дрон 🌀</strong>
+                    <ul>
+                        <li><b>Пуля:</b> средняя 🌀, быстрая (скорость 9, радиус 14)</li>
+                        <li><b>Прыжок:</b> мгновенный бустовый прыжок — резкий старт, быстрый подъём</li>
+                        <li><b>Бонусная пуля:</b> пробивная — пролетает сквозь врагов и пули врага, не исчезая. Урон ×2 по боссам</li>
+                    </ul>
+                </div>
+                <div class="help-char">
+                    <strong>Макс 💩</strong>
+                    <ul>
+                        <li><b>Пуля:</b> маленькая 💩, стандартная (скорость 11, радиус 8)</li>
+                        <li><b>Прыжок:</b> баллистический — фиксированная высота, чёткая параболическая траектория</li>
+                        <li><b>Бонусная пуля:</b> выпускает 3 пули веером (−15°, 0°, +15°) — покрывает широкую зону</li>
+                    </ul>
+                </div>
+            </section>
+
+            <section>
+                <h3>🎁 Бонусы</h3>
+                <h4>Общие бонусы (большинство режимов)</h4>
+                <table class="help-table">
+                    <tr><td>🍺 Бутылка</td><td>+3 бонусных выстрела</td></tr>
+                    <tr><td>❤️ Сердечко</td><td>+1 жизнь (если жизни на максимуме — +5 бонусных выстрелов)</td></tr>
+                </table>
+                <p class="help-hint">Каждые 5 убийств подряд (комбо) гарантированно выпадает бутылка.</p>
+                <h4>Специальные бонусы</h4>
+                <table class="help-table">
+                    <tr><td>🍌 Банан</td><td>+1 жизнь, +5 бонусных выстрелов, +3 очка <em>(только Очко)</em></td></tr>
+                    <tr><td>🧊 Лёд</td><td>Замораживает босса-вратаря на 5 сек <em>(только Носок)</em></td></tr>
+                    <tr><td>🧨 Динамит</td><td>Отбрасывает вратаря от ворот <em>(только Носок)</em></td></tr>
+                    <tr><td>🧲 Магнит</td><td>Притягивает падающих персонажей к игроку на 10 сек <em>(только Ловлю)</em></td></tr>
+                    <tr><td>⚡ Молния</td><td>Удваивает скорость игрока на 13 сек <em>(только Ловлю)</em></td></tr>
+                    <tr><td>⚡ Энергия</td><td>Ускоряет игрока ×1.5 на 10 сек <em>(только Бегун)</em></td></tr>
+                    <tr><td>🚬 Сигарета XL</td><td>Увеличивает сигарету ×2 визуально 10 сек <em>(только Бегун)</em></td></tr>
+                    <tr><td>💎 Рубин</td><td>Запускает появление кубка <em>(только Платформы)</em></td></tr>
+                    <tr><td>🏆 Кубок</td><td>Собери для победы <em>(только Платформы)</em></td></tr>
+                </table>
+            </section>
+
+            <section>
+                <h3>🗺️ Режимы игры</h3>
+                <div class="help-mode">
+                    <strong>🎮 Сирень и Букин</strong>
+                    <p>Уничтожь 4 волны врагов-сиреней, затем победи босса-сосиску «Букин» (20 HP). Враги становятся быстрее и агрессивнее с каждой фазой.</p>
+                </div>
+                <div class="help-mode">
+                    <strong>🔥 Выживание</strong>
+                    <p>Бесконечный режим — убивай волны врагов и набирай максимальный счёт. Враги и пули ускоряются каждые 30 убийств. Босса нет, выиграть нельзя — только побить рекорд.</p>
+                </div>
+                <div class="help-mode">
+                    <strong>🤖 Режим 67</strong>
+                    <p>Сражение с одним большим боссом «67» (67 HP). Он стреляет эмодзи-пулями (🪳🧨7️⃣6️⃣💩), медленно приближается и растёт в размерах. Стреляй и уклоняйся!</p>
+                </div>
+                <div class="help-mode">
+                    <strong>🎯 Очко</strong>
+                    <p>Многофазный босс «Очко» (120 HP) с 4 фазами: ходит, прыгает, делает рывки и удары по земле. Наносит полный урон только в окна уязвимости. Иногда выпадает 🍌 банан.</p>
+                </div>
+                <div class="help-mode">
+                    <strong>🧦 Носок</strong>
+                    <p>Футбольный режим! Забей 10 голов в ворота, стреляя и ударяя мяч. Босс-вратарь кидается носками и рыбой. Используй 🧊 лёд и 🧨 динамит для преимущества. После 5 голов — вратарь переходит на тухлую рыбу! Считается время прохождения.</p>
+                </div>
+                <div class="help-mode">
+                    <strong>🪵 Платформы</strong>
+                    <p>Прыгай по платформам и уничтожь Boss 67 (76 HP) на верхней платформе. По мере урона спавнятся враги-сирени. После победы — собери 💎 рубин, затем 🏆 кубок для завершения.</p>
+                </div>
+                <div class="help-mode">
+                    <strong>🫴 Ловлю</strong>
+                    <p>Поймай 50 падающих персонажей (Кузя)! Лови их на земле или в нижней трети экрана. Если персонаж упадёт на землю — ты теряешь жизнь. Стрельба отключена. Используй 🧲 магнит и ⚡ молнию.</p>
+                </div>
+                <div class="help-mode">
+                    <strong>🏃 Бегун</strong>
+                    <p>Догони босса-прапора и коснись его сигаретой 🚬 (зажми Пробел). Стрельба отключена. Платформы + перенос через край экрана. Хитрость: стой неподвижно 20 сек и босс замедлится 🐢 на 5 сек. Очки: начинаешь со 100, −1 каждые 5 сек.</p>
+                </div>
+                <div class="help-mode">
+                    <strong>📚 Библиотека</strong>
+                    <p>Уничтожь 3 боссов на рельсе сверху (Очко, Носок, Теле — по 10 HP каждый). Сверху падают книги — отбивай их пулями или телом. Справа унитаз: каждые 5 пойманных книг — он стреляет 💩 залпом по боссам. Боссы стреляют в ответ!</p>
+                </div>
+            </section>
+
+            <section>
+                <h3>💡 Советы</h3>
+                <ul>
+                    <li>Бонусный режим (Shift) активируется только при наличии бонусных выстрелов от 🍺</li>
+                    <li>Направление пуль (↓) можно менять на лету: ←, → или ↑</li>
+                    <li>У каждого персонажа уникальные прыжки и бонусные пули — попробуй всех!</li>
+                    <li>Комбо x5 = гарантированная бутылка; сбивай пули врага для +1 к счёту</li>
+                    <li>В «Носке» — удар головой (прыжок + контакт сверху) = мощный подброс мяча</li>
+                    <li>В «Платформах» — не стой на месте дольше 3 сек, иначе спавнятся враги</li>
+                    <li>Жизни: 7 ❤️ на старте (в боевых режимах). Неуязвимость после урона: 0.5 сек</li>
+                </ul>
+            </section>
+
+        </div>
+        <button id="help-back-btn" type="button">← Назад</button>
+    </div>
 </div>
 
 <div id="game">

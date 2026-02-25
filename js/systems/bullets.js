@@ -16,7 +16,7 @@ function shootPlayerBullet(p) {
             emoji = '🌀';
             break;
         case "max":
-            r = 8; speed = 8; color = "#222";
+            r = 8; speed = 11; color = "#222";
             emoji = '💩';
             break;
         case "kuzy":

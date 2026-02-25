@@ -420,14 +420,18 @@ function tryRunnerEdgeWarp(actor, side) {
  * @param {any} actor - игрок или босс.
  */
 function clampOrWarpRunnerActorX(actor) {
-    if (actor.x < 0) {
+    // Для Кузи используем эффективную ширину (контент занимает только ~60% от AABB)
+    const width = actor.effectiveW || actor.w;
+    const leftPad = (actor.effectiveW && actor.effectiveW < actor.w) ? (actor.w - actor.effectiveW) / 2 : 0;
+    
+    if (actor.x + leftPad < 0) {
         const warped = tryRunnerEdgeWarp(actor, 'left');
-        if (!warped) actor.x = 0;
+        if (!warped) actor.x = -leftPad;
         return;
     }
-    if (actor.x + actor.w > canvas.width) {
+    if (actor.x + leftPad + width > canvas.width) {
         const warped = tryRunnerEdgeWarp(actor, 'right');
-        if (!warped) actor.x = canvas.width - actor.w;
+        if (!warped) actor.x = canvas.width - leftPad - width;
         return;
     }
 }
@@ -570,6 +574,13 @@ function updateRunnerActorPhysics(actor, dt, jumpRequested) {
 function updateRunnerPlayerAnimation(dt, movingHoriz) {
     if (!player) return;
     player.shooting = false;
+
+    // Кузя: анимация через PNG Sequences
+    if (player.type === 'kuzy') {
+        const inAir = !player.onGround || player.isJumping;
+        player._updateKuzyAnim(dt, inAir, true, movingHoriz);
+        return;
+    }
 
     if (!player.onGround || player.isJumping) {
         player.timer += dt;
@@ -985,7 +996,9 @@ function drawRunnerFakeBonuses() {
 function getRunnerCigaretteRect() {
     const w = Math.max(16, player.w * 0.24);
     const h = Math.max(8, player.h * 0.08);
-    const cy = player.y + player.h * 0.56 - h * 0.5;
+    // Для Кузи: сигарета ниже из-за пропорций спрайта PNG Sequences
+    const cigYFraction = (player && player.type === 'kuzy') ? 0.72 : 0.56;
+    const cy = player.y + player.h * cigYFraction - h * 0.5;
     const sideInset = 0.16;
     if (player.facingDir === 'left') {
         return {

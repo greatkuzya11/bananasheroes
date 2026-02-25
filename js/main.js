@@ -400,6 +400,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const btnResume = document.createElement('button');
         btnResume.innerText = '▶️ Продолжить';
+        btnResume.dataset.pauseIdx = '0';
         Object.assign(btnResume.style, { 
             padding: '15px', 
             fontSize: '24px', 
@@ -438,6 +439,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const btnRestart = document.createElement('button');
         btnRestart.innerText = '🔄 Начать заново';
+        btnRestart.dataset.pauseIdx = '1';
         Object.assign(btnRestart.style, { 
             padding: '15px', 
             fontSize: '24px', 
@@ -482,6 +484,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const btnMain = document.createElement('button');
         btnMain.innerText = '🏠 Главный экран';
+        btnMain.dataset.pauseIdx = '2';
         Object.assign(btnMain.style, { 
             padding: '15px', 
             fontSize: '24px', 
@@ -526,10 +529,14 @@ document.addEventListener('DOMContentLoaded', () => {
             updateBestScoresDisplay();
             if (typeof refreshModeButtonsByProgress === 'function') refreshModeButtonsByProgress();
             setTouchControlsVisible(false);
+            menuNavFocus('char', 0);
         };
         overlay.appendChild(btnMain);
 
         document.body.appendChild(overlay);
+        // Автофокус на первой кнопке паузы для клавиатурной навигации
+        const firstPauseBtn = overlay.querySelector('button[data-pause-idx]');
+        if (firstPauseBtn) firstPauseBtn.classList.add('menu-kb-focus');
     }
 
     /**
@@ -632,4 +639,236 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         };
     });
+
+    // ==== KEYBOARD NAVIGATION IN MENU ====
+    // Initialize: focus first character on page load
+    menuNavFocus('char', 0);
+    document.addEventListener('keydown', menuKeyNav);
+
+    // Синхронизация фокуса: при наведении мышью кнопка получает menu-kb-focus,
+    // снимая его со всех остальных — чтобы не было двух одновременных фокусов.
+    document.addEventListener('mouseover', e => {
+        const el = e.target.closest(
+            '.char, .mode, #help-btn, #reset-progress-btn, #help-back-btn, ' +
+            'button[data-pause-idx], button[data-overlay-btn-idx]'
+        );
+        if (!el || el.disabled) return;
+        // Снимаем menu-kb-focus со всего документа
+        document.querySelectorAll('.menu-kb-focus').forEach(x => x.classList.remove('menu-kb-focus'));
+        el.classList.add('menu-kb-focus');
+    });
+
+    // ==== HELP SCREEN ====
+    const helpBtn = document.getElementById('help-btn');
+    const helpScreen = document.getElementById('help-screen');
+    const helpBackBtn = document.getElementById('help-back-btn');
+    if (helpBtn && helpScreen && helpBackBtn) {
+        helpBtn.onclick = () => {
+            helpScreen.style.display = 'block';
+            // Сбрасываем скролл и фокус кнопки «Назад» при каждом открытии
+            helpBackBtn.classList.remove('menu-kb-focus');
+            const scrollEl = helpScreen.querySelector('.help-scroll');
+            if (scrollEl) scrollEl.scrollTop = 0;
+        };
+        helpBackBtn.onclick = () => {
+            helpScreen.style.display = 'none';
+            helpBackBtn.classList.remove('menu-kb-focus');
+        };
+    }
+
+    // ==== MENU KEYBOARD NAVIGATION FUNCTIONS ====
+    // Объявлены как function declarations — hoisting даёт им доступ везде в этой callback,
+    // включая showPause() -> btnMain.onclick, который вызывает menuNavFocus('char', 0).
+    // Состояние хранится в DOM (класс menu-kb-focus), что исключает проблемы с TDZ.
+
+    function menuNavFocus(section, idx) {
+        const cEls = Array.from(document.querySelectorAll('.char'));
+        const mEls = Array.from(document.querySelectorAll('.mode'));
+        const helpBtnEl = document.getElementById('help-btn');
+        const resetBtnEl = document.getElementById('reset-progress-btn');
+        // Снимаем подсветку со всех элементов меню
+        [...cEls, ...mEls].forEach(el => el.classList.remove('menu-kb-focus'));
+        [helpBtnEl, resetBtnEl].forEach(el => el && el.classList.remove('menu-kb-focus'));
+        if (section === 'char') {
+            if (cEls[idx]) cEls[idx].classList.add('menu-kb-focus');
+        } else if (section === 'mode') {
+            if (mEls[idx]) mEls[idx].classList.add('menu-kb-focus');
+        } else if (section === 'help') {
+            if (helpBtnEl) helpBtnEl.classList.add('menu-kb-focus');
+        } else if (section === 'reset') {
+            if (resetBtnEl) resetBtnEl.classList.add('menu-kb-focus');
+        }
+    }
+
+    function menuKeyNav(e) {
+        const menuElement = document.getElementById('menu');
+        const helpElement = document.getElementById('help-screen');
+        const pauseOverlay = document.getElementById('pauseOverlay');
+        const levelCompleteOverlay = document.getElementById('level-complete-overlay');
+        const gameOverOverlay = document.getElementById('game-over-overlay');
+
+        // ==== ТАБЛИЧКИ завершения уровня / game over ====
+        const resultOverlay = levelCompleteOverlay || gameOverOverlay;
+        if (resultOverlay) {
+            const btns = Array.from(resultOverlay.querySelectorAll('button[data-overlay-btn-idx]'))
+                .filter(b => !b.disabled);
+            if (!btns.length) return;
+            let curIdx = btns.findIndex(b => b.classList.contains('menu-kb-focus'));
+            if (curIdx < 0) { curIdx = 0; btns[0].classList.add('menu-kb-focus'); }
+
+            if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
+                btns[curIdx].classList.remove('menu-kb-focus');
+                btns[(curIdx + 1) % btns.length].classList.add('menu-kb-focus');
+                e.preventDefault();
+            } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+                btns[curIdx].classList.remove('menu-kb-focus');
+                btns[(curIdx - 1 + btns.length) % btns.length].classList.add('menu-kb-focus');
+                e.preventDefault();
+            } else if (e.key === 'Enter' || e.key === ' ') {
+                btns[curIdx]?.click();
+                e.preventDefault();
+            }
+            return;
+        }
+
+        // ==== ПАУЗА: навигация по кнопкам ====
+        if (pauseOverlay) {
+            const pauseBtns = Array.from(pauseOverlay.querySelectorAll('button[data-pause-idx]'));
+            if (!pauseBtns.length) return;
+            let curIdx = pauseBtns.findIndex(b => b.classList.contains('menu-kb-focus'));
+            if (curIdx < 0) { curIdx = 0; pauseBtns[0].classList.add('menu-kb-focus'); }
+
+            if (e.key === 'ArrowDown' || e.key === 'ArrowRight') {
+                pauseBtns[curIdx].classList.remove('menu-kb-focus');
+                const next = (curIdx + 1) % pauseBtns.length;
+                pauseBtns[next].classList.add('menu-kb-focus');
+                e.preventDefault();
+            } else if (e.key === 'ArrowUp' || e.key === 'ArrowLeft') {
+                pauseBtns[curIdx].classList.remove('menu-kb-focus');
+                const prev = (curIdx - 1 + pauseBtns.length) % pauseBtns.length;
+                pauseBtns[prev].classList.add('menu-kb-focus');
+                e.preventDefault();
+            } else if (e.key === 'Enter' || e.key === ' ') {
+                pauseBtns[curIdx]?.click();
+                e.preventDefault();
+            }
+            return;
+        }
+
+        // ==== HELP: Escape закрывает ====
+        if (e.key === 'Escape' && helpElement && helpElement.style.display === 'block') {
+            helpElement.style.display = 'none';
+            document.getElementById('help-back-btn')?.classList.remove('menu-kb-focus');
+            e.preventDefault();
+            return;
+        }
+
+        // ==== HELP: навигация внутри ====
+        if (helpElement && helpElement.style.display === 'block') {
+            const scrollEl = helpElement.querySelector('.help-scroll');
+            const backBtn = document.getElementById('help-back-btn');
+            const backFocused = backBtn && backBtn.classList.contains('menu-kb-focus');
+            const SCROLL_STEP = 120;
+
+            if (e.key === 'ArrowDown') {
+                if (!backFocused && scrollEl) {
+                    scrollEl.scrollTop += SCROLL_STEP;
+                    const atBottom = scrollEl.scrollTop + scrollEl.clientHeight >= scrollEl.scrollHeight - 4;
+                    if (atBottom && backBtn) backBtn.classList.add('menu-kb-focus');
+                }
+                e.preventDefault();
+            } else if (e.key === 'ArrowUp') {
+                if (backFocused && scrollEl) {
+                    backBtn.classList.remove('menu-kb-focus');
+                    scrollEl.scrollTop -= SCROLL_STEP;
+                } else if (scrollEl) {
+                    scrollEl.scrollTop -= SCROLL_STEP;
+                }
+                e.preventDefault();
+            } else if ((e.key === 'Enter' || e.key === ' ') && backFocused) {
+                helpElement.style.display = 'none';
+                backBtn.classList.remove('menu-kb-focus');
+                e.preventDefault();
+            }
+            return;
+        }
+
+        // ==== МЕНЮ: работаем только когда оно видимо ====
+        if (!menuElement || menuElement.style.display === 'none') return;
+
+        const cEls = Array.from(document.querySelectorAll('.char'));
+        const mEls = Array.from(document.querySelectorAll('.mode'));
+        const helpBtnEl = document.getElementById('help-btn');
+        const resetBtnEl = document.getElementById('reset-progress-btn');
+        const modesContainer = document.getElementById('modes');
+        const modesVisible = modesContainer && modesContainer.style.display !== 'none';
+
+        // Определяем текущую секцию и индекс из DOM
+        let section = 'char', idx = 0;
+        const fChar = cEls.findIndex(el => el.classList.contains('menu-kb-focus'));
+        const fMode = mEls.findIndex(el => el.classList.contains('menu-kb-focus'));
+        const fHelp = helpBtnEl && helpBtnEl.classList.contains('menu-kb-focus');
+        const fReset = resetBtnEl && resetBtnEl.classList.contains('menu-kb-focus');
+        if (fReset)      { section = 'reset'; idx = 0; }
+        else if (fHelp)  { section = 'help';  idx = 0; }
+        else if (fMode >= 0) { section = 'mode'; idx = fMode; }
+        else if (fChar >= 0) { section = 'char'; idx = fChar; }
+
+        if (e.key === 'Escape') {
+            // Из режимов / help / reset → вернуться к выбору персонажа
+            if (section !== 'char') {
+                // Сбросить выбор персонажа и скрыть режимы
+                cEls.forEach(el => el.classList.remove('selected'));
+                if (modesContainer) modesContainer.style.display = 'none';
+                menuNavFocus('char', 0);
+                e.preventDefault();
+            }
+            return;
+        }
+
+        if (e.key === 'ArrowLeft') {
+            if (section === 'char') menuNavFocus('char', (idx - 1 + cEls.length) % cEls.length);
+            else if (section === 'mode') menuNavFocus('mode', (idx - 1 + mEls.length) % mEls.length);
+            e.preventDefault();
+        } else if (e.key === 'ArrowRight') {
+            if (section === 'char') menuNavFocus('char', (idx + 1) % cEls.length);
+            else if (section === 'mode') menuNavFocus('mode', (idx + 1) % mEls.length);
+            e.preventDefault();
+        } else if (e.key === 'ArrowDown') {
+            if (section === 'char') {
+                cEls[idx]?.click();
+                if (modesContainer && modesContainer.style.display !== 'none') menuNavFocus('mode', 0);
+            } else if (section === 'mode') {
+                if (idx < mEls.length - 1) menuNavFocus('mode', idx + 1);
+                else menuNavFocus('help', 0);
+            } else if (section === 'help') {
+                menuNavFocus('reset', 0);
+            } else if (section === 'reset') {
+                menuNavFocus('mode', mEls.length - 1); // циклируем обратно
+            }
+            e.preventDefault();
+        } else if (e.key === 'ArrowUp') {
+            if (section === 'mode') {
+                if (idx === 0) menuNavFocus('char', fChar >= 0 ? fChar : 0);
+                else menuNavFocus('mode', idx - 1);
+            } else if (section === 'help') {
+                menuNavFocus('mode', mEls.length - 1);
+            } else if (section === 'reset') {
+                menuNavFocus('help', 0);
+            }
+            e.preventDefault();
+        } else if (e.key === 'Enter' || e.key === ' ') {
+            if (section === 'char') {
+                cEls[idx]?.click();
+                if (modesContainer && modesContainer.style.display !== 'none') menuNavFocus('mode', 0);
+            } else if (section === 'mode') {
+                mEls[idx]?.click();
+            } else if (section === 'help') {
+                helpBtnEl?.click();
+            } else if (section === 'reset') {
+                resetBtnEl?.click();
+            }
+            e.preventDefault();
+        }
+    }
 });

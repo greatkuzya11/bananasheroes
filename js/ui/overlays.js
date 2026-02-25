@@ -375,6 +375,7 @@ function showLevelComplete() {
 
     const btnRetry = document.createElement('button');
     btnRetry.innerText = 'Повторить';
+    btnRetry.dataset.overlayBtnIdx = '0';
     Object.assign(btnRetry.style, { padding: '8px 14px', fontSize: '16px', cursor: 'pointer' });
     btnRetry.onclick = async () => {
         overlay.remove();
@@ -387,6 +388,7 @@ function showLevelComplete() {
 
     const btnMain = document.createElement('button');
     btnMain.innerText = 'Главный экран';
+    btnMain.dataset.overlayBtnIdx = '1';
     Object.assign(btnMain.style, { padding: '8px 14px', fontSize: '16px', cursor: 'pointer' });
     // Обработчик клика по кнопке "Главный экран"
     btnMain.onclick = async () => {
@@ -427,6 +429,7 @@ function showLevelComplete() {
         : null;
     const btnNext = document.createElement('button');
     btnNext.innerText = 'Следующий уровень';
+    btnNext.dataset.overlayBtnIdx = '2';
     Object.assign(btnNext.style, { padding: '8px 14px', fontSize: '16px', cursor: 'pointer' });
     if (!nextMode) {
         btnNext.disabled = true;
@@ -463,6 +466,8 @@ function showLevelComplete() {
     box.appendChild(buttons);
     overlay.appendChild(box);
     document.body.appendChild(overlay);
+    // Автофокус на первой кнопке (Повторить) для клавиатурной навигации
+    btnRetry.classList.add('menu-kb-focus');
 
     // Запускаем анимации после добавления элементов в DOM
     // Коллбек анимации: запускаем плавное появление текста и иконок
@@ -727,6 +732,7 @@ function showGameOver() {
 
     const btnRetry = document.createElement('button');
     btnRetry.innerText = 'Повторить';
+    btnRetry.dataset.overlayBtnIdx = '0';
     Object.assign(btnRetry.style, { padding: '10px 16px', fontSize: '16px', cursor: 'pointer' });
     // Обработчик клика по кнопке "Повторить"
     btnRetry.onclick = () => {
@@ -742,6 +748,7 @@ function showGameOver() {
 
     const btnMain = document.createElement('button');
     btnMain.innerText = 'Главный экран';
+    btnMain.dataset.overlayBtnIdx = '1';
     Object.assign(btnMain.style, { padding: '10px 16px', fontSize: '16px', cursor: 'pointer' });
     // Обработчик клика по кнопке "Главный экран"
     btnMain.onclick = () => {
@@ -772,6 +779,8 @@ function showGameOver() {
     box.appendChild(buttons);
     overlay.appendChild(box);
     document.body.appendChild(overlay);
+    // Автофокус на первой кнопке (Повторить) для клавиатурной навигации
+    btnRetry.classList.add('menu-kb-focus');
 }
 
 /**
