@@ -16,11 +16,11 @@ function shootPlayerBullet(p) {
             emoji = '🌀';
             break;
         case "max":
-            r = 8; speed = 11; color = "#222";
+            r = 10; speed = 11; color = "#222";
             emoji = '💩';
             break;
         case "kuzy":
-            r = 18; speed = 5; color = "#333";
+            r = 18; speed = 7; color = "#333";
             emoji = '💦';
             break;
     }
@@ -37,6 +37,11 @@ function shootPlayerBullet(p) {
             bonusShots = 0;
             bonusMode = false;
         }
+    }
+    // Точные радиусы пуль Макса: не бонусная 10, бонусная 12
+    if (p.type === 'max') r = isBonus ? 12 : 10;
+    if (window.BHAudio && typeof window.BHAudio.playPlayerShoot === 'function') {
+        window.BHAudio.playPlayerShoot(p.type, isBonus);
     }
 
     // Определяем стартовую позицию и скорость по направлению стрельбы
@@ -77,7 +82,8 @@ function shootPlayerBullet(p) {
             bullets.push({ x: bx, y: by, r, speed, color, vx: vx_angled, vy: vy_angled, emoji, dir: playerBulletDir, isBonus, rotation: 0, playerType: p.type, hitRadius: r * 2 });
         });
     } else {
-        bullets.push({ x: bx, y: by, r, speed, color, vx, vy, emoji, dir: playerBulletDir, isBonus, rotation: 0, playerType: p.type, hitRadius: r * 2 });
+        const bulletImg = (p.type === 'max' && !isBonus) ? maxBulletImg : undefined;
+        bullets.push({ x: bx, y: by, r, speed, color, vx, vy, emoji, dir: playerBulletDir, isBonus, rotation: 0, swayAge: 0, playerType: p.type, hitRadius: r * 2, img: bulletImg });
     }
 }
 

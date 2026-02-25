@@ -47,6 +47,13 @@ class Player {
         this.kFrame = 0;
         this.kTimer = 0;
         this.kDying = false;
+        // PNG анимация для Макса
+        this.mAnim = 'walk';
+        this.mFrame = 0;
+        this.mTimer = 0;
+        this.mLcActive = false;   // пинг-понг при levelComplete
+        this.mLcCyclesDone = 0;   // сколько циклов сыграно (5 = стоп)
+        this.mLcDir = 1;          // 1 = вперёд, -1 = назад
     }
         /**
      * Обновляет движение, анимацию и стрельбу игрока.
@@ -107,6 +114,9 @@ class Player {
                 this.gravity = 2 * this.jumpMaxHeight * nosokJumpMul * nosokJumpMul;
                 const v0 = 2 * this.jumpMinHeight * nosokJumpMul;
                 this.vy = -v0;
+            }
+            if (window.BHAudio) {
+                window.BHAudio.play('player_jump', { volumeMul: 0.9 });
             }
         }
 
@@ -191,6 +201,9 @@ class Player {
                     this.isJumping = false;
                     this.jumpTimer = 0;
                     this.jumpHoldTimer = 0;
+                    if (window.BHAudio) {
+                        window.BHAudio.play('player_land', { volumeMul: 0.8 });
+                    }
                 }
             } else if (this.jumpStyle === 'dron') {
                 // Физический прыжок с мгновенным бустом при удержании
@@ -211,6 +224,9 @@ class Player {
                     this.isJumping = false;
                     this.jumpTimer = 0;
                     this.jumpHoldTimer = 0;
+                    if (window.BHAudio) {
+                        window.BHAudio.play('player_land', { volumeMul: 0.8 });
+                    }
                 }
             } else {
                 // 'kuzy' — плавный набор скорости: постепенно приближаем vy к целевому
@@ -233,6 +249,9 @@ class Player {
                     this.isJumping = false;
                     this.jumpTimer = 0;
                     this.jumpHoldTimer = 0;
+                    if (window.BHAudio) {
+                        window.BHAudio.play('player_land', { volumeMul: 0.8 });
+                    }
                 }
             }
         }
@@ -301,6 +320,7 @@ class Player {
                     playerCenterX <= platformRightEdge &&
                     this.y + this.h >= p.y && 
                     this.y + this.h <= p.y + 40) {
+                    const wasJumping = this.isJumping;
                     this.y = p.y - this.h + 30;
                     this.vy = 0;
                     this.isJumping = false;
@@ -308,6 +328,9 @@ class Player {
                     this.jumpHoldTimer = 0;
                     this.jumpBaseY = this.y;
                     this.onPlatform = true;
+                    if (wasJumping && window.BHAudio) {
+                        window.BHAudio.play('player_land', { volumeMul: 0.8 });
+                    }
                 }
             });
             
@@ -337,6 +360,11 @@ class Player {
         if (this.type === 'kuzy' && gameMode !== 'runner') {
             const isMovingH = keys['ArrowLeft'] || keys['ArrowRight'];
             this._updateKuzyAnim(dt, null, false, isMovingH);
+        }
+        // Обновляем анимацию Макса
+        if (this.type === 'max' && gameMode !== 'runner') {
+            const isMovingH = keys['ArrowLeft'] || keys['ArrowRight'];
+            this._updateMaxAnim(dt, isMovingH);
         }
     }
 
@@ -408,6 +436,74 @@ class Player {
     }
 
     /**
+     * Обновляет покадровую анимацию PNG для персонажа Макс.
+     * @param {number} dt - время кадра
+     * @param {boolean} movingHoriz - игрок движется по горизонтали
+     */
+    _updateMaxAnim(dt, movingHoriz) {
+        if (this.mLcActive) {
+            // Пинг-понг анимация levelComplete: 10fps, 5 циклов
+            const fps = 10;
+            this.mAnim = 'levelComplete';
+            this.mTimer += dt;
+            if (this.mTimer >= 1 / fps) {
+                this.mTimer -= 1 / fps;
+                this.mFrame += this.mLcDir;
+                const len = maxAnims.levelComplete.length;
+                if (this.mFrame >= len) {
+                    this.mFrame = len - 2;
+                    this.mLcDir = -1;
+                } else if (this.mFrame < 0) {
+                    this.mFrame = 1;
+                    this.mLcDir = 1;
+                    this.mLcCyclesDone++;
+                    if (this.mLcCyclesDone >= 5) {
+                        this.mLcActive = false;
+                        this.mFrame = 0;
+                    }
+                }
+            }
+            return;
+        }
+
+        const inAir = this.isJumping || ((gameMode === 'platforms') && !this.onPlatform && !this.isJumping);
+        let target;
+        if (inAir && this.shooting) {
+            target = 'shootOnJump';
+        } else if (inAir) {
+            target = 'jump';
+        } else if (this.shooting && playerBulletDir === 'up') {
+            target = 'shootUpStand'; // стрельба вверх стоя или в движении
+        } else if (this.shooting && !movingHoriz) {
+            target = 'shootOnStand'; // стрельба влево/вправо стоя на месте
+        } else if (this.shooting) {
+            target = 'shootOnWalk'; // стрельба влево/вправо в движении
+        } else {
+            target = 'walk'; // idle реализован первым кадром walk
+        }
+
+        if (target !== this.mAnim) {
+            this.mAnim = target;
+            this.mFrame = 0;
+            this.mTimer = 0;
+        }
+
+        const fps = (this.mAnim === 'walk' || this.mAnim === 'shootOnWalk') ? 20 : 15;
+        this.mTimer += dt;
+        if (this.mTimer >= 1 / fps) {
+            this.mTimer -= 1 / fps;
+            const frames = maxAnims[this.mAnim];
+            const count = frames ? frames.length : 1;
+            if (!movingHoriz && this.mAnim === 'walk') {
+                // Idle — стоим на первом кадре
+                this.mFrame = 0;
+            } else {
+                this.mFrame = (this.mFrame + 1) % count;
+            }
+        }
+    }
+
+    /**
      * Возвращает параметры текущего кадра для alpha-коллизии.
      * @returns {{
      *   img:HTMLImageElement,
@@ -424,6 +520,14 @@ class Player {
             const frames = kuzyAnims[this.kAnim];
             if (!frames || !frames.length) return null;
             const img = frames[Math.min(this.kFrame, frames.length - 1)];
+            if (!img || !img.complete || !img.naturalWidth) return null;
+            return { img, direct: true, sx: 0, sy: 0, sw: 0, sh: 0 };
+        }
+        // Макс: используем текущий кадр PNG анимации
+        if (this.type === 'max') {
+            const frames = maxAnims[this.mAnim];
+            if (!frames || !frames.length) return null;
+            const img = frames[Math.min(this.mFrame, frames.length - 1)];
             if (!img || !img.complete || !img.naturalWidth) return null;
             return { img, direct: true, sx: 0, sy: 0, sw: 0, sh: 0 };
         }
@@ -576,6 +680,23 @@ class Player {
             ctx.restore();
             return;
         }
+        // Макс: отрисовка через PNG анимации
+        if (this.type === 'max') {
+            const frames = maxAnims[this.mAnim];
+            if (!frames || !frames.length) return;
+            const img = frames[Math.min(this.mFrame, frames.length - 1)];
+            if (!img || !img.complete || !img.naturalWidth) return;
+            ctx.save();
+            if (this.facingDir === 'left') {
+                ctx.translate(this.x + this.w, this.y);
+                ctx.scale(-1, 1);
+                ctx.drawImage(img, 0, 0, this.w, this.h);
+            } else {
+                ctx.drawImage(img, this.x, this.y, this.w, this.h);
+            }
+            ctx.restore();
+            return;
+        }
         // В режиме платформ: если не на платформе и не прыгаем = падаем
         const isFalling = (gameMode === 'platforms') && !this.onPlatform && !this.isJumping;
         
@@ -707,6 +828,19 @@ class Player {
         }
         
         ctx.restore();
+    }
+
+    /**
+     * Запускает пинг-понг анимацию levelComplete для Макса.
+     */
+    triggerLevelComplete() {
+        if (this.type !== 'max') return;
+        this.mLcActive = true;
+        this.mLcCyclesDone = 0;
+        this.mLcDir = 1;
+        this.mFrame = 0;
+        this.mAnim = 'levelComplete';
+        this.mTimer = 0;
     }
 }
 

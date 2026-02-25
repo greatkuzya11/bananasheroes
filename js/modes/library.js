@@ -477,6 +477,9 @@ function spawnLibraryCatchSplash(x, y) {
             color: colors[i]
         });
     }
+    if (window.BHAudio) {
+        window.BHAudio.play('library_splash', { volumeMul: 0.95 });
+    }
 }
 /**
  * Описание.
@@ -492,6 +495,9 @@ function triggerLibraryToiletVolley() {
     if (libraryToilet.volleyChargeTimer > 0) return;
     libraryToilet.volleyChargeDuration = libraryRand(2.0, 3.0);
     libraryToilet.volleyChargeTimer = libraryToilet.volleyChargeDuration;
+    if (window.BHAudio) {
+        window.BHAudio.play('toilet_charge', { volumeMul: 0.92, duck: 0.84 });
+    }
 }
 
 /**
@@ -516,6 +522,9 @@ function spawnLibraryToiletFireSplash() {
             life: 2.0,
             color: colors[i % colors.length]
         });
+    }
+    if (window.BHAudio) {
+        window.BHAudio.play('toilet_fire', { volumeMul: 0.96, duck: 0.8 });
     }
 }
 /**
@@ -696,6 +705,9 @@ function applyLibraryBossDamage(boss, dmg) {
     boss.hp -= dmg;
     boss.hitFlashTimer = Math.max(boss.hitFlashTimer || 0, 0.28);
     explosions.push({ x: boss.x + boss.w * 0.5, y: boss.y + boss.h * 0.5, timer: 0, scale: 0.55 });
+    if (window.BHAudio) {
+        window.BHAudio.play('hit_boss', { volumeMul: 0.86, duck: 0.9 });
+    }
 
     if (boss.hp > 0) return;
     boss.hp = 0;
@@ -708,6 +720,9 @@ function applyLibraryBossDamage(boss, dmg) {
         size: Math.max(boss.w, boss.h) * 0.9,
         style: (boss.type === 'o4ko') ? 'brown' : undefined
     });
+    if (window.BHAudio) {
+        window.BHAudio.play('explosion_big', { volumeMul: 0.9, duck: 0.76 });
+    }
 
     // Описание.
     enemyBullets = enemyBullets.filter(b => b.libraryOwnerId !== boss.id);
@@ -827,6 +842,9 @@ function shootLibraryBossO4ko(boss) {
             libraryOwnerId: boss.id
         });
     }
+    if (window.BHAudio && typeof window.BHAudio.playEnemyShoot === 'function') {
+        window.BHAudio.playEnemyShoot('o4ko');
+    }
 }
 
 /**
@@ -877,6 +895,9 @@ function shootLibraryBossNosok(boss) {
             libraryBullet: true,
             libraryOwnerId: boss.id
         });
+        if (window.BHAudio && typeof window.BHAudio.playEnemyShoot === 'function') {
+            window.BHAudio.playEnemyShoot('nosok');
+        }
         return;
     }
 
@@ -914,6 +935,9 @@ function shootLibraryBossNosok(boss) {
         libraryBullet: true,
         libraryOwnerId: boss.id
     });
+    if (window.BHAudio && typeof window.BHAudio.playEnemyShoot === 'function') {
+        window.BHAudio.playEnemyShoot('nosok');
+    }
 }
 
 /**
@@ -942,6 +966,9 @@ function shootLibraryBossTele(boss) {
         libraryBullet: true,
         libraryOwnerId: boss.id
     });
+    if (window.BHAudio && typeof window.BHAudio.playEnemyShoot === 'function') {
+        window.BHAudio.playEnemyShoot('tele');
+    }
 }
 
 /**
@@ -1144,6 +1171,9 @@ function updateLibraryBooksPhysics(dt) {
         // Описание.
         if (bk.y + bk.h >= libraryGroundY) {
             explosions.push({ x: bk.x + bk.w * 0.5, y: libraryGroundY - 10, timer: 0 });
+            if (window.BHAudio) {
+                window.BHAudio.play('library_plop', { volumeMul: 0.9 });
+            }
             libraryBooks.splice(i, 1);
         }
     }
@@ -1173,6 +1203,9 @@ function applyLibraryBookArcImpulse(bk, hitY, pushDir, powerMul = 1, addScore = 
     bk.state = 'arc';
     bk.gravity = 320 + Math.random() * 180;
     bk.rotSpeed = (Math.random() < 0.5 ? 1 : -1) * (3 + Math.random() * 6);
+    if (window.BHAudio) {
+        window.BHAudio.play('book_hit', { volumeMul: 0.8 });
+    }
 
     if (addScore) score += 5;
 }

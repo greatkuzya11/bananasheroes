@@ -44,7 +44,7 @@
         #reset-progress-btn {
             position: fixed;
             right: 20px;
-            bottom: 20px;
+            bottom: 76px;
             z-index: 3;
             cursor: pointer;
             font-size: 18px;
@@ -63,6 +63,31 @@
         }
 
         #reset-progress-btn:active {
+            transform: scale(0.95);
+        }
+        #audio-toggle-btn {
+            position: fixed;
+            right: 20px;
+            bottom: 20px;
+            z-index: 3;
+            cursor: pointer;
+            font-size: 18px;
+            padding: 12px 16px;
+            border-radius: 10px;
+            border: 3px solid transparent;
+            background: #ffcc00;
+            color: #000;
+            font-weight: 700;
+            transition: all 0.2s ease;
+            min-width: 185px;
+        }
+
+        #audio-toggle-btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+        }
+
+        #audio-toggle-btn:active {
             transform: scale(0.95);
         }
 
@@ -158,6 +183,7 @@
         }
 
         #help-btn.menu-kb-focus,
+        #audio-toggle-btn.menu-kb-focus,
         #reset-progress-btn.menu-kb-focus {
             outline: 3px solid #fff;
             transform: scale(1.08);
@@ -659,6 +685,8 @@
             .help-table td:first-child { width: auto; }
             #help-back-btn { font-size: 17px; padding: 10px 24px; }
             #help-btn { font-size: 15px; padding: 10px 12px; left: 12px; bottom: 12px; }
+            #audio-toggle-btn { font-size: 15px; padding: 10px 12px; right: 12px; bottom: 12px; min-width: 160px; }
+            #reset-progress-btn { font-size: 15px; padding: 10px 12px; right: 12px; bottom: 62px; }
         }
     </style>
 </head>
@@ -694,6 +722,7 @@
         </div>
     </div>
     <button id="help-btn" type="button" title="Как играть">❓ Help</button>
+    <button id="audio-toggle-btn" type="button" title="Включить/выключить все звуки">🔊 Звук: ВКЛ</button>
     <button id="reset-progress-btn" type="button" title="Сбросить открытые уровни">Сбросить прогресс</button>
 </div>
 
@@ -737,9 +766,9 @@
                 <div class="help-char">
                     <strong>Макс 💩</strong>
                     <ul>
-                        <li><b>Пуля:</b> маленькая 💩, стандартная (скорость 11, радиус 8)</li>
+                        <li><b>Пуля:</b> радиус 10, скорость 11 — плавно покачивается при полёте</li>
                         <li><b>Прыжок:</b> баллистический — фиксированная высота, чёткая параболическая траектория</li>
-                        <li><b>Бонусная пуля:</b> выпускает 3 пули веером (−15°, 0°, +15°) — покрывает широкую зону</li>
+                        <li><b>Бонусная пуля:</b> 3 пули веером (−15°, 0°, +15°), радиус 12 — покрывает широкую зону</li>
                     </ul>
                 </div>
             </section>
@@ -861,6 +890,7 @@
 
 <script src="js/core/config.js"></script>
 <script src="js/core/state.js"></script>
+<script src="js/core/audio.js"></script>
 <script src="js/core/assets.js"></script>
 <script src="js/core/utils.js"></script>
 <script src="js/core/progression.js"></script>

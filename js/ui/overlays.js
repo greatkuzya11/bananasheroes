@@ -155,6 +155,11 @@ function startModeWithIntro(mode, options = {}) {
         const gameEl = document.getElementById('game');
         if (menuEl) menuEl.style.display = 'none';
         if (gameEl) gameEl.style.display = 'block';
+        if (window.BHAudio) {
+            window.BHAudio.setMode(launchMode);
+            window.BHAudio.setMenuActive(false);
+            window.BHAudio.setPaused(false);
+        }
 
         // Подготавливаем новый уровень под оверлеем (без запуска апдейта),
         // чтобы при плавном исчезновении не просвечивал кадр прошлого уровня.
@@ -225,6 +230,9 @@ function startModeWithIntro(mode, options = {}) {
         box.appendChild(desc);
         overlay.appendChild(box);
         document.body.appendChild(overlay);
+        if (window.BHAudio) {
+            window.BHAudio.playLevelIntro();
+        }
 
         levelIntroStartTimerId = setTimeout(async () => {
             await waitForBgReadyBeforeIntroFade(2500);
@@ -266,6 +274,16 @@ function showLevelComplete() {
     }
     if (typeof registerCampaignLevelCompletion === 'function') {
         registerCampaignLevelCompletion(gameMode, score);
+    }
+    if (window.BHAudio) {
+        window.BHAudio.playLevelWin();
+        window.BHAudio.setPaused(true);
+    }
+    // Запускаем анимацию levelComplete для Макса
+    if (typeof selectedChar !== 'undefined' && selectedChar === 'max' &&
+        typeof player !== 'undefined' && player &&
+        typeof player.triggerLevelComplete === 'function') {
+        player.triggerLevelComplete();
     }
 
     // Показываем оверлей, игра может продолжаться; урон отключен после смерти босса.
@@ -378,6 +396,7 @@ function showLevelComplete() {
     btnRetry.dataset.overlayBtnIdx = '0';
     Object.assign(btnRetry.style, { padding: '8px 14px', fontSize: '16px', cursor: 'pointer' });
     btnRetry.onclick = async () => {
+        if (window.BHAudio) window.BHAudio.play('ui_click');
         overlay.remove();
         if (typeof startModeWithIntro === 'function') {
             await startModeWithIntro(gameMode, { source: 'retry' });
@@ -392,6 +411,7 @@ function showLevelComplete() {
     Object.assign(btnMain.style, { padding: '8px 14px', fontSize: '16px', cursor: 'pointer' });
     // Обработчик клика по кнопке "Главный экран"
     btnMain.onclick = async () => {
+        if (window.BHAudio) window.BHAudio.play('ui_click');
         if (typeof window.clearGameInputs === 'function') {
             window.clearGameInputs();
         }
@@ -409,6 +429,10 @@ function showLevelComplete() {
 
         if (typeof refreshModeButtonsByProgress === 'function') {
             refreshModeButtonsByProgress();
+        }
+        if (window.BHAudio) {
+            window.BHAudio.setMenuActive(true);
+            window.BHAudio.setPaused(false);
         }
         const survivalText = (typeof consumePendingSurvivalNotice === 'function')
             ? consumePendingSurvivalNotice()
@@ -437,6 +461,7 @@ function showLevelComplete() {
         btnNext.style.cursor = 'not-allowed';
     } else {
         btnNext.onclick = async () => {
+            if (window.BHAudio) window.BHAudio.play('ui_click');
             overlay.remove();
             const survivalText = (typeof consumePendingSurvivalNotice === 'function')
                 ? consumePendingSurvivalNotice()
@@ -491,6 +516,10 @@ function showLevelCompleteMessage() {
     if (typeof clearScheduledEnemySpawns === 'function') clearScheduledEnemySpawns();
     if (typeof window.setGameTouchControlsVisible === 'function') {
         window.setGameTouchControlsVisible(false);
+    }
+    if (window.BHAudio) {
+        window.BHAudio.playLevelWin();
+        window.BHAudio.setPaused(true);
     }
 
     const isNosokMode = gameMode === 'nosok';
@@ -553,6 +582,7 @@ function showLevelCompleteMessage() {
     btnRetryPlatforms.innerText = 'Повторить';
     Object.assign(btnRetryPlatforms.style, { padding: '10px 16px', fontSize: '16px', cursor: 'pointer' });
     btnRetryPlatforms.onclick = () => {
+        if (window.BHAudio) window.BHAudio.play('ui_click');
         if (typeof window.clearGameInputs === 'function') window.clearGameInputs();
         if (typeof clearScheduledEnemySpawns === 'function') clearScheduledEnemySpawns();
         beginGameRun('platforms', true);
@@ -567,6 +597,7 @@ function showLevelCompleteMessage() {
     Object.assign(btnMain.style, { padding: '10px 16px', fontSize: '16px', cursor: 'pointer' });
     // Обработчик клика по кнопке "Главный экран"
     btnMain.onclick = () => {
+        if (window.BHAudio) window.BHAudio.play('ui_click');
         if (typeof window.clearGameInputs === 'function') {
             window.clearGameInputs();
         }
@@ -575,6 +606,10 @@ function showLevelCompleteMessage() {
         document.getElementById('game').style.display = 'none';
         document.getElementById('menu').style.display = 'block';
         updateBestScoresDisplay();
+        if (window.BHAudio) {
+            window.BHAudio.setMenuActive(true);
+            window.BHAudio.setPaused(false);
+        }
         if (typeof window.setGameTouchControlsVisible === 'function') {
             window.setGameTouchControlsVisible(false);
         }
@@ -665,6 +700,10 @@ function showGameOver() {
     if (typeof window.setGameTouchControlsVisible === 'function') {
         window.setGameTouchControlsVisible(false);
     }
+    if (window.BHAudio) {
+        window.BHAudio.playLevelLose();
+        window.BHAudio.setPaused(true);
+    }
 
     const isNosokMode = gameMode === 'nosok';
     let key = '';
@@ -677,10 +716,10 @@ function showGameOver() {
             isNew = true;
         }
     }
+    if (!window.BHAudio) {
+        playGameOverSound(isNew);
+    }
     updateBestScoresDisplay();
-
-    // Проигрываем звук (без конфетти)
-    playGameOverSound(isNew);
 
     const existing = document.getElementById('game-over-overlay');
     if (existing) existing.remove();
@@ -736,6 +775,7 @@ function showGameOver() {
     Object.assign(btnRetry.style, { padding: '10px 16px', fontSize: '16px', cursor: 'pointer' });
     // Обработчик клика по кнопке "Повторить"
     btnRetry.onclick = () => {
+        if (window.BHAudio) window.BHAudio.play('ui_click');
         overlay.remove();
         if (typeof window.clearGameInputs === 'function') {
             window.clearGameInputs();
@@ -752,6 +792,7 @@ function showGameOver() {
     Object.assign(btnMain.style, { padding: '10px 16px', fontSize: '16px', cursor: 'pointer' });
     // Обработчик клика по кнопке "Главный экран"
     btnMain.onclick = () => {
+        if (window.BHAudio) window.BHAudio.play('ui_click');
         if (typeof window.clearGameInputs === 'function') {
             window.clearGameInputs();
         }
@@ -763,6 +804,10 @@ function showGameOver() {
         if (modes) modes.style.display = 'none';
         updateBestScoresDisplay();
         if (typeof refreshModeButtonsByProgress === 'function') refreshModeButtonsByProgress();
+        if (window.BHAudio) {
+            window.BHAudio.setMenuActive(true);
+            window.BHAudio.setPaused(false);
+        }
         if (typeof window.setGameTouchControlsVisible === 'function') {
             window.setGameTouchControlsVisible(false);
         }

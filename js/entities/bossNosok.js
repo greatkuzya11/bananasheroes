@@ -127,6 +127,9 @@ class BossNosok {
             style: 'brown',
             duration: 0.62
         });
+        if (window.BHAudio) {
+            window.BHAudio.play('explosion_big', { volumeMul: 1.0, duck: 0.72 });
+        }
     }
 
     /**
@@ -206,6 +209,9 @@ class BossNosok {
             fumeTimer: 0,
             fumePuffs: []
         });
+        if (window.BHAudio && typeof window.BHAudio.playEnemyShoot === 'function') {
+            window.BHAudio.playEnemyShoot('nosok');
+        }
     }
 
     /**
@@ -255,6 +261,9 @@ class BossNosok {
             fumeTimer: 0,
             fumePuffs: []
         });
+        if (window.BHAudio && typeof window.BHAudio.playEnemyShoot === 'function') {
+            window.BHAudio.playEnemyShoot('nosok');
+        }
     }
 
     /**

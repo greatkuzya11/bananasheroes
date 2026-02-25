@@ -1,5 +1,16 @@
 ﻿// ==== ОБНОВЛЕНИЕ ИГРЫ ====
 /**
+ * Безопасно воспроизводит SFX, если аудиосистема подключена.
+ * @param {string} id - идентификатор звука.
+ * @param {object} [opts] - доп. параметры воспроизведения.
+ */
+function bhPlaySfx(id, opts) {
+    if (window.BHAudio && typeof window.BHAudio.play === 'function') {
+        window.BHAudio.play(id, opts);
+    }
+}
+
+/**
  * Запускает финальную анимацию победы в уровне "Очко":
  * коричневый взрыв и падение трех бутылок.
  */
@@ -187,9 +198,13 @@ function update(dt) {
         if (rotationEnabled && b.playerType === 'dron' && typeof b.rotation === 'number') {
             b.rotation += 0.3; // скорость вращения
         }
-        // Вращаем пулю Макса
-        if (rotationEnabled && b.playerType === 'max' && typeof b.rotation === 'number') {
-            b.rotation += 0.3; // скорость вращения
+        // Анимация пули Макса: бонусная крутится, обычная покачивается
+        if (b.playerType === 'max') {
+            if (b.isBonus && rotationEnabled && typeof b.rotation === 'number') {
+                b.rotation += 0.3;
+            } else if (!b.isBonus) {
+                b.swayAge = (b.swayAge || 0) + 0.15;
+            }
         }
     });
     if (perf && perf.isEnabled()) perf.afterBulletUpdate();
@@ -340,6 +355,9 @@ function update(dt) {
             // Увеличиваем частоту стрельбы и слегка наводим пули на игрока
             if (Math.random() < 0.03 && boss.shootTimer > 0.16) {
                 boss.shootTimer = 0;
+                if (window.BHAudio && typeof window.BHAudio.playEnemyShoot === 'function') {
+                    window.BHAudio.playEnemyShoot('lilac');
+                }
                 for (let i = 0; i < 3; i++) {
                     const emojiIdx = Math.floor(Math.random() * leafEmojis.length);
                     const bx = boss.x + boss.w / 2 + (i - 1) * 30;
@@ -450,6 +468,9 @@ function update(dt) {
         const shootMul = (typeof e.shootMul === 'number') ? e.shootMul : (typeof e.shootMul === 'undefined' && typeof e.shootMul === 'undefined' ? 1.0 : 1.0);
         if (Math.random() < 0.004 * shootMul && e.shootTimer > 0.9) {
             e.shootTimer = 0;
+            if (window.BHAudio && typeof window.BHAudio.playEnemyShoot === 'function') {
+                window.BHAudio.playEnemyShoot('lilac');
+            }
             const bx = e.x + e.w / 2;
             const by = e.y + e.h;
             const px = player.x + player.w / 2;
@@ -488,6 +509,7 @@ function update(dt) {
                 const cx = (b.x + (eb.x + ew / 2)) / 2;
                 const cy = (b.y + (eb.y + eh / 2)) / 2;
                 explosions.push({ x: cx, y: cy, timer: 0, scale: 0.5 });
+                bhPlaySfx('explosion_small', { volumeMul: 0.82 });
                 // Бонусная пуля Дрона не исчезает и продолжает лететь
                 if (!(b.isBonus && player.type === 'dron')) {
                     bullets.splice(bi, 1);
@@ -566,6 +588,7 @@ function update(dt) {
                 // Бонусный выстрел Кузи и Дрона наносит 2 урона
                 const damage = (b.isBonus && (player.type === 'kuzy' || player.type === 'dron')) ? 2 : 1;
                 enemy67.hp -= damage;
+                bhPlaySfx('hit_boss', { volumeMul: 0.95, duck: 0.88 });
                 
                 // В режиме платформ отслеживаем попадания для спавна врагов
                 if (gameMode === 'platforms') {
@@ -637,6 +660,7 @@ function update(dt) {
                 score += 5;
                 // Маленький взрыв в точке попадания на видимой части спрайта 67.
                 explosions.push({ x: b.x, y: b.y, timer: 0 });
+                bhPlaySfx('explosion_small', { volumeMul: 0.86 });
                 
                 if (enemy67.hp <= 0) {
                     // Большой взрыв размером с врага
@@ -646,6 +670,7 @@ function update(dt) {
                         timer: 0,
                         size: Math.max(enemy67Hitbox.w, enemy67Hitbox.h) * 0.8 // размер взрыва как размер врага
                     });
+                    bhPlaySfx('explosion_big', { volumeMul: 1.0, duck: 0.72 });
                     
                     // В режиме платформ: взрываем всех врагов и пули врагов
                     if (gameMode === 'platforms') {
@@ -722,6 +747,8 @@ function update(dt) {
                 score += 5;
                 combo++;
                 explosions.push({ x: b.x, y: b.y, timer: 0 });
+                bhPlaySfx('hit_boss', { volumeMul: 0.95, duck: 0.88 });
+                bhPlaySfx('explosion_small', { volumeMul: 0.86 });
 
                 // Награды за серию попаданий по боссу.
                 o4koHitStreak += 1;
@@ -759,6 +786,7 @@ function update(dt) {
                         style: 'brown',
                         duration: 0.85
                     });
+                    bhPlaySfx('explosion_big', { volumeMul: 1.0, duck: 0.7 });
                     // Запускаем последовательность победы уровня "Очко":
                     // падение 3 бутылок, затем показ сообщения о завершении.
                     startO4koVictorySequence();
@@ -775,6 +803,7 @@ function update(dt) {
                 if (b.x > e.x && b.x < e.x + e.w && b.y > e.y && b.y < e.y + e.h) {
                     // Взрыв на месте врага
                     explosions.push({ x: e.x + e.w / 2, y: e.y + e.h / 2, timer: 0 });
+                    bhPlaySfx('hit_enemy', { volumeMul: 0.92 });
                     enemies.splice(ei, 1);
                     // Если это был последний враг фазы в режиме normal — показываем эффект и запускаем переход
                     if (gameMode === 'normal' && enemies.length === 0) {
@@ -835,6 +864,7 @@ function update(dt) {
                             const ne = nearestEnemy.enemy;
                             // Взрыв на месте второго врага
                             explosions.push({ x: ne.x + ne.w / 2, y: ne.y + ne.h / 2, timer: 0 });
+                            bhPlaySfx('hit_enemy', { volumeMul: 0.88 });
                             enemies.splice(nearestEnemy.idx, 1);
                             score += 2;
                             combo++;
@@ -857,6 +887,7 @@ function update(dt) {
                 // +3 очка за попадание по боссу
                 score += 3;
                 explosions.push({ x: boss.x + boss.w / 2, y: boss.y + boss.h / 2, timer: 0 });
+                bhPlaySfx('hit_boss', { volumeMul: 0.94 });
                 // Удаляем пулю после попадания (даже бонусную пулю Дрона, чтобы избежать множественных ударов)
                 bullets.splice(bi, 1);
                 if (boss.hp <= 0) {
@@ -867,6 +898,7 @@ function update(dt) {
                     combo++;
                         // Взрыв босса
                         explosions.push({ x: boss.x + boss.w / 2, y: boss.y + boss.h / 2, timer: 0 });
+                        bhPlaySfx('explosion_big', { volumeMul: 1.0, duck: 0.72 });
                         // Создаём табличку Букин, она упадёт рядом с игроком (сохраняем центр и желаемую ширину)
                         const desiredW = boss.w / 2;
                         // Выбираем сторону (лево/право) по доступному месту
@@ -906,6 +938,7 @@ function update(dt) {
         if (rect(b, player)) {
             bonusShots += BONUS_SHOTS_PER_BOTTLE;
             bottles.splice(bi, 1);
+            bhPlaySfx('pickup_beer', { volumeMul: 0.95 });
         }
     });
 
@@ -919,6 +952,7 @@ function update(dt) {
                 bonusShots += 5; // +5 бонусных выстрелов если максимум жизней
             }
             hearts.splice(hi, 1);
+            bhPlaySfx('pickup_heart', { volumeMul: 0.95 });
         }
     });
 
@@ -929,6 +963,7 @@ function update(dt) {
             bonusShots += 5; // +5 бонусных выстрелов
             score += 3;
             bananaBonuses.splice(bni, 1);
+            bhPlaySfx('pickup_banana', { volumeMul: 0.95 });
         }
     });
 
@@ -952,6 +987,7 @@ function update(dt) {
 
         explosions.push({ x: player.x + player.w / 2, y: player.y + player.h / 2, timer: 0 });
         speechBalloons.push({ x: player.x - player.w * 0.25, y: player.y + player.h * 0.25, timer: 0 });
+        bhPlaySfx('player_hurt', { volumeMul: 1.0, duck: 0.75 });
         if (lives <= 0) {
             showGameOver();
         }
@@ -977,7 +1013,8 @@ function update(dt) {
         // Пули врагов.
         for (let ei = enemyBullets.length - 1; ei >= 0 && invuln <= 0; ei--) {
             const eb = enemyBullets[ei];
-            if (bossDefeated) continue; // после победы по старым правилам пули игнорируем
+            if (bossDefeated) continue; // после победы пули не вредят
+            if (enemies.length === 0) continue; // все враги убиты — пули безвредны
             if (playerHitTest(eb)) {
                 enemyBullets.splice(ei, 1);
                 applyPlayerDamage();
@@ -1010,6 +1047,7 @@ function update(dt) {
             if (platformRuby.stage === 1) {
                 // Первая стадия -> вторая стадия (смена стадии рубина)
                 platformRuby.stage = 2;
+                bhPlaySfx('platform_ruby', { volumeMul: 0.92 });
                 // Создаем падение кубка с платформы трофея
                 if (platforms.length > 4) {
                     const trophyPlatform = platforms[platforms.length - 1];
@@ -1064,6 +1102,7 @@ function update(dt) {
         if (distance < minDistance && !platformCup.collisionTriggered) {
             platformCup.collisionTriggered = true;
             levelCompleteShown = true;
+            bhPlaySfx('platform_cup', { volumeMul: 1.0, duck: 0.82 });
             showLevelComplete();
         }
     }
@@ -1093,4 +1132,5 @@ function update(dt) {
         }
     }
 }
+
 

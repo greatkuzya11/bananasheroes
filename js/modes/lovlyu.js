@@ -243,6 +243,9 @@ function updateLovlyuMode(dt) {
         if (rect(h, player)) {
             lives++;
             hearts.splice(hi, 1);
+            if (window.BHAudio) {
+                window.BHAudio.play('pickup_heart', { volumeMul: 0.95 });
+            }
         }
     });
 
@@ -499,6 +502,9 @@ function updateLovlyuMode(dt) {
                     ch.caughtTimer = 0;
                     score += 10;
                     combo++;
+                    if (window.BHAudio) {
+                        window.BHAudio.play('lovlyu_catch', { volumeMul: 0.95 });
+                    }
                     // Комбо для магнита: считаем только когда магнит НЕ активен
                     if (!lovlyuMagnetActive) {
                         lovlyuMagnetComboCount++;
@@ -580,6 +586,10 @@ function updateLovlyuMode(dt) {
                     lovlyuMagnetComboCount = 0; // Сбрасываем счетчик комбинации для магнита.
                     invuln = INVULN_TIME;
                     explosions.push({ x: ch.x + dims.w / 2, y: ch.y + dims.h / 2, timer: 0 });
+                    if (window.BHAudio) {
+                        window.BHAudio.play('lovlyu_miss', { volumeMul: 0.95 });
+                        window.BHAudio.play('player_hurt', { volumeMul: 0.92, duck: 0.74 });
+                    }
                     speechBalloons.push({
                         x: player.x - player.w * 0.25,
                         y: player.y + player.h * 0.25,

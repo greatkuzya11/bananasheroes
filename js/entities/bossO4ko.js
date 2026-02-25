@@ -366,6 +366,9 @@ class BossO4ko {
         this.groundWave.currentRadius = 0;
         this.groundWave.centerX = this.x + this.w * 0.5;
         this.groundWave.groundY = canvas.height - 20;
+        if (window.BHAudio) {
+            window.BHAudio.play('slam_impact', { volumeMul: 1.0, duck: 0.8 });
+        }
     }
 
     /**
@@ -378,6 +381,9 @@ class BossO4ko {
         this.state = 'dashTelegraph';
         this.stateTimer = 0;
         this.dashTelegraphDuration = shortDash ? 0.15 : 0.35;
+        if (window.BHAudio) {
+            window.BHAudio.play('dash_whoosh', { volumeMul: shortDash ? 0.8 : 1.0, playbackRate: shortDash ? 1.2 : 1.0, duck: 0.9 });
+        }
     }
 
     /**
@@ -763,6 +769,9 @@ class BossO4ko {
                 o4koPoop: true
             });
         }
+        if (window.BHAudio && typeof window.BHAudio.playEnemyShoot === 'function') {
+            window.BHAudio.playEnemyShoot('o4ko');
+        }
     }
 
     /**
@@ -806,6 +815,9 @@ class BossO4ko {
         } else {
             this.rageState = 'inactive';
             this.rageTimer = 0;
+        }
+        if (window.BHAudio) {
+            window.BHAudio.play('phase_up', { volumeMul: 1.0, duck: 0.78 });
         }
     }
 

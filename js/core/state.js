@@ -203,6 +203,10 @@ function resetGameStateForMenu() {
     if (typeof resetCampaignSessionForMenu === 'function') resetCampaignSessionForMenu();
     gameMode = 'normal';
     selectedChar = 'kuzy';
+    if (window.BHAudio) {
+        window.BHAudio.setPaused(false);
+        window.BHAudio.setMenuActive(true);
+    }
 }
 
 /**
@@ -333,6 +337,11 @@ function beginGameRun(mode, startLoop) {
     }
     resetGameStateForRun(mode);
     initRunWorldByMode(gameMode);
+    if (window.BHAudio) {
+        window.BHAudio.setMode(gameMode);
+        window.BHAudio.setMenuActive(false);
+        window.BHAudio.setPaused(false);
+    }
     levelCompleteShown = false;
     gameOverShown = false;
     running = true;

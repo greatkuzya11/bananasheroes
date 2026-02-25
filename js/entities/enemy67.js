@@ -173,6 +173,9 @@ class Enemy67 {
         const vy = (dy / dist) * speed;
         
         enemyBullets.push({ x: bx, y: by, w: 16, h: 24, emoji, vx, vy });
+        if (window.BHAudio && typeof window.BHAudio.playEnemyShoot === 'function') {
+            window.BHAudio.playEnemyShoot('67');
+        }
     }
 
     /**

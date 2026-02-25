@@ -636,7 +636,11 @@ function updateRunnerBossAi(dt, playerMoving) {
 
         // Периодический "турбо-рывок" с шлейфом.
         if (distX < canvas.width * 0.24 && Math.random() < dt * 1.7) {
+            const hadTurbo = runnerBoss.turboTimer > 0;
             runnerBoss.turboTimer = Math.max(runnerBoss.turboTimer, runnerRand(0.35, 0.75));
+            if (!hadTurbo && window.BHAudio) {
+                window.BHAudio.play('runner_turbo', { volumeMul: 0.92, duck: 0.9 });
+            }
         }
         // Дразнилка: в обычном режиме редко (dt*0.10), в окне замедления чаще (dt*0.48).
         const teaseChance = runnerBossSlowTimer > 0 ? dt * 0.48 : dt * 0.10;
@@ -890,6 +894,9 @@ function updateRunnerFakeBonuses(dt) {
             runnerEnergyActive = true;
             runnerEnergyTimer = 10.0;
             runnerEnergyDrops.splice(i, 1);
+            if (window.BHAudio) {
+                window.BHAudio.play('runner_turbo', { volumeMul: 0.96 });
+            }
         }
     }
     for (let i = runnerCigarDrops.length - 1; i >= 0; i--) {
@@ -897,6 +904,9 @@ function updateRunnerFakeBonuses(dt) {
             runnerCigarXLActive = true;
             runnerCigarXLTimer = 10.0;
             runnerCigarDrops.splice(i, 1);
+            if (window.BHAudio) {
+                window.BHAudio.play('runner_puff', { volumeMul: 0.95, playbackRate: 0.9 });
+            }
         }
     }
 
@@ -1309,6 +1319,9 @@ function updateRunnerMode(dt) {
         const cigHitRect = getRunnerCigaretteRect();
         const cigVisualRect = getRunnerCigaretteVisualRect();
         spawnRunnerSmoke(cigVisualRect, dt, player.facingDir);
+        if (window.BHAudio) {
+            window.BHAudio.play('runner_puff', { volumeMul: 0.7, playbackRate: 1.0 });
+        }
 
         // Условие победы: сигарета коснулась босса.
         if (!runnerVictory && runnerBoss && rect(cigHitRect, runnerBoss) && !levelCompleteShown) {

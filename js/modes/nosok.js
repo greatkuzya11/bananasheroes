@@ -444,6 +444,9 @@ function applyNosokPlayerDamage() {
     invuln = INVULN_TIME;
     explosions.push({ x: player.x + player.w * 0.5, y: player.y + player.h * 0.5, timer: 0 });
     speechBalloons.push({ x: player.x - player.w * 0.25, y: player.y + player.h * 0.22, timer: 0 });
+    if (window.BHAudio) {
+        window.BHAudio.play('player_hurt', { volumeMul: 1.0, duck: 0.74 });
+    }
     if (lives <= 0) {
         showGameOver();
     }
@@ -695,6 +698,10 @@ function updateNosokBall(dt) {
             nosokGoalFlashTimer = 0.9;
             nosokGoalConfettiTimer = 2.0;
             spawnNosokGoalConfetti(44);
+            if (window.BHAudio) {
+                window.BHAudio.play('goal_horn', { volumeMul: 0.98, duck: 0.7 });
+                window.BHAudio.play('goal_applause', { volumeMul: 0.9 });
+            }
 
             // После гола мяч не "замораживается": продолжает двигаться до респавна.
             ball.x = nosokGoalSensor.x + nosokGoalSensor.w + ball.r * 1.05;
@@ -736,8 +743,15 @@ function updateNosokPlayerBullets(dt) {
         } else {
             b.y -= b.speed;
         }
-        if (rotationEnabled && (b.playerType === 'dron' || b.playerType === 'max') && typeof b.rotation === 'number') {
+        if (rotationEnabled && b.playerType === 'dron' && typeof b.rotation === 'number') {
             b.rotation += 0.3;
+        }
+        if (b.playerType === 'max') {
+            if (b.isBonus && rotationEnabled && typeof b.rotation === 'number') {
+                b.rotation += 0.3;
+            } else if (!b.isBonus) {
+                b.swayAge = (b.swayAge || 0) + 0.15;
+            }
         }
     });
 
@@ -771,6 +785,9 @@ function updateNosokPlayerBullets(dt) {
             enemyBullets.splice(ei, 1);
             bullets.splice(bi, 1);
             score += 1;
+            if (window.BHAudio) {
+                window.BHAudio.play('explosion_small', { volumeMul: 0.82 });
+            }
             exploded = true;
             break;
         }
@@ -796,6 +813,9 @@ function updateNosokPlayerBullets(dt) {
                 explosions.push({ x: b.x, y: b.y, timer: 0, scale: 0.55 });
                 bullets.splice(bi, 1);
                 score += 1;
+                if (window.BHAudio) {
+                    window.BHAudio.play('hit_enemy', { volumeMul: 0.8 });
+                }
             }
         }
     }
@@ -969,6 +989,9 @@ function updateNosokDrops(dt) {
         if (rect(bottles[i], player)) {
             bonusShots += BONUS_SHOTS_PER_BOTTLE;
             bottles.splice(i, 1);
+            if (window.BHAudio) {
+                window.BHAudio.play('pickup_beer', { volumeMul: 0.95 });
+            }
         }
     }
     for (let i = hearts.length - 1; i >= 0; i--) {
@@ -976,6 +999,9 @@ function updateNosokDrops(dt) {
             if (lives < PLAYER_LIVES) lives++;
             else bonusShots += 5;
             hearts.splice(i, 1);
+            if (window.BHAudio) {
+                window.BHAudio.play('pickup_heart', { volumeMul: 0.95 });
+            }
         }
     }
     for (let i = nosokSpecialBonuses.length - 1; i >= 0; i--) {
@@ -983,6 +1009,9 @@ function updateNosokDrops(dt) {
         if (!rect(p, player)) continue;
         if (p.type === 'ice' && bossNosok) {
             bossNosok.freeze(5);
+            if (window.BHAudio) {
+                window.BHAudio.play('pickup_ice', { volumeMul: 0.95 });
+            }
             speechBalloons.push({
                 x: bossNosok.x + bossNosok.w * 0.5,
                 y: bossNosok.y - bossNosok.h * 0.12,
@@ -994,6 +1023,9 @@ function updateNosokDrops(dt) {
             });
         } else if (p.type === 'dynamite' && bossNosok) {
             bossNosok.applyDynamiteBlast();
+            if (window.BHAudio) {
+                window.BHAudio.play('pickup_dynamite', { volumeMul: 0.95, duck: 0.78 });
+            }
         }
         nosokSpecialBonuses.splice(i, 1);
     }

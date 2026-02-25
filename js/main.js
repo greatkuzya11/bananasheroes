@@ -33,6 +33,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const touchKeyHoldCount = new Map();
     const controlKeys = new Set(["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", " ", "Escape", "Shift", "Control"]);
     let mobileHintSeenThisSession = false;
+    const audioPlay = (id, opts) => {
+        if (window.BHAudio && typeof window.BHAudio.play === 'function') {
+            window.BHAudio.play(id, opts);
+        }
+    };
 
     /**
      * Синхронизирует общее состояние конкретной клавиши по источникам ввода.
@@ -372,6 +377,10 @@ document.addEventListener('DOMContentLoaded', () => {
      */
     function pauseGame() {
         paused = true;
+        if (window.BHAudio) {
+            window.BHAudio.setPaused(true);
+            audioPlay('ui_pause');
+        }
         setTouchControlsVisible(false);
         const overlay = document.createElement('div');
         overlay.id = 'pauseOverlay';
@@ -433,6 +442,7 @@ document.addEventListener('DOMContentLoaded', () => {
         };
         // Обработчик клика по кнопке "Продолжить"
         btnResume.onclick = () => {
+            audioPlay('ui_click');
             resumeGame();
         };
         overlay.appendChild(btnResume);
@@ -472,6 +482,7 @@ document.addEventListener('DOMContentLoaded', () => {
         };
         // Обработчик клика по кнопке "Начать заново"
         btnRestart.onclick = () => {
+            audioPlay('ui_click');
             const pauseOverlay = document.getElementById('pauseOverlay');
             if (pauseOverlay) pauseOverlay.remove();
             paused = false;
@@ -516,6 +527,7 @@ document.addEventListener('DOMContentLoaded', () => {
         };
         // Обработчик клика по кнопке "Главный экран"
         btnMain.onclick = () => {
+            audioPlay('ui_click');
             const pauseOverlay = document.getElementById('pauseOverlay');
             if (pauseOverlay) pauseOverlay.remove();
             paused = false;
@@ -528,6 +540,10 @@ document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('menu').style.display = 'block';
             updateBestScoresDisplay();
             if (typeof refreshModeButtonsByProgress === 'function') refreshModeButtonsByProgress();
+            if (window.BHAudio) {
+                window.BHAudio.setMenuActive(true);
+                window.BHAudio.setPaused(false);
+            }
             setTouchControlsVisible(false);
             menuNavFocus('char', 0);
         };
@@ -548,6 +564,10 @@ document.addEventListener('DOMContentLoaded', () => {
             pauseOverlay.remove();
         }
         paused = false;
+        if (window.BHAudio) {
+            window.BHAudio.setPaused(false);
+            audioPlay('ui_resume');
+        }
         last = performance.now(); // сбрасываем время чтобы не было скачка
         if (running) setTouchControlsVisible(true);
     }
@@ -579,6 +599,7 @@ document.addEventListener('DOMContentLoaded', () => {
     chars.forEach(c => {
         // Обрабатываем клик по конкретному персонажу
         c.onclick = () => {
+            audioPlay('ui_click');
             // Убираем выделение со всех персонажей
             // ch — элемент персонажа из списка
             chars.forEach(ch => ch.classList.remove('selected'));
@@ -596,14 +617,36 @@ document.addEventListener('DOMContentLoaded', () => {
     if (typeof refreshModeButtonsByProgress === 'function') refreshModeButtonsByProgress();
 
     const modeButtons = document.querySelectorAll('.mode');
+    const audioToggleBtn = document.getElementById('audio-toggle-btn');
     const resetProgressBtn = document.getElementById('reset-progress-btn');
+    const updateAudioToggleButtonLabel = () => {
+        if (!audioToggleBtn) return;
+        const enabled = !(window.BHAudio && typeof window.BHAudio.isEnabled === 'function')
+            ? true
+            : !!window.BHAudio.isEnabled();
+        audioToggleBtn.textContent = enabled ? '🔊 Звук: ВКЛ' : '🔇 Звук: ВЫКЛ';
+        audioToggleBtn.title = enabled ? 'Выключить все звуки' : 'Включить все звуки';
+    };
+    updateAudioToggleButtonLabel();
+    if (audioToggleBtn) {
+        audioToggleBtn.onclick = () => {
+            if (!window.BHAudio || typeof window.BHAudio.setEnabled !== 'function') return;
+            const wasEnabled = (typeof window.BHAudio.isEnabled === 'function') ? !!window.BHAudio.isEnabled() : true;
+            if (wasEnabled) audioPlay('ui_click');
+            window.BHAudio.setEnabled(!wasEnabled);
+            if (!wasEnabled) audioPlay('ui_confirm');
+            updateAudioToggleButtonLabel();
+        };
+    }
     if (resetProgressBtn) {
         resetProgressBtn.onclick = () => {
+            audioPlay('ui_click');
             const ok = window.confirm('Сбросить прогресс кампании? Останется открыт только первый уровень.');
             if (!ok) return;
             if (typeof resetCampaignProgressState === 'function') {
                 resetCampaignProgressState();
             }
+            audioPlay('ui_confirm');
             modeButtons.forEach(mb => mb.classList.remove('selected'));
             if (typeof refreshModeButtonsByProgress === 'function') refreshModeButtonsByProgress();
         };
@@ -615,11 +658,13 @@ document.addEventListener('DOMContentLoaded', () => {
     modeButtons.forEach(m => {
         // Обрабатываем клик по конкретному режиму игры
         m.onclick = async () => {
+            audioPlay('ui_click');
             clearInputSource('keyboard');
             clearTouchInputs();
             paused = false;
             const targetMode = m.dataset.mode || 'normal';
             if (typeof isModeUnlockedByProgress === 'function' && !isModeUnlockedByProgress(targetMode)) {
+                audioPlay('ui_error');
                 return;
             }
             // Снимаем выделение со всех кнопок режима
@@ -649,7 +694,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // снимая его со всех остальных — чтобы не было двух одновременных фокусов.
     document.addEventListener('mouseover', e => {
         const el = e.target.closest(
-            '.char, .mode, #help-btn, #reset-progress-btn, #help-back-btn, ' +
+            '.char, .mode, #help-btn, #audio-toggle-btn, #reset-progress-btn, #help-back-btn, ' +
             'button[data-pause-idx], button[data-overlay-btn-idx]'
         );
         if (!el || el.disabled) return;
@@ -664,6 +709,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const helpBackBtn = document.getElementById('help-back-btn');
     if (helpBtn && helpScreen && helpBackBtn) {
         helpBtn.onclick = () => {
+            audioPlay('ui_click');
             helpScreen.style.display = 'block';
             // Сбрасываем скролл и фокус кнопки «Назад» при каждом открытии
             helpBackBtn.classList.remove('menu-kb-focus');
@@ -671,9 +717,15 @@ document.addEventListener('DOMContentLoaded', () => {
             if (scrollEl) scrollEl.scrollTop = 0;
         };
         helpBackBtn.onclick = () => {
+            audioPlay('ui_click');
             helpScreen.style.display = 'none';
             helpBackBtn.classList.remove('menu-kb-focus');
         };
+    }
+
+    if (window.BHAudio) {
+        window.BHAudio.setMenuActive(true);
+        window.BHAudio.setPaused(false);
     }
 
     // ==== MENU KEYBOARD NAVIGATION FUNCTIONS ====
@@ -685,16 +737,19 @@ document.addEventListener('DOMContentLoaded', () => {
         const cEls = Array.from(document.querySelectorAll('.char'));
         const mEls = Array.from(document.querySelectorAll('.mode'));
         const helpBtnEl = document.getElementById('help-btn');
+        const audioBtnEl = document.getElementById('audio-toggle-btn');
         const resetBtnEl = document.getElementById('reset-progress-btn');
         // Снимаем подсветку со всех элементов меню
         [...cEls, ...mEls].forEach(el => el.classList.remove('menu-kb-focus'));
-        [helpBtnEl, resetBtnEl].forEach(el => el && el.classList.remove('menu-kb-focus'));
+        [helpBtnEl, audioBtnEl, resetBtnEl].forEach(el => el && el.classList.remove('menu-kb-focus'));
         if (section === 'char') {
             if (cEls[idx]) cEls[idx].classList.add('menu-kb-focus');
         } else if (section === 'mode') {
             if (mEls[idx]) mEls[idx].classList.add('menu-kb-focus');
         } else if (section === 'help') {
             if (helpBtnEl) helpBtnEl.classList.add('menu-kb-focus');
+        } else if (section === 'audio') {
+            if (audioBtnEl) audioBtnEl.classList.add('menu-kb-focus');
         } else if (section === 'reset') {
             if (resetBtnEl) resetBtnEl.classList.add('menu-kb-focus');
         }
@@ -799,6 +854,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const cEls = Array.from(document.querySelectorAll('.char'));
         const mEls = Array.from(document.querySelectorAll('.mode'));
         const helpBtnEl = document.getElementById('help-btn');
+        const audioBtnEl = document.getElementById('audio-toggle-btn');
         const resetBtnEl = document.getElementById('reset-progress-btn');
         const modesContainer = document.getElementById('modes');
         const modesVisible = modesContainer && modesContainer.style.display !== 'none';
@@ -808,8 +864,10 @@ document.addEventListener('DOMContentLoaded', () => {
         const fChar = cEls.findIndex(el => el.classList.contains('menu-kb-focus'));
         const fMode = mEls.findIndex(el => el.classList.contains('menu-kb-focus'));
         const fHelp = helpBtnEl && helpBtnEl.classList.contains('menu-kb-focus');
+        const fAudio = audioBtnEl && audioBtnEl.classList.contains('menu-kb-focus');
         const fReset = resetBtnEl && resetBtnEl.classList.contains('menu-kb-focus');
         if (fReset)      { section = 'reset'; idx = 0; }
+        else if (fAudio) { section = 'audio'; idx = 0; }
         else if (fHelp)  { section = 'help';  idx = 0; }
         else if (fMode >= 0) { section = 'mode'; idx = fMode; }
         else if (fChar >= 0) { section = 'char'; idx = fChar; }
@@ -842,6 +900,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (idx < mEls.length - 1) menuNavFocus('mode', idx + 1);
                 else menuNavFocus('help', 0);
             } else if (section === 'help') {
+                menuNavFocus('audio', 0);
+            } else if (section === 'audio') {
                 menuNavFocus('reset', 0);
             } else if (section === 'reset') {
                 menuNavFocus('mode', mEls.length - 1); // циклируем обратно
@@ -853,8 +913,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 else menuNavFocus('mode', idx - 1);
             } else if (section === 'help') {
                 menuNavFocus('mode', mEls.length - 1);
-            } else if (section === 'reset') {
+            } else if (section === 'audio') {
                 menuNavFocus('help', 0);
+            } else if (section === 'reset') {
+                menuNavFocus('audio', 0);
             }
             e.preventDefault();
         } else if (e.key === 'Enter' || e.key === ' ') {
@@ -865,6 +927,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 mEls[idx]?.click();
             } else if (section === 'help') {
                 helpBtnEl?.click();
+            } else if (section === 'audio') {
+                audioBtnEl?.click();
             } else if (section === 'reset') {
                 resetBtnEl?.click();
             }

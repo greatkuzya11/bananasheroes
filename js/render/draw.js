@@ -229,7 +229,12 @@ function draw() {
     if (perf && perf.isEnabled()) perf.beforeBulletDraw();
     // Рисуем все пули игрока; b — объект пули
     bullets.forEach(b => {
-        if (b.emoji) {
+        // Макс не-бонусная пуля: PNG с горизонтальным покачиванием
+        if (b.playerType === 'max' && !b.isBonus && b.img && b.img.complete && b.img.naturalWidth) {
+            const size = Math.max(16, b.r * 2);
+            const swayX = Math.sin((b.swayAge || 0) * 3) * 3;
+            ctx.drawImage(b.img, b.x - size / 2 + swayX, b.y - size / 2, size, size);
+        } else if (b.emoji) {
             ctx.save();
             const size = Math.max(16, b.r * 2);
             // Поворачиваем по направлению полета пули
@@ -265,7 +270,7 @@ function draw() {
             ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
             ctx.fill();
         }
-    });
+    }); // end bullets.forEach
     if (perf && perf.isEnabled()) perf.afterBulletDraw();
 
     // Отрисовываем пули врагов с их индивидуальным эмодзи-листиком

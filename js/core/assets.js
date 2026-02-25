@@ -70,6 +70,21 @@ for (const [animName, def] of Object.entries(kuzyAnimDefs)) {
     }
 }
 
+// Спрайт пули персонажа Макс
+const maxBulletImg = new Image();
+maxBulletImg.src = 'img/max_bullet.png';
+
+// PNG фреймы анимаций персонажа Макс
+const maxAnims = {
+    walk:          [1,2,3,4,5,6,7,8,9,10].map(n => { const i = new Image(); i.src = `img/bananSprites/walk/${n}.png`; return i; }),
+    shootOnWalk:   [11,12,13,14,15,16,17,18,19,20].map(n => { const i = new Image(); i.src = `img/bananSprites/shootOnWalk/${n}.png`; return i; }),
+    shootOnStand:  [12,13,16].map(n => { const i = new Image(); i.src = `img/bananSprites/shootOnStand/${n}.png`; return i; }),
+    shootUpStand:  [1,2,3,4,5,6].map(n => { const i = new Image(); i.src = `img/bananSprites/shootUpStand/${n}.png`; return i; }),
+    jump:          [21,22,23,24,25,26,34,35,37].map(n => { const i = new Image(); i.src = `img/bananSprites/jump/${n}.png`; return i; }),
+    shootOnJump:   [27,28,29,30,31,32,33,36,38].map(n => { const i = new Image(); i.src = `img/bananSprites/shootOnJump/${n}.png`; return i; }),
+    levelComplete: [39,40,41,42,43,44].map(n => { const i = new Image(); i.src = `img/bananSprites/levelComplete/${n}.png`; return i; }),
+};
+
 // Спрайт врага 67
 const enemy67Img = new Image();
 let enemy67SpriteReady = false;
