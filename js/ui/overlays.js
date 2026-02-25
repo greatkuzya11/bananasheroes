@@ -280,7 +280,7 @@ function showLevelComplete() {
         window.BHAudio.setPaused(true);
     }
     // Запускаем анимацию levelComplete для Макса
-    if (typeof selectedChar !== 'undefined' && selectedChar === 'max' &&
+    if (typeof selectedSpriteSystem !== 'undefined' && selectedSpriteSystem === 'max' &&
         typeof player !== 'undefined' && player &&
         typeof player.triggerLevelComplete === 'function') {
         player.triggerLevelComplete();

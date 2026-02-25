@@ -34,6 +34,8 @@ let ctrlHeld = false;
 
 let gameMode = 'normal';
 let selectedChar = 'kuzy';
+// Система спрайтов: 'kuzy' | 'max' | 'dron' (независима от персонажа)
+let selectedSpriteSystem = 'max';
 let o4koHitStreak = 0;
 let o4koRandomDropTimer = 0;
 let o4koVulnHitCount = 0;

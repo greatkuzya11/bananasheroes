@@ -575,10 +575,14 @@ function updateRunnerPlayerAnimation(dt, movingHoriz) {
     if (!player) return;
     player.shooting = false;
 
-    // Кузя: анимация через PNG Sequences
-    if (player.type === 'kuzy') {
+    // Анимация по выбранной системе спрайтов
+    if (selectedSpriteSystem === 'kuzy') {
         const inAir = !player.onGround || player.isJumping;
         player._updateKuzyAnim(dt, inAir, true, movingHoriz);
+        return;
+    }
+    if (selectedSpriteSystem === 'max') {
+        player._updateMaxAnim(dt, movingHoriz);
         return;
     }
 
