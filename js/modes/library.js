@@ -366,11 +366,21 @@ function refreshLibraryLayout() {
         const nosokW = nosokH * 0.94;
         const teleH = baseH * 1.08;
         const teleW = teleH * 0.96;
-        const spots = [0.23, 0.53, 0.82];
+        const e67H = baseH * 1.0;
+        const e67W = e67H * 0.9;
+        const spots = [0.16, 0.40, 0.65, 0.88];
         libraryBosses = [
+            Object.assign(createLibraryBoss(
+                'e67',
+                libraryTopRail.x + libraryTopRail.w * spots[0] - e67W * 0.5,
+                libraryTopRail.y - e67H,
+                e67W,
+                e67H,
+                canvas.width * 0.078
+            ), { hp: 5 }),
             createLibraryBoss(
                 'o4ko',
-                libraryTopRail.x + libraryTopRail.w * spots[0] - o4koW * 0.5,
+                libraryTopRail.x + libraryTopRail.w * spots[1] - o4koW * 0.5,
                 libraryTopRail.y - o4koH,
                 o4koW,
                 o4koH,
@@ -378,7 +388,7 @@ function refreshLibraryLayout() {
             ),
             createLibraryBoss(
                 'nosok',
-                libraryTopRail.x + libraryTopRail.w * spots[1] - nosokW * 0.5,
+                libraryTopRail.x + libraryTopRail.w * spots[2] - nosokW * 0.5,
                 libraryTopRail.y - nosokH,
                 nosokW,
                 nosokH,
@@ -386,7 +396,7 @@ function refreshLibraryLayout() {
             ),
             createLibraryBoss(
                 'tele',
-                libraryTopRail.x + libraryTopRail.w * spots[2] - teleW * 0.5,
+                libraryTopRail.x + libraryTopRail.w * spots[3] - teleW * 0.5,
                 libraryTopRail.y - teleH,
                 teleW,
                 teleH,
@@ -944,6 +954,22 @@ function shootLibraryBossNosok(boss) {
  * Выпускает снаряд босса типа `tele` в сторону игрока.
  * @param {object} boss - Босс-стрелок типа `tele`.
  */
+function shootLibraryBossE67(boss) {
+    const emojis = ['', '', '7', '6', ''];
+    const emoji = emojis[Math.floor(Math.random() * emojis.length)];
+    const bx = boss.x + boss.w * 0.5;
+    const by = boss.y + boss.h * 0.55;
+    const px = player.x + player.w * 0.5;
+    const py = player.y + player.h * 0.5;
+    const dx = px - bx;
+    const dy = py - by;
+    const dist = Math.max(1, Math.hypot(dx, dy));
+    const speed = 5.0 + Math.random() * 1.0;
+    enemyBullets.push({ x: bx, y: by, w: 16, h: 24, vx: (dx / dist) * speed, vy: (dy / dist) * speed, emoji, libraryBullet: true, libraryOwnerId: boss.id });
+    if (window.BHAudio && typeof window.BHAudio.playEnemyShoot === 'function') {
+        window.BHAudio.playEnemyShoot('67');
+    }
+}
 function shootLibraryBossTele(boss) {
     const emojis = ['\u{1FAB3}', '\u{1F9E8}', '7\uFE0F\u20E3', '6\uFE0F\u20E3', '\u{1F4A9}'];
     const emoji = emojis[Math.floor(Math.random() * emojis.length)];
@@ -1506,6 +1532,41 @@ function drawLibraryBoss(b) {
         ctx.textBaseline = 'middle';
         ctx.fillText('\u{1F9E6}', b.x + b.w * 0.5, b.y + b.h * 0.5);
         ctx.restore();
+        return;
+    }
+
+    if (b.type === 'e67') {
+        if (enemy67Img && enemy67Img.complete && enemy67Img.naturalWidth > 0 && enemy67Img.naturalHeight > 0) {
+            const srcW = enemy67Img.naturalWidth;
+            const srcH = enemy67Img.naturalHeight;
+            if (srcW >= srcH * 1.8) {
+                const sw = Math.floor(srcW / 2);
+                const sh = srcH;
+                const sx = (b.frame % 2) * sw;
+                const fit = Math.min(b.w / sw, b.h / sh);
+                const dw = sw * fit;
+                const dh = sh * fit;
+                const dx = b.x + (b.w - dw) * 0.5;
+                const dy = b.y + (b.h - dh) * 0.5;
+                ctx.save();
+                ctx.globalAlpha = renderAlpha;
+                ctx.drawImage(enemy67Img, sx, 0, sw, sh, dx, dy, dw, dh);
+                ctx.restore();
+            } else {
+                ctx.save();
+                ctx.globalAlpha = renderAlpha;
+                drawLibraryContainImage(enemy67Img, b.x, b.y, b.w, b.h);
+                ctx.restore();
+            }
+        } else {
+            ctx.save();
+            ctx.globalAlpha = renderAlpha;
+            ctx.font = Math.round(b.h) + 'px serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('7\uFE0F\u20E3', b.x + b.w * 0.5, b.y + b.h * 0.5);
+            ctx.restore();
+        }
         return;
     }
 

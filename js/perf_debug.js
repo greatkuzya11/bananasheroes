@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Модуль профилирования: считает время обновления/отрисовки пуль и выводит оверлей.
  */
 (function () {
@@ -17,7 +17,7 @@
 
     let bulletRenderMode = 'png'; // режим отрисовки пуль: 'emoji' | 'png'
     let bulletRotationEnabled = true;
-    let enemy67RenderMode = 'sheet'; // 'sheet' | 'tp'
+    let enemy67RenderMode = 'tp'; // 'sheet' | 'tp'
     let enemy67SpriteVariant = 'default'; // 'default' | 'alt'
 
     const EMOJI_SOURCES = {
@@ -208,6 +208,7 @@
         bulletRotationEnabled: () => bulletRotationEnabled,
         // Возвращает режим рендера врага 67
         enemy67RenderMode: () => enemy67RenderMode,
+        setEnemy67RenderMode: (m) => { enemy67RenderMode = m; },
         // Возвращает выбранный вариант спрайта врага 67
         enemy67SpriteVariant: () => enemy67SpriteVariant,
         // Возвращает PNG-иконку для эмодзи

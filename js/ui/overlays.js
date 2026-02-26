@@ -1,4 +1,4 @@
-﻿// ==== ОВЕРЛЕИ / РЕКОРДЫ ====
+// ==== ОВЕРЛЕИ / РЕКОРДЫ ====
 /**
  * Показывает экран завершения уровня и фиксирует рекорд при необходимости.
  */
@@ -349,10 +349,11 @@ function showLevelComplete() {
     // Отдельные победные фразы для специальных режимов
     const victoryTexts = {
         normal: 'Поздравляем, уровень "Сирень и Букин" пройден. Букин освобождён.',
-        '67': 'Поздравляю, вы победили 67!',
+        '67': 'Поздравляю, вы победили телепузика!',
+        'mode67': 'Поздравляю, вы победили врага 67!',
         o4ko: 'Поздравляю, вы победили Очко!',
         nosok: `Победа! 10/10 голов за ${formatNosokTime(Math.max(1, nosokFinalTimeMs || Math.round(nosokElapsedTime * 1000)))}`,
-        platforms: 'Поздравляем, уровень "Платформы" пройден!',
+        platforms: 'Поздравляем, уровень "Опять Телепузик" пройден!',
         lovlyu: 'Поздравляем, уровень "Ловлю" пройден!',
         runner: 'Поздравляю, ты научил Дрона курить!',
         library: 'Поздравляем, уровень "Библиотека" пройден!'
@@ -420,8 +421,6 @@ function showLevelComplete() {
         // Вернуться в меню
         document.getElementById('game').style.display = 'none';
         document.getElementById('menu').style.display = 'block';
-        // Показываем выбор персонажа (скрываем выбор режима)
-        if (modes) modes.style.display = 'none';
         if (typeof window.setGameTouchControlsVisible === 'function') {
             window.setGameTouchControlsVisible(false);
         }
@@ -434,6 +433,9 @@ function showLevelComplete() {
             window.BHAudio.setMenuActive(true);
             window.BHAudio.setPaused(false);
         }
+        if (typeof window.menuNavFocus === 'function') window.menuNavFocus('char', 0);
+        const mode67Text = (typeof consumePendingMode67Notice === 'function') ? consumePendingMode67Notice() : '';
+        if (mode67Text) { await showTransientInfoNotice(mode67Text, 2400); }
         const survivalText = (typeof consumePendingSurvivalNotice === 'function')
             ? consumePendingSurvivalNotice()
             : '';
@@ -463,6 +465,8 @@ function showLevelComplete() {
         btnNext.onclick = async () => {
             if (window.BHAudio) window.BHAudio.play('ui_click');
             overlay.remove();
+            const mode67Text2 = (typeof consumePendingMode67Notice === 'function') ? consumePendingMode67Notice() : '';
+            if (mode67Text2) { await showTransientInfoNotice(mode67Text2, 2400); }
             const survivalText = (typeof consumePendingSurvivalNotice === 'function')
                 ? consumePendingSurvivalNotice()
                 : '';
@@ -606,6 +610,7 @@ function showLevelCompleteMessage() {
         document.getElementById('game').style.display = 'none';
         document.getElementById('menu').style.display = 'block';
         updateBestScoresDisplay();
+        if (typeof refreshModeButtonsByProgress === 'function') refreshModeButtonsByProgress();
         if (window.BHAudio) {
             window.BHAudio.setMenuActive(true);
             window.BHAudio.setPaused(false);
@@ -614,6 +619,7 @@ function showLevelCompleteMessage() {
             window.setGameTouchControlsVisible(false);
         }
         overlay.remove();
+        if (typeof window.menuNavFocus === 'function') window.menuNavFocus('char', 0);
     };
 
     const btnNextPlatforms = document.createElement('button');
@@ -655,10 +661,10 @@ function updateBestScoresDisplay() {
     const modes = [
         { id: 'normal', name: 'Сирень и Букин' },
         { id: 'survival', name: 'Выживание' },
-        { id: '67', name: 'Режим 67' },
+        { id: '67', name: 'Телепузик' },
         { id: 'o4ko', name: 'Очко' },
         { id: 'nosok', name: 'Носок' },
-        { id: 'platforms', name: 'Платформы' },
+        { id: 'platforms', name: 'Опять Телепузик' },
         { id: 'lovlyu', name: 'Ловлю' },
         { id: 'runner', name: 'Бегун' },
         { id: 'library', name: 'Библиотека' }
@@ -755,7 +761,7 @@ function showGameOver() {
 
     const bestLine = document.createElement('div');
     const displayName = (charNames && charNames[selectedChar]) ? charNames[selectedChar] : selectedChar;
-    const modeNames = { 'normal': 'Сирень и Букин', 'survival': 'Выживание', '67': 'Режим 67', 'o4ko': 'Очко', 'nosok': 'Носок', 'platforms': 'Платформы', 'lovlyu': 'Ловлю', 'runner': 'Бегун', 'library': 'Библиотека' };
+    const modeNames = { 'normal': 'Сирень и Букин', 'survival': 'Выживание', '67': 'Телепузик', 'mode67': 'Режим 67', 'o4ko': 'Очко', 'nosok': 'Носок', 'platforms': 'Опять Телепузик', 'lovlyu': 'Ловлю', 'runner': 'Бегун', 'library': 'Библиотека' };
     const modeName = modeNames[gameMode] || gameMode;
     if (isNosokMode) {
         const bestTime = parseInt(localStorage.getItem('bh_bestTime_' + (selectedChar || 'kuzy') + '_nosok') || '0', 10) || 0;
@@ -800,8 +806,6 @@ function showGameOver() {
         if (typeof resetGameStateForMenu === 'function') resetGameStateForMenu();
         document.getElementById('game').style.display = 'none';
         document.getElementById('menu').style.display = 'block';
-        // Показываем выбор персонажа (скрываем выбор режима)
-        if (modes) modes.style.display = 'none';
         updateBestScoresDisplay();
         if (typeof refreshModeButtonsByProgress === 'function') refreshModeButtonsByProgress();
         if (window.BHAudio) {
@@ -812,6 +816,7 @@ function showGameOver() {
             window.setGameTouchControlsVisible(false);
         }
         overlay.remove();
+        if (typeof window.menuNavFocus === 'function') window.menuNavFocus('char', 0);
     };
 
     buttons.appendChild(btnRetry);

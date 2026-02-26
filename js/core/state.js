@@ -250,6 +250,16 @@ function initRunWorldByMode(mode) {
         player.x = 20;
         playerBulletDir = 'right';
         enemy67 = new Enemy67(player.x, player.y);
+        if (window.BHBulletPerf) window.BHBulletPerf.setEnemy67RenderMode('tp');
+        return;
+    }
+
+    if (startMode === 'mode67') {
+        setRunBackground('img/forest2.png');
+        player.x = 20;
+        playerBulletDir = 'right';
+        enemy67 = new Enemy67(player.x, player.y);
+        if (window.BHBulletPerf) window.BHBulletPerf.setEnemy67RenderMode('sheet');
         return;
     }
 

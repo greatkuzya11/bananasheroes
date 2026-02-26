@@ -432,7 +432,7 @@ function draw() {
     // Отрисовываем врага 67
     if (enemy67) {
         enemy67.draw();
-        const e67label = (gameMode === 'platforms') ? 'Босс: 67 (платформы)' : 'Босс: 67';
+        const e67label = (gameMode === 'platforms') ? 'Босс: Телепузик (платформы)' : (gameMode === 'mode67' ? 'Босс: Враг 67' : 'Босс: Телепузик');
         drawStyledBossHpBar(e67label, enemy67.hp, enemy67.maxHp || (gameMode === 'platforms' ? 76 : 67), 24);
     } else if (typeof Enemy67 !== 'undefined' && typeof Enemy67.hideGifOverlay === 'function') {
         Enemy67.hideGifOverlay();

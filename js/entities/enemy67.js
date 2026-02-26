@@ -186,7 +186,7 @@ class Enemy67 {
         const perf = window.BHBulletPerf;
         const renderMode = (perf && typeof perf.enemy67RenderMode === 'function')
             ? perf.enemy67RenderMode()
-            : 'sheet';
+            : 'tp';
         const spriteVariant = (perf && typeof perf.enemy67SpriteVariant === 'function')
             ? perf.enemy67SpriteVariant()
             : 'default';

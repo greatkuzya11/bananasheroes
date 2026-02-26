@@ -286,7 +286,7 @@ function update(dt) {
     }
 
     // ЛОГИКА БОССА (если не normal, либо normal и фазы завершены)
-    if (gameMode !== 'survival' && gameMode !== '67' && gameMode !== 'o4ko' && gameMode !== 'platforms' && gameMode !== 'library' && !boss && !bossDefeated && enemies.length === 0) {
+    if (gameMode !== 'survival' && gameMode !== '67' && gameMode !== 'mode67' && gameMode !== 'o4ko' && gameMode !== 'platforms' && gameMode !== 'library' && !boss && !bossDefeated && enemies.length === 0) {
         if (gameMode === 'normal') {
             // Если ещё не дошли до 4-й фазы — запускаем спавн следующей фазы
             if (normalPhase < 4 && !normalPhaseSpawning) {
@@ -673,7 +673,7 @@ function update(dt) {
                     bhPlaySfx('explosion_big', { volumeMul: 1.0, duck: 0.72 });
                     
                     // В режиме платформ: взрываем всех врагов и пули врагов
-                    if (gameMode === 'platforms') {
+                    if (gameMode === 'platforms' || gameMode === '67' || gameMode === 'mode67') {
                         // Взрываем всех врагов сирень на уровне
                         for (let i = 0; i < enemies.length; i++) {
                             const e = enemies[i];
@@ -1014,7 +1014,6 @@ function update(dt) {
         for (let ei = enemyBullets.length - 1; ei >= 0 && invuln <= 0; ei--) {
             const eb = enemyBullets[ei];
             if (bossDefeated) continue; // после победы пули не вредят
-            if (enemies.length === 0) continue; // все враги убиты — пули безвредны
             if (playerHitTest(eb)) {
                 enemyBullets.splice(ei, 1);
                 applyPlayerDamage();

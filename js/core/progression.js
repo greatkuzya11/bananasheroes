@@ -1,4 +1,4 @@
-// ==== ПРОГРЕССИЯ КАМПАНИИ / ОТКРЫТИЕ УРОВНЕЙ ====
+﻿// ==== ПРОГРЕССИЯ КАМПАНИИ / ОТКРЫТИЕ УРОВНЕЙ ====
 /**
  * Порядок уровней сюжетного прохождения.
  * Выживание открывается отдельно после прохождения первого уровня.
@@ -20,20 +20,23 @@ const CAMPAIGN_LEVEL_ORDER = Object.freeze([
 const CAMPAIGN_LEVEL_META = Object.freeze({
     normal:    { title: 'Сирень и Букин', desc: 'Описание уровня в разработке.' },
     survival:  { title: 'Выживание', desc: 'Описание уровня в разработке.' },
-    '67':      { title: 'Режим 67', desc: 'Описание уровня в разработке.' },
+    '67':      { title: 'Телепузик', desc: 'Описание уровня в разработке.' },
     o4ko:      { title: 'Очко', desc: 'Описание уровня в разработке.' },
     nosok:     { title: 'Носок', desc: 'Описание уровня в разработке.' },
-    platforms: { title: 'Платформы', desc: 'Описание уровня в разработке.' },
+    platforms: { title: 'Опять Телепузик', desc: 'Описание уровня в разработке.' },
     lovlyu:    { title: 'Ловлю', desc: 'Описание уровня в разработке.' },
     runner:    { title: 'Бегун', desc: 'Описание уровня в разработке.' },
-    library:   { title: 'Библиотека', desc: 'Описание уровня в разработке.' }
+    library:   { title: 'Библиотека', desc: 'Описание уровня в разработке.' },
+    mode67:   { title: 'Режим 67', desc: 'Сразись с оригинальным врагом 67  он снова вернулся!' }
 });
 
 const PROGRESS_KEYS = Object.freeze({
     unlockedCampaignIndex: 'bh_campaign_unlocked_index_v1',
     survivalUnlocked: 'bh_survival_unlocked_v1',
     survivalNoticeShown: 'bh_survival_unlocked_notice_shown_v1',
-    gameCompletedOnce: 'bh_game_completed_once_v1'
+    gameCompletedOnce: 'bh_game_completed_once_v1',
+    mode67Unlocked: 'bh_mode67_unlocked_v1',
+    mode67NoticeShown: 'bh_mode67_notice_shown_v1'
 });
 
 /**
@@ -53,7 +56,8 @@ let campaignSession = {
  */
 let pendingProgressNotices = {
     survivalUnlock: false,
-    gameCompleted: false
+    gameCompleted: false,
+    mode67Unlock: false
 };
 
 /**
@@ -182,12 +186,28 @@ function getLevelIntroData(mode) {
 }
 
 /**
+ * Возвращает true, если режим 'Режим 67' открыт.
+ * @returns {boolean}
+ */
+function isMode67Unlocked() {
+    return readBoolLS(PROGRESS_KEYS.mode67Unlocked, false);
+}
+
+/**
+ * Помечает режим 'Режим 67' как открытый.
+ */
+function setMode67Unlocked() {
+    writeLS(PROGRESS_KEYS.mode67Unlocked, '1');
+}
+
+/**
  * Проверяет, открыт ли режим по прогрессии.
  * @param {string} mode - идентификатор режима.
  * @returns {boolean}
  */
 function isModeUnlockedByProgress(mode) {
     if (mode === 'survival') return isSurvivalUnlocked();
+    if (mode === 'mode67') return isMode67Unlocked();
     const campaignIdx = CAMPAIGN_LEVEL_ORDER.indexOf(mode);
     if (campaignIdx >= 0) return campaignIdx <= getUnlockedCampaignIndex();
     return true;
@@ -267,6 +287,13 @@ function unlockByCompletedMode(mode) {
         const target = idx + 1;
         if (target > unlockedIdx) {
             setUnlockedCampaignIndex(target);
+        }
+    }
+
+    if (mode === '67') {
+        if (!isMode67Unlocked()) {
+            setMode67Unlocked();
+            pendingProgressNotices.mode67Unlock = true;
         }
     }
 
@@ -353,6 +380,13 @@ function consumePendingGameCompletedNotice() {
     return 'Игра Bananas Heroes полностью пройдена!';
 }
 
+function consumePendingMode67Notice() {
+    if (!pendingProgressNotices.mode67Unlock) return '';
+    pendingProgressNotices.mode67Unlock = false;
+    writeLS(PROGRESS_KEYS.mode67NoticeShown, '1');
+    return 'Открыт новый режим: Режим 67!';
+}
+
 /**
  * Сбрасывает прогресс кампании до состояния "первая игра":
  * открыт только первый уровень, выживание закрыто, одноразовые уведомления сброшены.
@@ -364,6 +398,9 @@ function resetCampaignProgressState() {
     writeLS(PROGRESS_KEYS.gameCompletedOnce, '0');
     pendingProgressNotices.survivalUnlock = false;
     pendingProgressNotices.gameCompleted = false;
+    pendingProgressNotices.mode67Unlock = false;
+    writeLS(PROGRESS_KEYS.mode67Unlocked, '0');
+    writeLS(PROGRESS_KEYS.mode67NoticeShown, '0');
     resetCampaignSessionForMenu();
 }
 
@@ -378,6 +415,8 @@ window.prepareCampaignSessionForStart = prepareCampaignSessionForStart;
 window.resetCampaignSessionForMenu = resetCampaignSessionForMenu;
 window.registerCampaignLevelCompletion = registerCampaignLevelCompletion;
 window.getCampaignSessionSummary = getCampaignSessionSummary;
+window.isMode67Unlocked = isMode67Unlocked;
+window.consumePendingMode67Notice = consumePendingMode67Notice;
 window.consumePendingSurvivalNotice = consumePendingSurvivalNotice;
 window.consumePendingGameCompletedNotice = consumePendingGameCompletedNotice;
 window.resetCampaignProgressState = resetCampaignProgressState;

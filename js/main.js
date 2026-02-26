@@ -689,6 +689,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Initialize: focus first character on page load
     menuNavFocus('char', 0);
     document.addEventListener('keydown', menuKeyNav);
+    window.menuNavFocus = menuNavFocus; // expose for overlays
 
     // Синхронизация фокуса: при наведении мышью кнопка получает menu-kb-focus,
     // снимая его со всех остальных — чтобы не было двух одновременных фокусов.
@@ -869,8 +870,10 @@ document.addEventListener('DOMContentLoaded', () => {
         if (fReset)      { section = 'reset'; idx = 0; }
         else if (fAudio) { section = 'audio'; idx = 0; }
         else if (fHelp)  { section = 'help';  idx = 0; }
-        else if (fMode >= 0) { section = 'mode'; idx = fMode; }
+        else if (fMode >= 0 && modesVisible) { section = 'mode'; idx = fMode; }
         else if (fChar >= 0) { section = 'char'; idx = fChar; }
+        // Очищаем зависший menu-kb-focus с кнопок режима, если панель скрыта
+        if (!modesVisible && fMode >= 0) mEls[fMode].classList.remove('menu-kb-focus');
 
         if (e.key === 'Escape') {
             // Из режимов / help / reset → вернуться к выбору персонажа
