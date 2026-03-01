@@ -35,7 +35,7 @@ let ctrlHeld = false;
 let gameMode = 'normal';
 let selectedChar = 'kuzy';
 // Система спрайтов: 'kuzy' | 'max' | 'dron' (независима от персонажа)
-let selectedSpriteSystem = 'max';
+let selectedSpriteSystem = (typeof localStorage !== 'undefined' && localStorage.getItem('bh_char_skin')) || 'max';
 let o4koHitStreak = 0;
 let o4koRandomDropTimer = 0;
 let o4koVulnHitCount = 0;
@@ -243,7 +243,7 @@ function initRunWorldByMode(mode) {
     const startMode = mode || gameMode || 'normal';
     gameMode = startMode;
 
-    player = new Player(selectedChar);
+    player = new Player(selectedChar, selectedSpriteSystem);
 
     if (startMode === '67') {
         setRunBackground('img/forest2.png');
@@ -363,3 +363,4 @@ function beginGameRun(mode, startLoop) {
         requestAnimationFrame(loop);
     }
 }
+

@@ -716,11 +716,14 @@ document.addEventListener('DOMContentLoaded', () => {
             helpBackBtn.classList.remove('menu-kb-focus');
             const scrollEl = helpScreen.querySelector('.help-scroll');
             if (scrollEl) scrollEl.scrollTop = 0;
+            // focus the bonus-open button so keyboard users can open sprite selector
+            setTimeout(() => { const b = document.getElementById('bonus-open-btn'); if (b) { b.classList.add('menu-kb-focus'); b.focus(); } }, 10);
         };
         helpBackBtn.onclick = () => {
             audioPlay('ui_click');
             helpScreen.style.display = 'none';
             helpBackBtn.classList.remove('menu-kb-focus');
+            menuNavFocus('help', 0);
         };
     }
 
@@ -823,28 +826,60 @@ document.addEventListener('DOMContentLoaded', () => {
         if (helpElement && helpElement.style.display === 'block') {
             const scrollEl = helpElement.querySelector('.help-scroll');
             const backBtn = document.getElementById('help-back-btn');
+            const bonusBtn = document.getElementById('bonus-open-btn');
+            const bonusFocused = bonusBtn && bonusBtn.classList.contains('menu-kb-focus');
             const backFocused = backBtn && backBtn.classList.contains('menu-kb-focus');
             const SCROLL_STEP = 120;
 
             if (e.key === 'ArrowDown') {
-                if (!backFocused && scrollEl) {
-                    scrollEl.scrollTop += SCROLL_STEP;
-                    const atBottom = scrollEl.scrollTop + scrollEl.clientHeight >= scrollEl.scrollHeight - 4;
-                    if (atBottom && backBtn) backBtn.classList.add('menu-kb-focus');
+                if (!backFocused) {
+                    if (!bonusFocused && bonusBtn) {
+                        // move focus to bonus button first
+                        // remove focus from other elements first
+                        document.querySelectorAll('.menu-kb-focus').forEach(x=>x.classList.remove('menu-kb-focus'));
+                        bonusBtn.classList.add('menu-kb-focus');
+                        try { bonusBtn.focus(); } catch (er) {}
+                    } else if (scrollEl) {
+                        scrollEl.scrollTop += SCROLL_STEP;
+                        const atBottom = scrollEl.scrollTop + scrollEl.clientHeight >= scrollEl.scrollHeight - 4;
+                        if (atBottom && backBtn) {
+                            document.querySelectorAll('.menu-kb-focus').forEach(x=>x.classList.remove('menu-kb-focus'));
+                            backBtn.classList.add('menu-kb-focus');
+                            try { backBtn.focus(); } catch (er) {}
+                        }
+                    }
                 }
                 e.preventDefault();
             } else if (e.key === 'ArrowUp') {
                 if (backFocused && scrollEl) {
+                    // move focus back into scroll region (do not call focus to avoid visible outline)
                     backBtn.classList.remove('menu-kb-focus');
                     scrollEl.scrollTop -= SCROLL_STEP;
                 } else if (scrollEl) {
-                    scrollEl.scrollTop -= SCROLL_STEP;
+                    // if bonus is focused, move up to end of scroll
+                    if (bonusFocused) {
+                        // move to last scroll position (do not call focus to avoid visible outline)
+                        document.querySelectorAll('.menu-kb-focus').forEach(x=>x.classList.remove('menu-kb-focus'));
+                        if (scrollEl) {
+                            scrollEl.scrollTop = Math.max(0, scrollEl.scrollHeight - scrollEl.clientHeight - SCROLL_STEP);
+                        }
+                    } else {
+                        scrollEl.scrollTop -= SCROLL_STEP;
+                    }
                 }
                 e.preventDefault();
-            } else if ((e.key === 'Enter' || e.key === ' ') && backFocused) {
-                helpElement.style.display = 'none';
-                backBtn.classList.remove('menu-kb-focus');
-                e.preventDefault();
+            } else if ((e.key === 'Enter' || e.key === ' ') ) {
+                // Prefer the element which actually holds menu-kb-focus class
+                if (bonusBtn && bonusBtn.classList.contains('menu-kb-focus')) {
+                    bonusBtn.click();
+                    e.preventDefault();
+                    return;
+                }
+                if (backBtn && backBtn.classList.contains('menu-kb-focus')) {
+                    helpElement.style.display = 'none';
+                    backBtn.classList.remove('menu-kb-focus');
+                    e.preventDefault();
+                }
             }
             return;
         }
@@ -966,8 +1001,11 @@ if (typeof window !== 'undefined') {
                 const sel = document.querySelector('.skin-card.selected');
                 if (sel) sel.focus(); else if (skinCards[0]) skinCards[0].focus();
             }, 10);
-            // attach keyboard handler for navigation while bonus is open
-            document.addEventListener('keydown', bonusKeyHandler);
+            // attach keyboard handler for navigation while bonus is open (capture phase to preempt global handlers)
+            document.removeEventListener('keydown', bonusKeyHandler, true);
+            document.addEventListener('keydown', bonusKeyHandler, true);
+            // ensure selected card has menu-kb-focus class for styling
+            setTimeout(()=>{ const sel = document.querySelector('.skin-card.selected'); if (sel) sel.classList.add('menu-kb-focus'); }, 20);
         });
     }
 
@@ -976,15 +1014,18 @@ if (typeof window !== 'undefined') {
         bonusBackBtn.addEventListener('click', function() {
             if (bonusScreen) bonusScreen.style.display = 'none';
             if (helpScreen) helpScreen.style.display = 'block';
-            // focus help back button so keyboard users remain in help
-            setTimeout(() => { const hb = document.getElementById('help-back-btn'); if (hb) hb.focus(); }, 10);
-            // remove bonus keyboard handler
-            document.removeEventListener('keydown', bonusKeyHandler);
+            // focus bonus-open button in help so user can re-enter bonus selector via keyboard
+            setTimeout(() => { const b = document.getElementById('bonus-open-btn'); if (b) { b.classList.add('menu-kb-focus'); b.focus(); } }, 10);
+            // remove bonus keyboard handler (capture)
+            document.removeEventListener('keydown', bonusKeyHandler, true);
         });
     }
 
     // Skin selection
     skinCards.forEach(card => {
+        // ensure focus styling when keyboard-focused
+        card.addEventListener('focus', function() { this.classList.add('menu-kb-focus'); });
+        card.addEventListener('blur', function() { this.classList.remove('menu-kb-focus'); });
         card.addEventListener('click', function() {
             const skin = this.dataset.skin;
             localStorage.setItem('bh_char_skin', skin);
@@ -998,6 +1039,9 @@ if (typeof window !== 'undefined') {
     // Keyboard navigation handler for bonus screen
     function bonusKeyHandler(ev) {
         if (!bonusScreen || bonusScreen.style.display !== 'flex') return;
+        // prevent other global menu key handlers from running while bonus is open
+        ev.stopImmediatePropagation && ev.stopImmediatePropagation();
+        ev.stopPropagation && ev.stopPropagation();
         const focused = document.activeElement;
         if (ev.key === 'Escape') {
             ev.preventDefault();
@@ -1015,8 +1059,10 @@ if (typeof window !== 'undefined') {
         }
         if (ev.key === 'ArrowUp') {
             ev.preventDefault();
-            // go back to help; focus help back button
-            if (bonusBackBtn) { bonusBackBtn.click(); setTimeout(()=>{ const hb=document.getElementById('help-back-btn'); if (hb) hb.focus(); },10); }
+            const arrUp = Array.from(skinCards);
+            let idxUp = arrUp.indexOf(focused);
+            if (idxUp === -1) { if (arrUp[arrUp.length-1]) arrUp[arrUp.length-1].focus(); }
+            else { idxUp = (idxUp - 1 + arrUp.length) % arrUp.length; arrUp[idxUp].focus(); }
             return;
         }
         if (ev.key === 'ArrowDown') {
@@ -1026,7 +1072,7 @@ if (typeof window !== 'undefined') {
         }
         if (ev.key === 'Enter' || ev.key === ' ') {
             if (focused && focused.classList && focused.classList.contains('skin-card')) {
-                ev.preventDefault(); focused.click();
+                ev.preventDefault(); ev.stopPropagation(); focused.click();
                 return;
             }
             if (focused === bonusBackBtn) { ev.preventDefault(); bonusBackBtn.click(); return; }

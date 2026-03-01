@@ -1010,8 +1010,8 @@ function drawRunnerFakeBonuses() {
 function getRunnerCigaretteRect() {
     const w = Math.max(16, player.w * 0.24);
     const h = Math.max(8, player.h * 0.08);
-    // Для Кузи: сигарета ниже из-за пропорций спрайта PNG Sequences
-    const cigYFraction = (player && player.type === 'kuzy') ? 0.72 : 0.56;
+    // Для спрайта Кузи: сигарета ниже из-за прозрачного поля снизу в PNG Sequences
+    const cigYFraction = (player && player.spriteSystem === 'kuzy') ? 0.62 : 0.44;
     const cy = player.y + player.h * cigYFraction - h * 0.5;
     const sideInset = 0.16;
     if (player.facingDir === 'left') {
