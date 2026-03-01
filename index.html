@@ -688,6 +688,44 @@
             #audio-toggle-btn { font-size: 15px; padding: 10px 12px; right: 12px; bottom: 12px; min-width: 160px; }
             #reset-progress-btn { font-size: 15px; padding: 10px 12px; right: 12px; bottom: 62px; }
         }
+
+        /* ==== BONUS SCREEN ==== */
+        #bonus-screen {
+            position: fixed;
+            inset: 0;
+            z-index: 1100;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            background: rgba(0,0,0,0.6);
+            color: #fff;
+        }
+        #bonus-screen .bonus-inner {
+            width: min(920px, 94vw);
+            background: rgba(20,25,35,0.96);
+            border-radius: 12px;
+            padding: 18px;
+            box-shadow: 0 12px 40px rgba(0,0,0,0.6);
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        .bonus-skins { display:flex; gap:12px; justify-content:space-around; align-items:flex-start; }
+        .skin-card {
+            background: rgba(255,255,255,0.04);
+            border: 2px solid transparent;
+            border-radius: 10px;
+            padding: 10px;
+            width: min(28%, 240px);
+            box-sizing: border-box;
+            cursor: pointer;
+            text-align: center;
+        }
+        .skin-card.selected { border-color: #ffd54f; box-shadow: 0 6px 18px rgba(255,213,79,0.18); }
+        .skin-preview { width:100%; height:140px; object-fit:contain; border-radius:6px; background:rgba(0,0,0,0.12); }
+        .skin-desc { margin-top:8px; font-size:14px; color:#fff; }
+        #bonus-back-btn { align-self:center; padding:10px 20px; font-size:16px; border-radius:10px; background:#ffd54f; color:#000; border:2px solid transparent; cursor:pointer; }
+
     </style>
 </head>
 <body>
@@ -732,6 +770,9 @@
 <div id="help-screen">
     <div class="help-inner">
         <h2>📖 Как играть</h2>
+        <div style="text-align:center; margin:8px 0 12px;">
+            <button id="bonus-open-btn" type="button" style="font-size:16px; padding:8px 14px; border-radius:8px; background:#ffd54f; color:#000; border:2px solid transparent; cursor:pointer;">🎨 Выбрать набор спрайтов</button>
+        </div>
         <div class="help-scroll">
 
             <section>
@@ -853,6 +894,28 @@
 
         </div>
         <button id="help-back-btn" type="button">← Назад</button>
+    </div>
+</div>
+
+<div id="bonus-screen">
+    <div class="bonus-inner">
+        <h2 style="text-align:center; margin:0;">🎨 Выбор набора спрайтов</h2>
+        <div class="bonus-skins">
+            <div class="skin-card" data-skin="kuzy">
+                <img class="skin-preview" src="img/PNG Sequences/Idle/0_Bloody_Alchemist_Idle_000.png" alt="Кузя">
+                <div class="skin-desc"><strong>Кузя</strong><div>Большие анимированные спрайты</div></div>
+            </div>
+            <div class="skin-card" data-skin="dron">
+                <img class="skin-preview" src="img/shoot/0.png" alt="Дрон">
+                <div class="skin-desc"><strong>Дрон</strong><div>Минималистичный спрайт‑сет</div></div>
+            </div>
+            <div class="skin-card" data-skin="max">
+                <img class="skin-preview" src="img/bananSprites/walk/1.png" alt="Макс">
+                <div class="skin-desc"><strong>Макс</strong><div>Классический набор бананов</div></div>
+            </div>
+        </div>
+        <div style="height:8px"></div>
+        <button id="bonus-back-btn" type="button">← Назад</button>
     </div>
 </div>
 
