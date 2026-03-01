@@ -7,7 +7,8 @@ class Player {
      * Создает игрока выбранного типа.
      * @param {string} type - идентификатор персонажа ('kuzy', 'max', 'dron').
      */
-    constructor(type) {
+    constructor(type, spriteSystem) {
+        this.spriteSystem = spriteSystem || type;
         this.type = type;
         this.w = canvas.height * 0.2;
         this.h = this.w;
@@ -41,7 +42,7 @@ class Player {
         this.maskCache = new Map();
         // Эффективная ширина спрайта для коллизий: для Кузи сужена из-за прозрачных полей
         // Спрайты Кузи 900x900, но контент примерно 60% ширины (слева/справа ~20% прозрачных полей)
-        this.effectiveW = (selectedSpriteSystem === 'kuzy') ? this.w * 0.6 : this.w;
+        this.effectiveW = (this.spriteSystem === 'kuzy') ? this.w * 0.6 : this.w;
         // PNG Sequences анимация для Кузи
         this.kAnim = 'idle';
         this.kFrame = 0;
@@ -357,11 +358,11 @@ class Player {
             }
         }
         // Обновляем анимацию по выбранной системе спрайтов (не в режиме runner — там своя логика)
-        if (selectedSpriteSystem === 'kuzy' && gameMode !== 'runner') {
+        if (this.spriteSystem === 'kuzy' && gameMode !== 'runner') {
             const isMovingH = keys['ArrowLeft'] || keys['ArrowRight'];
             this._updateKuzyAnim(dt, null, false, isMovingH);
         }
-        if (selectedSpriteSystem === 'max' && gameMode !== 'runner') {
+        if (this.spriteSystem === 'max' && gameMode !== 'runner') {
             const isMovingH = keys['ArrowLeft'] || keys['ArrowRight'];
             this._updateMaxAnim(dt, isMovingH);
         }
@@ -515,7 +516,7 @@ class Player {
      */
     getCollisionSpriteInfo() {
         // Кузя: используем текущий кадр PNG Sequences анимации
-        if (selectedSpriteSystem === 'kuzy') {
+        if (this.spriteSystem === 'kuzy') {
             const frames = kuzyAnims[this.kAnim];
             if (!frames || !frames.length) return null;
             const img = frames[Math.min(this.kFrame, frames.length - 1)];
@@ -523,7 +524,7 @@ class Player {
             return { img, direct: true, sx: 0, sy: 0, sw: 0, sh: 0 };
         }
         // Макс: используем текущий кадр PNG анимации
-        if (selectedSpriteSystem === 'max') {
+        if (this.spriteSystem === 'max') {
             const frames = maxAnims[this.mAnim];
             if (!frames || !frames.length) return null;
             const img = frames[Math.min(this.mFrame, frames.length - 1)];
@@ -659,7 +660,7 @@ class Player {
      */
     draw() {
         // Кузя: отрисовка через PNG Sequences кадры
-        if (selectedSpriteSystem === 'kuzy') {
+        if (this.spriteSystem === 'kuzy') {
             const frames = kuzyAnims[this.kAnim];
             if (!frames || !frames.length) return;
             const img = frames[Math.min(this.kFrame, frames.length - 1)];
@@ -680,7 +681,7 @@ class Player {
             return;
         }
         // Макс: отрисовка через PNG анимации
-        if (selectedSpriteSystem === 'max') {
+        if (this.spriteSystem === 'max') {
             const frames = maxAnims[this.mAnim];
             if (!frames || !frames.length) return;
             const img = frames[Math.min(this.mFrame, frames.length - 1)];
@@ -833,7 +834,7 @@ class Player {
      * Запускает пинг-понг анимацию levelComplete для Макса.
      */
     triggerLevelComplete() {
-        if (selectedSpriteSystem !== 'max') return;
+        if (this.spriteSystem !== 'max') return;
         this.mLcActive = true;
         this.mLcCyclesDone = 0;
         this.mLcDir = 1;

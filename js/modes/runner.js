@@ -576,12 +576,12 @@ function updateRunnerPlayerAnimation(dt, movingHoriz) {
     player.shooting = false;
 
     // Анимация по выбранной системе спрайтов
-    if (selectedSpriteSystem === 'kuzy') {
+    if (player.spriteSystem === 'kuzy') {
         const inAir = !player.onGround || player.isJumping;
         player._updateKuzyAnim(dt, inAir, true, movingHoriz);
         return;
     }
-    if (selectedSpriteSystem === 'max') {
+    if (player.spriteSystem === 'max') {
         player._updateMaxAnim(dt, movingHoriz);
         return;
     }

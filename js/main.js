@@ -939,3 +939,58 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 });
+
+// ──── BONUS SCREEN LOGIC ────
+if (typeof window !== 'undefined') {
+    const bonusScreen = document.getElementById('bonus-screen');
+    const bonusOpenBtn = document.getElementById('bonus-open-btn');
+    const bonusBackBtn = document.getElementById('bonus-back-btn');
+    const skinCards = document.querySelectorAll('.skin-card');
+    const helpScreen = document.getElementById('help-screen');
+
+    function updateBonusSkinSelection() {
+        const savedSkin = localStorage.getItem('bh_char_skin') || 'max';
+        skinCards.forEach(card => {
+            card.classList.toggle('selected', card.dataset.skin === savedSkin);
+        });
+    }
+
+    // Open bonus from help
+    if (bonusOpenBtn) {
+        bonusOpenBtn.addEventListener('click', function() {
+            if (helpScreen) helpScreen.style.display = 'none';
+            if (bonusScreen) bonusScreen.style.display = 'flex';
+            updateBonusSkinSelection();
+        });
+    }
+
+    // Back to help from bonus
+    if (bonusBackBtn) {
+        bonusBackBtn.addEventListener('click', function() {
+            if (bonusScreen) bonusScreen.style.display = 'none';
+            if (helpScreen) helpScreen.style.display = 'block';
+        });
+    }
+
+    // Skin selection
+    skinCards.forEach(card => {
+        card.addEventListener('click', function() {
+            const skin = this.dataset.skin;
+            localStorage.setItem('bh_char_skin', skin);
+            updateBonusSkinSelection();
+            selectedSpriteSystem = skin;
+            if (typeof player !== 'undefined' && player) player.spriteSystem = skin;
+        });
+    });
+
+    // Escape from bonus screen
+    (function() {
+        const originalListener = function(ev) {
+            if (ev.key === 'Escape' && bonusScreen && bonusScreen.style.display === 'flex') {
+                ev.preventDefault();
+                if (bonusBackBtn) bonusBackBtn.click();
+            }
+        };
+        document.addEventListener('keydown', originalListener);
+    })();
+}
