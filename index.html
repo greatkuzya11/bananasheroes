@@ -240,6 +240,9 @@
             display: none;
             text-align: center;
         }
+        #modes.active {
+            display: block;
+        }
 
         #modes button {
             cursor: pointer;
@@ -504,60 +507,153 @@
         }
 
         @media (max-width: 960px), (pointer: coarse) {
+            /* ---- MENU: compact, no-scroll layout ---- */
             #menu {
-                padding-top: 20px;
+                height: 100dvh;
+                min-height: unset;
+                padding: 0;
+                justify-content: flex-start;
+                overflow: hidden;
+                display: flex;
+                flex-direction: column;
+            }
+            .menu-inner {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                width: 100%;
+                flex: 1;
+                min-height: 0;
+                overflow-y: auto;
+                overflow-x: hidden;
+                padding-top: 1.8svh;
+                box-sizing: border-box;
             }
 
             #menu h1 {
-                font-size: clamp(24px, 7vw, 34px);
-                margin: 8px 10px 12px;
+                font-size: min(5.5vw, 5svh);
+                margin: 0 2vw 1.2svh;
                 filter: drop-shadow(0 0 4px rgba(255, 120, 0, 0.6))
                         drop-shadow(0 0 14px rgba(255, 80, 0, 0.35));
             }
 
             #menu .characters {
-                gap: 10px;
+                gap: min(2vw, 1.8svh);
                 flex-wrap: wrap;
-                padding: 0 10px;
+                padding: 0 2vw;
             }
 
             .char {
-                font-size: clamp(18px, 4.8vw, 24px);
-                padding: 12px 14px;
+                font-size: min(4.2vw, 4svh);
+                padding: min(2vw, 1.8svh) min(2.5vw, 2.2svh);
             }
 
-            #best-scores {
-                padding: 0 10px;
-                max-width: min(94vw, 720px);
-                font-size: 13px;
-                line-height: 1.35;
-            }
+            /* === Best scores hidden inline, shown in overlay === */
+            #best-scores { display: none !important; }
 
-            #modes {
-                margin-top: 14px;
-                padding: 0 10px 18px;
+            /* === Modes: same inline-flex layout as desktop, just smaller === */
+            #modes.active {
+                display: block;
+                text-align: center;
+                width: 100%;
+                margin: min(1vw, 1svh) auto 0;
+                padding: 0 2vw;
+                box-sizing: border-box;
             }
-
             #modes .mode-stack {
-                display: block;
-                margin: 0;
-                gap: 0;
+                display: inline-flex;
+                flex-direction: column;
+                vertical-align: top;
+                margin: min(1.2vw, 1svh);
+                gap: min(1.2vw, 1svh);
             }
-
-            #modes .mode-stack .mode {
-                margin: 8px auto;
-            }
-
+            #modes .mode-stack .mode { margin: 0; }
             #modes button {
-                display: block;
-                width: min(92vw, 360px);
-                margin: 8px auto;
-                font-size: clamp(17px, 4.5vw, 22px);
-                padding: 12px 10px;
+                display: inline-flex;
+                align-items: center;
+                justify-content: flex-start;
+                width: auto;
+                margin: min(1.2vw, 1svh);
+                font-size: min(3.2vw, 2.8svh);
+                padding: min(1.5vw, 1.3svh) min(2vw, 1.8svh);
                 height: auto;
-                min-height: 54px;
+                min-height: 5svh;
+                line-height: 1.2;
             }
 
+            /* === CSS vars for mobile button geometry (all relative) === */
+            #menu {
+                --m-edge:    min(2.5vw, 2.5svh);   /* distance from screen/safe-area edge */
+                --m-btn-fs:  min(3.2vw, 2.3svh);   /* button font-size */
+                --m-btn-pv:  min(1.8vw, 1.5svh);   /* button padding vertical */
+                --m-btn-ph:  min(2.8vw, 2svh);     /* button padding horizontal */
+                --m-btn-h:   min(8vw,   6svh);      /* estimated button height */
+                --m-btn-gap: min(3vw, 2.5svh);     /* gap between button rows (bigger!) */
+            }
+
+            /* === Utility row: fixed grid container, 2 cols × 2 rows === */
+            #menu-util-row {
+                position: fixed !important;
+                bottom: calc(var(--m-edge) + env(safe-area-inset-bottom)) !important;
+                left: var(--m-edge) !important;
+                right: var(--m-edge) !important;
+                display: grid !important;
+                grid-template-columns: auto auto !important;
+                grid-template-rows: auto auto !important;
+                grid-template-areas:
+                    "scores reset"
+                    "help   audio" !important;
+                justify-content: space-between !important;
+                row-gap: 5px !important;
+                column-gap: 10px !important;
+                z-index: 10 !important;
+                pointer-events: none !important;
+            }
+            /* Shared: reset individual fixed positioning, enable pointer events */
+            #scores-toggle-btn,
+            #help-btn,
+            #audio-toggle-btn,
+            #reset-progress-btn {
+                position: static !important;
+                bottom: unset !important;
+                left: unset !important;
+                right: unset !important;
+                pointer-events: auto !important;
+                max-width: calc(50vw - var(--m-edge) - 5px) !important;
+                overflow: hidden !important;
+                text-overflow: ellipsis !important;
+                white-space: nowrap !important;
+                box-sizing: border-box !important;
+                font-size: var(--m-btn-fs) !important;
+                padding: var(--m-btn-pv) var(--m-btn-ph) !important;
+                min-width: unset !important;
+                border-radius: 8px !important;
+            }
+            /* Grid placement */
+            #scores-toggle-btn {
+                grid-area: scores !important;
+                display: block !important;
+                background: #4fc3f7;
+                color: #000;
+                border: 3px solid transparent;
+            }
+            #scores-toggle-btn:active { transform: scale(0.95); background: #0288d1; color: #fff; }
+            #help-btn    { grid-area: help  !important; }
+            /* Right-column buttons align to the right edge */
+            #reset-progress-btn {
+                grid-area: reset !important;
+                justify-self: end !important;
+            }
+            #audio-toggle-btn {
+                grid-area: audio !important;
+                justify-self: end !important;
+            }
+            /* Menu content must not hide behind the 2 rows of fixed buttons */
+            .menu-inner {
+                padding-bottom: calc(var(--m-edge) * 2 + var(--m-btn-h) * 2 + var(--m-btn-gap));
+            }
+
+            /* ---- HUD ---- */
             #hud {
                 left: 8px;
                 right: 8px;
@@ -566,18 +662,17 @@
                 max-width: calc(100vw - 16px);
             }
 
+            /* ---- Touch controls ---- */
             #touch-controls .touch-btn {
                 min-width: 56px;
                 min-height: 46px;
                 font-size: 14px;
             }
-
             #touch-controls .touch-btn.fire {
                 min-height: 110px;
                 min-width: 74px;
                 font-size: 22px;
             }
-
             #touch-controls .touch-btn.small {
                 min-width: 52px;
                 min-height: 42px;
@@ -588,14 +683,21 @@
                 width: min(94vw, 560px);
                 padding: 12px;
             }
-
             #mobile-controls-hint .hint-title {
                 font-size: clamp(15px, 4.2vw, 18px);
             }
-
             #mobile-controls-hint .hint-text {
                 font-size: clamp(12px, 3.4vw, 14px);
             }
+        }
+
+        /* Landscape on small touch device — squish vertically, 4-column grid */
+        @media (pointer: coarse) and (orientation: landscape) and (max-height: 500px) {
+            #menu h1 { font-size: min(3.5vw, 6svh); margin-bottom: 0.5svh; }
+            .char { font-size: min(3vw, 5svh); padding: 1svh 1.5vw; }
+            #modes.active { gap: 0.5svh; grid-template-columns: repeat(4, 1fr); margin-top: 0.5svh; }
+            #modes button { min-height: 5.5svh; font-size: min(2.2vw, 4svh); padding: 0.8svh 1vw; }
+            #menu { --m-btn-fs: min(2.5vw, 4svh); --m-btn-pv: min(1vw, 1.2svh); --m-btn-ph: min(1.5vw, 1.5svh); --m-btn-h: min(6vw, 7svh); --m-btn-gap: min(1vw, 1svh); --m-edge: min(1.5vw, 1.5svh); }
         }
 
         /* На очень узких экранах (<360px) уменьшаем кнопки чтобы pad и actions не пересекались */
@@ -772,9 +874,10 @@
             .help-scroll h3 { font-size: 17px; }
             .help-table td:first-child { width: auto; }
             #help-back-btn { font-size: 17px; padding: 10px 24px; }
-            #help-btn { font-size: 15px; padding: 10px 12px; left: 12px; bottom: 12px; }
-            #audio-toggle-btn { font-size: 15px; padding: 10px 12px; right: 12px; bottom: 12px; min-width: 160px; }
-            #reset-progress-btn { font-size: 15px; padding: 10px 12px; right: 12px; bottom: 62px; }
+            /* scores overlay on small screens */
+            .scores-overlay-inner h2 { font-size: 20px; }
+            #scores-overlay-content { font-size: 13px; }
+            #scores-back-btn { font-size: 16px; padding: 10px 22px; }
         }
 
         /* ==== BONUS SCREEN ==== */
@@ -821,6 +924,115 @@
         .skin-desc { margin-top:8px; font-size:14px; color:#fff; flex: 1 1 auto; display:flex; align-items:center; justify-content:center; padding:4px; }
         #bonus-back-btn { align-self:center; padding:10px 20px; font-size:16px; border-radius:10px; background:#ffd54f; color:#000; border:2px solid transparent; cursor:pointer; }
 
+        /* ==== LANDSCAPE WARNING OVERLAY ==== */
+        #landscape-warning {
+            display: none;
+            position: fixed;
+            inset: 0;
+            z-index: 2000;
+            background: rgba(0,0,0,0.88);
+            color: #fff;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 6vw;
+            box-sizing: border-box;
+            font-size: min(5vw, 4svh);
+            gap: min(3vw, 3svh);
+        }
+        #landscape-warning .lw-icon {
+            font-size: min(18vw, 14svh);
+            animation: lw-rotate 1.8s ease-in-out infinite alternate;
+        }
+        @keyframes lw-rotate {
+            0%   { transform: rotate(0deg); }
+            100% { transform: rotate(90deg); }
+        }
+        #landscape-warning p {
+            margin: 0;
+            font-weight: 700;
+            text-shadow: 0 2px 8px rgba(0,0,0,0.6);
+        }
+        /* Show only on portrait touch devices */
+        @media (pointer: coarse) and (orientation: portrait) {
+            #landscape-warning { display: flex; }
+        }
+
+        /* ==== BEST SCORES (desktop default) ==== */
+        #best-scores {
+            margin-top: 18px;
+            font-size: 16px;
+            color: #fff;
+        }
+
+        /* ==== SCORES TOGGLE BTN (mobile only) ==== */
+        #scores-toggle-btn {
+            display: none;
+        }
+
+        /* ==== MENU UTIL ROW (mobile layout wrapper for fixed btns) ==== */
+        /* On desktop: wrapper has zero height because children are position:fixed (out of flow).
+           Buttons still appear at their fixed corners. On mobile: overridden to flex row. */
+        #menu-util-row {
+            display: block;
+        }
+
+        /* ==== SCORES OVERLAY (mobile panel) ==== */
+        #scores-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            z-index: 1050;
+            background: rgba(0,0,0,0.62);
+            color: #fff;
+            overflow: hidden;
+        }
+        #scores-overlay.open {
+            display: flex;
+            align-items: flex-start;
+            justify-content: center;
+        }
+        .scores-overlay-inner {
+            display: flex;
+            flex-direction: column;
+            width: 100%;
+            max-width: 680px;
+            height: 100%;
+            padding: 20px 16px 16px;
+            box-sizing: border-box;
+            overflow-y: auto;
+        }
+        .scores-overlay-inner h2 {
+            font-size: 24px;
+            text-align: center;
+            margin: 0 0 14px;
+            text-shadow: 0 2px 8px rgba(0,0,0,0.7);
+            flex-shrink: 0;
+        }
+        #scores-overlay-content {
+            flex: 1;
+            font-size: 14px;
+            line-height: 1.5;
+            overflow-y: auto;
+        }
+        #scores-back-btn {
+            flex-shrink: 0;
+            margin-top: 16px;
+            align-self: center;
+            cursor: pointer;
+            font-size: 18px;
+            padding: 12px 28px;
+            border-radius: 10px;
+            border: 3px solid transparent;
+            background: #ffcc00;
+            color: #000;
+            font-weight: 700;
+            transition: all 0.2s ease;
+        }
+        #scores-back-btn:hover { transform: scale(1.05); box-shadow: 0 4px 8px rgba(0,0,0,0.3); }
+        #scores-back-btn:active { transform: scale(0.95); }
+
     </style>
 </head>
 <body>
@@ -839,7 +1051,7 @@
                 Кузя
             </div>
         </div>
-        <div id="best-scores" style="margin-top:18px; font-size:16px; color:#fff;"></div>
+        <div id="best-scores"></div>
         <div id="modes">
             <div class="mode-stack">
                 <button class="mode" data-mode="normal">🎮 Сирень и Букин</button>
@@ -857,9 +1069,26 @@
             <button class="mode" data-mode="library">📚 Библиотека</button>
         </div>
     </div>
-    <button id="help-btn" type="button" title="Как играть">❓ Help</button>
-    <button id="audio-toggle-btn" type="button" title="Включить/выключить все звуки">🔊 Звук: ВКЛ</button>
-    <button id="reset-progress-btn" type="button" title="Сбросить открытые уровни">Сбросить прогресс</button>
+    <div id="menu-util-row">
+        <button id="scores-toggle-btn" type="button">🏆 Рекорды</button>
+        <button id="help-btn" type="button" title="Как играть">❓ Help</button>
+        <button id="audio-toggle-btn" type="button" title="Включить/выключить все звуки">🔊 Звук: ВКЛ</button>
+        <button id="reset-progress-btn" type="button" title="Сбросить открытые уровни">Сбросить прогресс</button>
+    </div>
+</div>
+
+<div id="landscape-warning">
+    <div class="lw-icon">📱</div>
+    <p>Поверни устройство горизонтально</p>
+    <p style="font-size:0.75em; opacity:0.7; font-weight:400;">Игра работает только в альбомном режиме</p>
+</div>
+
+<div id="scores-overlay">
+    <div class="scores-overlay-inner">
+        <h2>🏆 Рекорды</h2>
+        <div id="scores-overlay-content"></div>
+        <button id="scores-back-btn" type="button">← Назад</button>
+    </div>
 </div>
 
 <div id="help-screen">

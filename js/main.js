@@ -25,7 +25,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const mobileHintEl = document.getElementById('mobile-controls-hint');
     const MOBILE_HINT_SEEN_KEY = 'bh_mobile_controls_hint_seen_v1';
     // Живая проверка — не кешируем, чтобы DevTools-эмуляция мобильного работала корректно
-    const isTouchDevice = () => ((window.matchMedia && window.matchMedia('(pointer: coarse)').matches) || navigator.maxTouchPoints > 0 || ('ontouchstart' in window));
+    const isTouchDevice = () => !!(window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
     const inputSourceState = {
         keyboard: new Set(),
         touch: new Set()
@@ -804,7 +804,7 @@ document.addEventListener('DOMContentLoaded', () => {
             c.classList.add('selected');
             
             selectedChar = c.dataset.char;
-            modes.style.display = 'block';
+            modes.classList.add('active');
             if (typeof refreshModeButtonsByProgress === 'function') refreshModeButtonsByProgress();
         };
     });
@@ -855,6 +855,10 @@ document.addEventListener('DOMContentLoaded', () => {
     modeButtons.forEach(m => {
         // Обрабатываем клик по конкретному режиму игры
         m.onclick = async () => {
+            // Блокируем старт если тач-устройство в портретном режиме
+            if (isTouchDevice() && window.matchMedia('(orientation: portrait)').matches) {
+                return;
+            }
             audioPlay('ui_click');
             clearInputSource('keyboard');
             clearTouchInputs();
@@ -922,6 +926,26 @@ document.addEventListener('DOMContentLoaded', () => {
             helpScreen.style.display = 'none';
             helpBackBtn.classList.remove('menu-kb-focus');
             menuNavFocus('help', 0);
+        };
+    }
+
+    // ==== SCORES OVERLAY (mobile) ====
+    const scoresToggleBtn = document.getElementById('scores-toggle-btn');
+    const scoresOverlay = document.getElementById('scores-overlay');
+    const scoresBackBtn = document.getElementById('scores-back-btn');
+    const scoresOverlayContent = document.getElementById('scores-overlay-content');
+    if (scoresToggleBtn && scoresOverlay && scoresBackBtn && scoresOverlayContent) {
+        scoresToggleBtn.onclick = () => {
+            audioPlay('ui_click');
+            // Sync content from hidden #best-scores div
+            const bestScoresEl = document.getElementById('best-scores');
+            if (bestScoresEl) scoresOverlayContent.innerHTML = bestScoresEl.innerHTML;
+            scoresOverlay.classList.add('open');
+            scoresOverlayContent.scrollTop = 0;
+        };
+        scoresBackBtn.onclick = () => {
+            audioPlay('ui_click');
+            scoresOverlay.classList.remove('open');
         };
     }
 
