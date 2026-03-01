@@ -190,6 +190,35 @@
             box-shadow: 0 0 22px rgba(255,255,255,0.8);
         }
 
+        /* Кнопка паузы в игре (сверху справа) */
+        #pause-game-btn {
+            position: absolute;
+            top: calc(10px + env(safe-area-inset-top));
+            right: calc(10px + env(safe-area-inset-right));
+            z-index: 950;
+            display: none;
+            padding: 8px 14px;
+            font-size: 20px;
+            line-height: 1;
+            border-radius: 10px;
+            border: 2px solid rgba(255,255,255,0.55);
+            background: rgba(17, 24, 39, 0.72);
+            color: #fff;
+            cursor: pointer;
+            backdrop-filter: blur(3px);
+            -webkit-backdrop-filter: blur(3px);
+            touch-action: manipulation;
+            -webkit-tap-highlight-color: transparent;
+            user-select: none;
+            -webkit-user-select: none;
+            transition: background 0.15s, transform 0.1s;
+        }
+        #pause-game-btn.visible { display: block; }
+        #pause-game-btn:active { transform: scale(0.93); background: rgba(250,204,21,0.85); color: #111; }
+        @media (pointer: coarse) {
+            #pause-game-btn { padding: 10px 16px; font-size: 22px; }
+        }
+
         /* Кнопки паузы */
         #pauseOverlay button.menu-kb-focus {
             outline: 3px solid #fff !important;
@@ -322,7 +351,7 @@
         #touch-controls .touch-pad {
             position: absolute;
             left: calc(12px + env(safe-area-inset-left));
-            bottom: calc(12px + env(safe-area-inset-bottom));
+            bottom: calc(var(--hud-h, 0px) + 18px + env(safe-area-inset-bottom));
             display: flex;
             flex-direction: column;
             gap: 8px;
@@ -333,9 +362,17 @@
             position: absolute;
             right: calc(12px + env(safe-area-inset-right));
             bottom: calc(12px + env(safe-area-inset-bottom));
-            display: grid;
-            grid-template-columns: repeat(2, minmax(70px, 1fr));
+            display: flex;
+            flex-direction: row;
+            align-items: stretch;
             gap: 8px;
+            pointer-events: none;
+        }
+
+        #touch-controls .touch-col {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
             pointer-events: none;
         }
 
@@ -349,10 +386,10 @@
             pointer-events: auto;
             min-width: 64px;
             min-height: 52px;
-            border: 2px solid rgba(255,255,255,0.45);
+            border: 2px solid rgba(255,255,255,0.28);
             border-radius: 14px;
-            background: rgba(17, 24, 39, 0.65);
-            color: #fff;
+            background: rgba(17, 24, 39, 0.32);
+            color: rgba(255,255,255,0.85);
             font-size: 16px;
             font-weight: 700;
             backdrop-filter: blur(2px);
@@ -370,15 +407,16 @@
         }
 
         #touch-controls .touch-btn.fire {
-            min-height: 64px;
-            font-size: 17px;
-            background: rgba(220, 38, 38, 0.78);
+            min-height: 116px;
+            min-width: 78px;
+            font-size: 24px;
+            align-self: stretch;
         }
 
         #touch-controls .touch-btn.small {
-            min-width: 58px;
-            min-height: 48px;
-            font-size: 13px;
+            min-width: 56px;
+            min-height: 44px;
+            font-size: 12px;
             font-weight: 700;
         }
 
@@ -386,6 +424,33 @@
             font-size: 12px;
             letter-spacing: 0.2px;
         }
+
+        /* Drag-режим блоков управления (в паузе) */
+        .touch-pad.dragging-mode,
+        .touch-actions.dragging-mode {
+            outline: 2px dashed rgba(255, 255, 255, 0.6);
+            outline-offset: 4px;
+            border-radius: 14px;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+        .touch-pad.dragging-mode:active,
+        .touch-actions.dragging-mode:active { cursor: grabbing; }
+        /* Иконка перемещения над каждым блоком */
+        .touch-pad.dragging-mode::before,
+        .touch-actions.dragging-mode::before {
+            content: '✥';
+            position: absolute;
+            top: -22px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: rgba(255,255,255,0.75);
+            font-size: 16px;
+            pointer-events: none;
+            text-shadow: 0 0 6px rgba(0,0,0,0.8);
+        }
+        /* touch-pad нужен position:relative чтобы ::before позиционировался */
+        .touch-pad { position: absolute; }
 
         #mobile-controls-hint {
             position: absolute;
@@ -502,14 +567,21 @@
             }
 
             #touch-controls .touch-btn {
-                min-width: 58px;
-                min-height: 48px;
-                font-size: 15px;
+                min-width: 56px;
+                min-height: 46px;
+                font-size: 14px;
             }
 
             #touch-controls .touch-btn.fire {
-                min-height: 58px;
-                font-size: 16px;
+                min-height: 110px;
+                min-width: 74px;
+                font-size: 22px;
+            }
+
+            #touch-controls .touch-btn.small {
+                min-width: 52px;
+                min-height: 42px;
+                font-size: 12px;
             }
 
             #mobile-controls-hint .hint-card {
@@ -524,6 +596,21 @@
             #mobile-controls-hint .hint-text {
                 font-size: clamp(12px, 3.4vw, 14px);
             }
+        }
+
+        /* На очень узких экранах (<360px) уменьшаем кнопки чтобы pad и actions не пересекались */
+        @media (max-width: 359px) and (pointer: coarse) {
+            #touch-controls .touch-btn {
+                min-width: 48px;
+                min-height: 42px;
+                font-size: 13px;
+                padding: 0;
+            }
+            #touch-controls .touch-btn.fire { min-height: 50px; font-size: 14px; }
+            #touch-controls .touch-pad { gap: 5px; }
+            #touch-controls .touch-row { gap: 5px; }
+            #touch-controls .touch-actions { gap: 5px; }
+            #touch-controls .touch-col { gap: 4px; }
         }
 
         /* ==== HELP BUTTON ==== */
@@ -930,6 +1017,7 @@
 <div id="game">
     <canvas id="canvas"></canvas>
     <div id="hud"></div>
+    <button id="pause-game-btn" aria-label="Пауза" title="Пауза">⏸</button>
     <div id="touch-controls" aria-hidden="true">
         <div class="touch-pad">
             <div class="touch-row" style="justify-content:center;">
@@ -942,10 +1030,11 @@
             </div>
         </div>
         <div class="touch-actions">
+            <div class="touch-col">
+                <button class="touch-btn small tap" data-key="Shift" data-tap="1" title="Бонусный режим">BONUS</button>
+                <button class="touch-btn small tap" data-key="Control" data-tap="1" title="Альтернативная стрельба">ALT</button>
+            </div>
             <button class="touch-btn fire hold" data-key=" " data-hold="1" title="Огонь">FIRE</button>
-            <button class="touch-btn small tap" data-key="Shift" data-tap="1" title="Бонусный режим">BONUS</button>
-            <button class="touch-btn small tap" data-key="Control" data-tap="1" title="Альтернативная стрельба">ALT</button>
-            <button class="touch-btn small tap" data-key="Escape" data-tap="1" title="Пауза">PAUSE</button>
         </div>
     </div>
     <div id="mobile-controls-hint" aria-hidden="true">
@@ -954,7 +1043,7 @@
             <div class="hint-text">
                 LEFT/RIGHT - движение, UP - прыжок, FIRE - стрельба.
                 DIR/UP: в обычном режиме меняет направление пули, в ALT при удержании стреляет вверх.
-                ALT - альтернативная стрельба, BONUS - бонусный режим, PAUSE - пауза.
+                BONUS - бонусный режим, ALT - альтернативная стрельба.
             </div>
             <button class="hint-close" data-action="close-mobile-hint">Понятно</button>
         </div>

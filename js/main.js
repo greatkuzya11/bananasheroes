@@ -24,7 +24,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const touchControlsEl = document.getElementById('touch-controls');
     const mobileHintEl = document.getElementById('mobile-controls-hint');
     const MOBILE_HINT_SEEN_KEY = 'bh_mobile_controls_hint_seen_v1';
-    const isTouchDevice = ((window.matchMedia && window.matchMedia('(pointer: coarse)').matches) || navigator.maxTouchPoints > 0 || ('ontouchstart' in window));
+    // Живая проверка — не кешируем, чтобы DevTools-эмуляция мобильного работала корректно
+    const isTouchDevice = () => ((window.matchMedia && window.matchMedia('(pointer: coarse)').matches) || navigator.maxTouchPoints > 0 || ('ontouchstart' in window));
     const inputSourceState = {
         keyboard: new Set(),
         touch: new Set()
@@ -220,7 +221,7 @@ document.addEventListener('DOMContentLoaded', () => {
      * Показывает подсказку управления на мобильных устройствах при первом запуске.
      */
     function maybeShowMobileControlsHint() {
-        if (!isTouchDevice || !mobileHintEl) return;
+        if (!isTouchDevice() || !mobileHintEl) return;
         if (!running || paused) return;
         if (hasSeenMobileHint()) return;
 
@@ -235,10 +236,13 @@ document.addEventListener('DOMContentLoaded', () => {
      */
     function setTouchControlsVisible(visible) {
         if (!touchControlsEl) return;
-        const shouldShow = !!visible && isTouchDevice;
+        const shouldShow = !!visible && isTouchDevice();
         touchControlsEl.classList.toggle('active', shouldShow);
         touchControlsEl.setAttribute('aria-hidden', shouldShow ? 'false' : 'true');
         if (!shouldShow) {
+            // Сброс inline-стилей drag-режима (z-index, display) при скрытии
+            touchControlsEl.style.zIndex = '';
+            touchControlsEl.style.display = '';
             clearTouchInputs();
             hideMobileControlsHint();
         } else {
@@ -250,7 +254,7 @@ document.addEventListener('DOMContentLoaded', () => {
      * Инициализирует обработчики экранного управления для touch-устройств.
      */
     function initTouchControls() {
-        if (!touchControlsEl || !isTouchDevice) {
+        if (!touchControlsEl) {
             setTouchControlsVisible(false);
             return;
         }
@@ -311,6 +315,8 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
 
+        loadTouchBlockPositions();
+
         if (mobileHintEl) {
             const closeBtn = mobileHintEl.querySelector('[data-action="close-mobile-hint"]');
             if (closeBtn) {
@@ -332,8 +338,30 @@ document.addEventListener('DOMContentLoaded', () => {
         clearInputSource('keyboard');
         clearTouchInputs();
     };
+    // ResizeObserver: держим CSS-переменную --hud-h актуальной,
+    // чтобы touch-pad всегда находился выше HUD
+    const gameEl = document.getElementById('game');
+    const hudEl = document.getElementById('hud');
+    if (gameEl && hudEl && typeof ResizeObserver !== 'undefined') {
+        const hudObserver = new ResizeObserver(() => {
+            gameEl.style.setProperty('--hud-h', hudEl.offsetHeight + 'px');
+        });
+        hudObserver.observe(hudEl);
+    }
+
+    const pauseGameBtnEl = document.getElementById('pause-game-btn');
+    function setPauseGameBtnVisible(show) {
+        if (!pauseGameBtnEl) return;
+        pauseGameBtnEl.classList.toggle('visible', !!show);
+    }
+    if (pauseGameBtnEl) {
+        pauseGameBtnEl.addEventListener('click', () => {
+            if (!paused && running) pauseGame();
+        });
+    }
     window.setGameTouchControlsVisible = (visible) => {
         setTouchControlsVisible(visible);
+        setPauseGameBtnVisible(visible);
     };
     
     /**
@@ -372,6 +400,141 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    const TOUCH_PAD_POS_KEY = 'bh_touch_pad_pos_v1';
+    const TOUCH_ACTIONS_POS_KEY = 'bh_touch_actions_pos_v1';
+
+    function loadTouchBlockPositions() {
+        if (!touchControlsEl) return;
+        const blocks = [
+            { el: touchControlsEl.querySelector('.touch-pad'), key: TOUCH_PAD_POS_KEY },
+            { el: touchControlsEl.querySelector('.touch-actions'), key: TOUCH_ACTIONS_POS_KEY }
+        ];
+        blocks.forEach(({ el, key }) => {
+            if (!el) return;
+            try {
+                const saved = localStorage.getItem(key);
+                if (!saved) return;
+                const pos = JSON.parse(saved);
+                el.style.left   = pos.left + 'px';
+                el.style.top    = pos.top  + 'px';
+                el.style.bottom = 'auto';
+                el.style.right  = 'auto';
+            } catch (e) { /* ignore */ }
+        });
+    }
+
+    function resetTouchBlockPositions() {
+        if (!touchControlsEl) return;
+        [TOUCH_PAD_POS_KEY, TOUCH_ACTIONS_POS_KEY].forEach(key => localStorage.removeItem(key));
+        const pad = touchControlsEl.querySelector('.touch-pad');
+        const act = touchControlsEl.querySelector('.touch-actions');
+        if (pad) { pad.style.left = ''; pad.style.top = ''; pad.style.bottom = ''; pad.style.right = ''; }
+        if (act) { act.style.left = ''; act.style.top = ''; act.style.bottom = ''; act.style.right = ''; }
+    }
+
+    function enableTouchBlockDragging() {
+        if (!touchControlsEl || !isTouchDevice()) return;
+        touchControlsEl.style.zIndex = '1050';
+        touchControlsEl.style.display = 'block';
+
+        const blocks = [
+            { el: touchControlsEl.querySelector('.touch-pad'),     key: TOUCH_PAD_POS_KEY },
+            { el: touchControlsEl.querySelector('.touch-actions'), key: TOUCH_ACTIONS_POS_KEY }
+        ].filter(({ el }) => el);
+
+        blocks.forEach(({ el, key }) => {
+            el.classList.add('dragging-mode');
+
+            // Создаём прозрачный оверлей точно поверх блока — он перехватывает касания,
+            // не трогая pointer-events кнопок (они работают как обычно в игре)
+            const overlay = document.createElement('div');
+            overlay.className = 'drag-overlay';
+            Object.assign(overlay.style, {
+                position: 'absolute', inset: '0',
+                zIndex: '1', cursor: 'grab',
+                touchAction: 'none', borderRadius: 'inherit',
+                pointerEvents: 'auto'
+            });
+            el.appendChild(overlay);
+            el._dragOverlay = overlay;
+
+            let dragging = false, startPX, startPY, startLeft, startTop;
+            const DRAG_THRESHOLD = 6;
+
+            const onDown = (e) => {
+                const cr = touchControlsEl.getBoundingClientRect();
+                const br = el.getBoundingClientRect();
+                const computedLeft = br.left - cr.left;
+                const computedTop  = br.top  - cr.top;
+                el.style.left   = computedLeft + 'px';
+                el.style.top    = computedTop  + 'px';
+                el.style.bottom = 'auto';
+                el.style.right  = 'auto';
+                dragging  = true;
+                startPX   = e.clientX;
+                startPY   = e.clientY;
+                startLeft = computedLeft;
+                startTop  = computedTop;
+                overlay.style.cursor = 'grabbing';
+                try { overlay.setPointerCapture(e.pointerId); } catch (_) {}
+                e.preventDefault();
+            };
+            const onMove = (e) => {
+                if (!dragging) return;
+                const dx = e.clientX - startPX;
+                const dy = e.clientY - startPY;
+                if (Math.hypot(dx, dy) < DRAG_THRESHOLD) return;
+                const cr = touchControlsEl.getBoundingClientRect();
+                el.style.left = Math.max(0, Math.min(cr.width  - el.offsetWidth,  startLeft + dx)) + 'px';
+                el.style.top  = Math.max(0, Math.min(cr.height - el.offsetHeight, startTop  + dy)) + 'px';
+                e.preventDefault();
+            };
+            const onUp = () => {
+                if (!dragging) return;
+                dragging = false;
+                overlay.style.cursor = 'grab';
+                localStorage.setItem(key, JSON.stringify({
+                    left: parseFloat(el.style.left),
+                    top:  parseFloat(el.style.top)
+                }));
+            };
+
+            overlay._dragHandlers = { onDown, onMove, onUp };
+            overlay.addEventListener('pointerdown',   onDown, { passive: false });
+            overlay.addEventListener('pointermove',   onMove, { passive: false });
+            overlay.addEventListener('pointerup',     onUp);
+            overlay.addEventListener('pointercancel', onUp);
+        });
+    }
+
+    function disableTouchBlockDragging() {
+        if (!touchControlsEl) return;
+        touchControlsEl.style.zIndex = '';
+        touchControlsEl.style.display = '';
+
+        const blocks = [
+            touchControlsEl.querySelector('.touch-pad'),
+            touchControlsEl.querySelector('.touch-actions')
+        ].filter(Boolean);
+
+        blocks.forEach(el => {
+            el.classList.remove('dragging-mode');
+            if (el._dragOverlay) {
+                const ov = el._dragOverlay;
+                if (ov._dragHandlers) {
+                    const { onDown, onMove, onUp } = ov._dragHandlers;
+                    ov.removeEventListener('pointerdown',   onDown);
+                    ov.removeEventListener('pointermove',   onMove);
+                    ov.removeEventListener('pointerup',     onUp);
+                    ov.removeEventListener('pointercancel', onUp);
+                }
+                ov.remove();
+                delete el._dragOverlay;
+            }
+        });
+    }
+
+    // ──────────────────────────────────────────────
     /**
      * Показывает меню паузы.
      */
@@ -381,7 +544,13 @@ document.addEventListener('DOMContentLoaded', () => {
             window.BHAudio.setPaused(true);
             audioPlay('ui_pause');
         }
-        setTouchControlsVisible(false);
+        setPauseGameBtnVisible(false);
+        // На тач-устройствах скрываем touch-controls только если НЕ тач
+        if (isTouchDevice()) {
+            enableTouchBlockDragging();
+        } else {
+            setTouchControlsVisible(false);
+        }
         const overlay = document.createElement('div');
         overlay.id = 'pauseOverlay';
         Object.assign(overlay.style, {
@@ -483,6 +652,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // Обработчик клика по кнопке "Начать заново"
         btnRestart.onclick = () => {
             audioPlay('ui_click');
+            disableTouchBlockDragging();
             const pauseOverlay = document.getElementById('pauseOverlay');
             if (pauseOverlay) pauseOverlay.remove();
             paused = false;
@@ -490,6 +660,7 @@ document.addEventListener('DOMContentLoaded', () => {
             clearTouchInputs();
             beginGameRun(gameMode, true);
             setTouchControlsVisible(true);
+            setPauseGameBtnVisible(true);
         };
         overlay.appendChild(btnRestart);
 
@@ -528,6 +699,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // Обработчик клика по кнопке "Главный экран"
         btnMain.onclick = () => {
             audioPlay('ui_click');
+            disableTouchBlockDragging();
             const pauseOverlay = document.getElementById('pauseOverlay');
             if (pauseOverlay) pauseOverlay.remove();
             paused = false;
@@ -549,6 +721,27 @@ document.addEventListener('DOMContentLoaded', () => {
         };
         overlay.appendChild(btnMain);
 
+        // На тач: показываем подсказку и кнопку сброса позиций
+        if (isTouchDevice()) {
+            const dragHint = document.createElement('div');
+            dragHint.textContent = '✥ Перетащите блоки управления для смены позиции';
+            Object.assign(dragHint.style, {
+                marginTop: '18px', fontSize: '13px', color: 'rgba(255,255,255,0.6)',
+                textAlign: 'center', maxWidth: '300px'
+            });
+            overlay.appendChild(dragHint);
+
+            const btnReset = document.createElement('button');
+            btnReset.innerText = '↺ Сбросить позиции кнопок';
+            Object.assign(btnReset.style, {
+                marginTop: '8px', padding: '8px 16px', fontSize: '14px', cursor: 'pointer',
+                borderRadius: '8px', background: 'rgba(255,255,255,0.15)',
+                border: '2px solid rgba(255,255,255,0.35)', color: '#fff'
+            });
+            btnReset.onclick = () => { resetTouchBlockPositions(); };
+            overlay.appendChild(btnReset);
+        }
+
         document.body.appendChild(overlay);
         // Автофокус на первой кнопке паузы для клавиатурной навигации
         const firstPauseBtn = overlay.querySelector('button[data-pause-idx]');
@@ -564,12 +757,16 @@ document.addEventListener('DOMContentLoaded', () => {
             pauseOverlay.remove();
         }
         paused = false;
+        disableTouchBlockDragging();
         if (window.BHAudio) {
             window.BHAudio.setPaused(false);
             audioPlay('ui_resume');
         }
         last = performance.now(); // сбрасываем время чтобы не было скачка
-        if (running) setTouchControlsVisible(true);
+        if (running) {
+            setTouchControlsVisible(true);
+            setPauseGameBtnVisible(true);
+        }
     }
 
     window.addEventListener('resize', resizeCanvas);
@@ -681,6 +878,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 gameMode = targetMode;
                 beginGameRun(gameMode, true);
                 setTouchControlsVisible(true);
+                setPauseGameBtnVisible(true);
             }
         };
     });
