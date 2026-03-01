@@ -82,6 +82,22 @@ function update(dt) {
     if (invuln > 0) invuln -= dt;
     // Таймер визуального эффекта смены фазы
     if (normalPhaseEffectTimer > 0) normalPhaseEffectTimer = Math.max(0, normalPhaseEffectTimer - dt);
+
+    const adaptiveCombat = (typeof isMobileAdaptiveCombatMode === 'function') && isMobileAdaptiveCombatMode(gameMode);
+    const adaptiveScale = adaptiveCombat && (typeof getMobileLandscapeAdaptiveScale === 'function')
+        ? getMobileLandscapeAdaptiveScale()
+        : 1;
+    const frameMul = adaptiveCombat ? (dt * 60) : 1;
+    const speedMul = adaptiveCombat ? adaptiveScale : 1;
+    const mobileBalance = (window.BHMobileAdaptive
+        && typeof window.BHMobileAdaptive.getBalance === 'function'
+        && adaptiveCombat)
+        ? window.BHMobileAdaptive.getBalance(gameMode)
+        : null;
+    const balFire = mobileBalance ? mobileBalance.enemyFireRate : 1;
+    const balProj = mobileBalance ? mobileBalance.enemyProjectileSpeed : 1;
+    const balMove = mobileBalance ? mobileBalance.enemyMoveSpeed : 1;
+    const balDrop = mobileBalance ? mobileBalance.dropFallSpeed : 1;
     
     // Обновляем платформы в режиме платформ
     if (gameMode === 'platforms') {
@@ -189,10 +205,10 @@ function update(dt) {
     // Обновляем позиции всех пуль игрока; b — объект пули
     bullets.forEach(b => {
         if (typeof b.vx === 'number' && typeof b.vy === 'number') {
-            b.x += b.vx;
-            b.y += b.vy;
+            b.x += b.vx * frameMul * speedMul;
+            b.y += b.vy * frameMul * speedMul;
         } else {
-            b.y -= b.speed;
+            b.y -= b.speed * frameMul * speedMul;
         }
         // Вращаем пулю Дрона
         if (rotationEnabled && b.playerType === 'dron' && typeof b.rotation === 'number') {
@@ -212,10 +228,10 @@ function update(dt) {
     // b — объект вражеской пули
     enemyBullets.forEach(b => {
         if (typeof b.vx === 'number' && typeof b.vy === 'number') {
-            b.x += b.vx;
-            b.y += b.vy;
+            b.x += b.vx * frameMul * speedMul;
+            b.y += b.vy * frameMul * speedMul;
         } else {
-            b.y += 4;
+            b.y += 4 * frameMul * speedMul;
         }
         if (b.o4koPoop) {
             b.rotation = (typeof b.rotation === 'number' ? b.rotation : 0) + (typeof b.rotationSpeed === 'number' ? b.rotationSpeed : 0.08);
@@ -223,8 +239,8 @@ function update(dt) {
     });
     // Двигаем бонусные бутылки; b — объект бутылки
     bottles.forEach(b => {
-        b.y += 2;
-        b.x += Math.sin(b.y / 20) * 1.5;
+        b.y += 2 * balDrop * frameMul * speedMul;
+        b.x += Math.sin(b.y / 20) * 1.5 * balDrop;
     });
 
     // Оставляем пули в пределах расширенных границ экрана
@@ -236,15 +252,15 @@ function update(dt) {
     bottles = bottles.filter(b => b.y < canvas.height);
     // Двигаем сердечки; h — объект сердечка
     hearts.forEach(h => {
-        h.y += 2;
-        h.x += Math.sin(h.y / 20) * 1.5;
+        h.y += 2 * balDrop * frameMul * speedMul;
+        h.x += Math.sin(h.y / 20) * 1.5 * balDrop;
     });
     // Фильтруем сердечки по вертикали; h — объект сердечка
     hearts = hearts.filter(h => h.y < canvas.height);
     // Двигаем бананы; b — объект банана
     bananaBonuses.forEach(b => {
-        b.y += 2.2;
-        b.x += Math.sin(b.y / 18) * 1.1;
+        b.y += 2.2 * balDrop * frameMul * speedMul;
+        b.x += Math.sin(b.y / 18) * 1.1 * balDrop;
     });
     // Фильтруем бананы по вертикали
     bananaBonuses = bananaBonuses.filter(b => b.y < canvas.height + 20);
@@ -343,17 +359,17 @@ function update(dt) {
             }
         } else {
             // Покачивание
-            boss.angle += boss.angleSpeed;
-            boss.x += Math.sin(boss.angle) * 2;
+            boss.angle += boss.angleSpeed * frameMul;
+            boss.x += Math.sin(boss.angle) * 2 * frameMul * (adaptiveCombat ? adaptiveScale : 1);
             // Движение по экрану
-            boss.x += boss.dir * 1.2;
+            boss.x += boss.dir * 1.2 * balMove * frameMul * speedMul;
             if (boss.x < 0 || boss.x + boss.w > canvas.width) {
                 boss.dir *= -1;
             }
             // Стрельба в 3 раза чаще
             boss.shootTimer += dt;
             // Увеличиваем частоту стрельбы и слегка наводим пули на игрока
-            if (Math.random() < 0.03 && boss.shootTimer > 0.16) {
+            if (Math.random() < 0.03 * balFire * frameMul && boss.shootTimer > 0.16) {
                 boss.shootTimer = 0;
                 if (window.BHAudio && typeof window.BHAudio.playEnemyShoot === 'function') {
                     window.BHAudio.playEnemyShoot('lilac');
@@ -367,12 +383,14 @@ function update(dt) {
                     const dx = px - bx;
                     const dy = py - by;
                     const dist = Math.max(1, Math.hypot(dx, dy));
-                    const speed = 5.0;
+                    const speed = 5.0 * balProj;
                     // Самонаведение: сильнее для пуль босса
                     const homing = 0.45;
                     const vx = (dx / dist) * speed * homing;
                     const vy = (dy / dist) * speed * 0.95;
-                    enemyBullets.push({ x: bx, y: by, w: 16, h: 24, emoji: leafEmojis[emojiIdx], vx, vy });
+                    const ebW = Math.max(8, Math.round(16 * speedMul));
+                    const ebH = Math.max(12, Math.round(24 * speedMul));
+                    enemyBullets.push({ x: bx, y: by, w: ebW, h: ebH, emoji: leafEmojis[emojiIdx], vx, vy });
                 }
             }
         }
@@ -440,23 +458,24 @@ function update(dt) {
         if (!e.diving) {
             const base = 1.2 + survivalEnemySpeedIncrease;
             const speedMul = (typeof e.speedMul === 'number') ? e.speedMul : 1.0;
-            e.x += e.dir * (base * speedMul);
+            e.x += e.dir * (base * speedMul * balMove) * frameMul * (adaptiveCombat ? adaptiveScale : 1);
             if (e.x < 0 || e.x + e.w > canvas.width) {
                 e.dir *= -1;
-                e.y += 20;
+                e.y += 20 * (adaptiveCombat ? adaptiveScale : 1);
             }
             // Вероятность пикирования зависит от фазы (для normal): фазы 1-2 => 0.001, иначе 0.002
             let diveChance = 0.002;
             if (gameMode === 'normal' && typeof e.phase === 'number') {
                 if (e.phase === 1 || e.phase === 2) diveChance = 0.001;
             }
-            if (Math.random() < diveChance) {
+            if (Math.random() < diveChance * balFire * frameMul) {
                 e.diving = true;
                 e.targetX = player.x + player.w / 2;
             }
         } else {
-            e.y += 4;
-            e.x += (e.targetX - e.x) * 0.02;
+            e.y += 4 * frameMul * (adaptiveCombat ? adaptiveScale : 1);
+            const lerp = adaptiveCombat ? (1 - Math.pow(1 - 0.02, frameMul)) : 0.02;
+            e.x += (e.targetX - e.x) * lerp;
             // Теперь враг летит чуть ниже игрока, чтобы мог столкнуться
             if (e.y > player.y + player.h * 0.5) {
                 e.diving = false;
@@ -466,7 +485,7 @@ function update(dt) {
 
         e.shootTimer += dt;
         const shootMul = (typeof e.shootMul === 'number') ? e.shootMul : (typeof e.shootMul === 'undefined' && typeof e.shootMul === 'undefined' ? 1.0 : 1.0);
-        if (Math.random() < 0.004 * shootMul && e.shootTimer > 0.9) {
+        if (Math.random() < 0.004 * shootMul * balFire * frameMul && e.shootTimer > 0.9) {
             e.shootTimer = 0;
             if (window.BHAudio && typeof window.BHAudio.playEnemyShoot === 'function') {
                 window.BHAudio.playEnemyShoot('lilac');
@@ -478,7 +497,7 @@ function update(dt) {
             const dx = px - bx;
             const dy = py - by;
             const dist = Math.max(1, Math.hypot(dx, dy));
-            const speed = 4.0 + survivalBulletSpeedIncrease;
+            const speed = (4.0 + survivalBulletSpeedIncrease) * balProj;
             const homing = 0.18; // мягкое самонаведение для обычных врагов
             
             // Выпускаем несколько пуль в зависимости от множителя пуль режима выживания
@@ -490,7 +509,9 @@ function update(dt) {
                 const angle = Math.atan2(dy, dx) + spreadAngle;
                 const vx = Math.cos(angle) * speed * homing;
                 const vy = Math.sin(angle) * speed * 0.9;
-                enemyBullets.push({ x: bx, y: by, w: 8, h: 12, emoji: leafEmojis[emojiIdx], vx, vy });
+                const ebW = Math.max(5, Math.round(8 * speedMul));
+                const ebH = Math.max(8, Math.round(12 * speedMul));
+                enemyBullets.push({ x: bx, y: by, w: ebW, h: ebH, emoji: leafEmojis[emojiIdx], vx, vy });
             }
         }
     });
@@ -839,7 +860,10 @@ function update(dt) {
                     trySpawnHeart(e.x, e.y);
                     // Гарантированное выпадение бонуса при 5 комбо подряд
                     if (combo > 0 && combo % 5 === 0) {
-                        bottles.push({ x: e.x, y: e.y, w: 18, h: 36 });
+                        const size = (typeof getCombatPickupSize === 'function')
+                            ? getCombatPickupSize('bottle')
+                            : { w: 18, h: 36 };
+                        bottles.push({ x: e.x, y: e.y, w: size.w, h: size.h });
                     }
                     
                     // Бонусный выстрел Кузи убивает еще одного ближайшего врага

@@ -10,6 +10,23 @@ class BossO4ko {
      * @param {number} playerY - стартовая координата игрока Y (не используется напрямую, оставлена для совместимости).
      */
     constructor(playerX, playerY) {
+        const adaptiveScale = (typeof isMobileAdaptiveCombatMode === 'function'
+            && isMobileAdaptiveCombatMode('o4ko')
+            && typeof getMobileLandscapeAdaptiveScale === 'function')
+            ? getMobileLandscapeAdaptiveScale('o4ko')
+            : 1;
+        const mobileBalance = (window.BHMobileAdaptive
+            && typeof window.BHMobileAdaptive.getBalance === 'function'
+            && typeof window.BHMobileAdaptive.isActive === 'function'
+            && window.BHMobileAdaptive.isActive('o4ko'))
+            ? window.BHMobileAdaptive.getBalance('o4ko')
+            : null;
+        this.mobileAdaptiveScale = adaptiveScale;
+        this.mobileBalance = mobileBalance || {
+            enemyFireRate: 1,
+            enemyProjectileSpeed: 1,
+            enemyMoveSpeed: 1
+        };
         // Размер босса = 1.5 роста игрока.
         this.h = Math.max(48, player.h * 1.5);
         this.w = this.h;
@@ -24,7 +41,7 @@ class BossO4ko {
         this.y = this.baseY;
 
         // Ходьба.
-        this.baseWalkSpeed = Math.max(70, canvas.width * 0.07); // px/s
+        this.baseWalkSpeed = Math.max(70 * adaptiveScale, canvas.width * 0.07); // px/s
         this.dir = -1; // старт влево
         this.facingDir = 'left';
         this.dirTimer = 0;
@@ -54,7 +71,7 @@ class BossO4ko {
             maxRadius: canvas.width * 0.40,
             currentRadius: 0,
             centerX: this.x + this.w * 0.5,
-            groundY: canvas.height - 20
+            groundY: canvas.height - Math.max(8, Math.round(20 * adaptiveScale))
         };
 
         // Рывок.
@@ -82,7 +99,7 @@ class BossO4ko {
         this.attackTimer = 0;
         this.shootTimer = 0;
         this.shootInterval = 1.4;
-        this.basePoopSize = 28;
+        this.basePoopSize = Math.max(16, Math.round(28 * adaptiveScale));
 
         // Анимация кадров.
         this.frame = 0;
@@ -106,11 +123,18 @@ class BossO4ko {
      * Обновляет границы движения в правой части экрана.
      */
     refreshBounds() {
+        const adaptiveScale = (typeof isMobileAdaptiveCombatMode === 'function'
+            && isMobileAdaptiveCombatMode('o4ko')
+            && typeof getMobileLandscapeAdaptiveScale === 'function')
+            ? getMobileLandscapeAdaptiveScale('o4ko')
+            : (this.mobileAdaptiveScale || 1);
+        this.mobileAdaptiveScale = adaptiveScale;
         const rightStart = canvas.width * this.rightZoneStartRatio;
-        const rightLimit = canvas.width - this.w - 20;
-        this.minX = Math.max(20, Math.min(rightStart, rightLimit));
+        const edgePad = Math.max(8, Math.round(20 * adaptiveScale));
+        const rightLimit = canvas.width - this.w - edgePad;
+        this.minX = Math.max(edgePad, Math.min(rightStart, rightLimit));
         this.maxX = Math.max(this.minX, rightLimit);
-        this.baseY = canvas.height - this.h - 20;
+        this.baseY = canvas.height - this.h - edgePad;
     }
 
     /**
@@ -335,7 +359,8 @@ class BossO4ko {
      * @param {number} speedMult - множитель скорости.
      */
     moveHorizontally(dt, speedMult) {
-        this.x += this.dir * this.baseWalkSpeed * speedMult * dt;
+        const moveBal = (this.mobileBalance && this.mobileBalance.enemyMoveSpeed) ? this.mobileBalance.enemyMoveSpeed : 1;
+        this.x += this.dir * this.baseWalkSpeed * speedMult * moveBal * dt;
         if (this.x <= this.minX) {
             this.x = this.minX;
             this.dir = 1;
@@ -365,7 +390,7 @@ class BossO4ko {
         this.groundWave.maxRadius = canvas.width * 0.40;
         this.groundWave.currentRadius = 0;
         this.groundWave.centerX = this.x + this.w * 0.5;
-        this.groundWave.groundY = canvas.height - 20;
+        this.groundWave.groundY = canvas.height - Math.max(8, Math.round(20 * (this.mobileAdaptiveScale || 1)));
         if (window.BHAudio) {
             window.BHAudio.play('slam_impact', { volumeMul: 1.0, duck: 0.8 });
         }
@@ -695,7 +720,9 @@ class BossO4ko {
     refreshShootInterval(cfg) {
         const hpK = (this.maxHp > 0) ? (this.hp / this.maxHp) : 1;
         const healthFactor = (1 - hpK) * 0.08;
-        this.shootInterval = Math.max(0.62, cfg.shootBase + Math.random() * cfg.shootJitter - healthFactor);
+        const fireRate = (this.mobileBalance && this.mobileBalance.enemyFireRate) ? this.mobileBalance.enemyFireRate : 1;
+        const baseInterval = Math.max(0.62, cfg.shootBase + Math.random() * cfg.shootJitter - healthFactor);
+        this.shootInterval = baseInterval / Math.max(0.2, fireRate);
     }
 
     /**
@@ -745,7 +772,8 @@ class BossO4ko {
         for (let i = 0; i < count; i++) {
             const offset = (i - (count - 1) / 2) * spread;
             const angle = baseAngle + offset;
-            const speed = 3.6 + Math.random() * 1.1; // px/frame
+            const projBal = (this.mobileBalance && this.mobileBalance.enemyProjectileSpeed) ? this.mobileBalance.enemyProjectileSpeed : 1;
+            const speed = (3.6 + Math.random() * 1.1) * projBal; // px/frame
             const vx = Math.cos(angle) * speed;
             const vy = Math.sin(angle) * speed;
             const sizeScale = 1 + Math.random() * 1.5; // 1.0x .. 2.5x

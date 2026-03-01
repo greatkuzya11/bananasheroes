@@ -17,6 +17,67 @@ function formatNosokTime(ms) {
 }
 
 /**
+ * Возвращает runtime-параметры мобильного адаптива для уровня "Носок".
+ * @param {number} dt - время кадра.
+ * @returns {{active:boolean,scale:number,frameMul:number,speedMul:number}}
+ */
+function getNosokAdaptiveRuntime(dt) {
+    const ma = window.BHMobileAdaptive;
+    if (ma && typeof ma.runtime === 'function') {
+        return ma.runtime(dt, 'nosok');
+    }
+    return { active: false, scale: 1, frameMul: 1, speedMul: 1 };
+}
+
+/**
+ * Масштабирует размеры бонуса для мобильной landscape-версии уровня "Носок".
+ * @param {number} w - базовая ширина.
+ * @param {number} h - базовая высота.
+ * @param {number} minW - минимальная ширина.
+ * @param {number} minH - минимальная высота.
+ * @returns {{w:number,h:number}}
+ */
+function getNosokScaledSize(w, h, minW, minH) {
+    const ma = window.BHMobileAdaptive;
+    if (ma && typeof ma.size === 'function') {
+        return ma.size(w, h, 'nosok', minW, minH);
+    }
+    return { w, h };
+}
+
+/**
+ * Возвращает отступ от нижней границы экрана для геометрии уровня "Носок".
+ * @returns {number}
+ */
+function getNosokGroundInset() {
+    const ma = window.BHMobileAdaptive;
+    if (ma && typeof ma.px === 'function') {
+        return ma.px(20, 'nosok', 10, true);
+    }
+    return 20;
+}
+
+/**
+ * Возвращает профиль мобильного баланса для уровня "Носок".
+ * @returns {{enemyFireRate:number,enemyProjectileSpeed:number,enemyMoveSpeed:number,dropFallSpeed:number,bossMoveSpeed:number,homing:number,targetFallSpeed:number}}
+ */
+function getNosokMobileBalance() {
+    const ma = window.BHMobileAdaptive;
+    if (ma && typeof ma.getBalance === 'function') {
+        return ma.getBalance('nosok');
+    }
+    return {
+        enemyFireRate: 1,
+        enemyProjectileSpeed: 1,
+        enemyMoveSpeed: 1,
+        dropFallSpeed: 1,
+        bossMoveSpeed: 1,
+        homing: 1,
+        targetFallSpeed: 1
+    };
+}
+
+/**
  * Возвращает ключ хранения лучшего времени режима "Носок".
  * @returns {string}
  */
@@ -76,7 +137,7 @@ function spawnNosokBall(afterGoal = false) {
  * - верхняя перекладина (блокирует мяч)
  */
 function setupNosokGoal() {
-    const groundY = canvas.height - 20;
+    const groundY = canvas.height - getNosokGroundInset();
     const postW = Math.max(12, Math.round(canvas.width * 0.012));
     const goalH = Math.max(Math.round(canvas.height * 0.42), Math.round(player.h * 2.9));
     // Укорачиваем глубину ворот на 2/3 (оставляем ~1/3 от прежней).
@@ -169,11 +230,19 @@ function spawnNosokDrop(type = 'random') {
         actual = (Math.random() < 0.70) ? 'beer' : 'heart';
     }
 
+    const ma = window.BHMobileAdaptive;
+    const scale = (ma && typeof ma.getScale === 'function' && typeof ma.isActive === 'function' && ma.isActive('nosok'))
+        ? ma.getScale('nosok')
+        : 1;
+    const edgeInset = Math.max(8, Math.round(12 * scale));
+    const laneInset = edgeInset * 2;
+
     if (actual === 'beer') {
-        const w = 36;
-        const h = 36;
+        const size = getNosokScaledSize(36, 36, 20, 20);
+        const w = size.w;
+        const h = size.h;
         bottles.push({
-            x: 12 + Math.random() * Math.max(1, canvas.width - w - 24),
+            x: edgeInset + Math.random() * Math.max(1, canvas.width - w - laneInset),
             y: -h - 10,
             w,
             h,
@@ -182,10 +251,11 @@ function spawnNosokDrop(type = 'random') {
         return;
     }
     if (actual === 'heart') {
-        const w = 40;
-        const h = 40;
+        const size = getNosokScaledSize(40, 40, 24, 24);
+        const w = size.w;
+        const h = size.h;
         hearts.push({
-            x: 12 + Math.random() * Math.max(1, canvas.width - w - 24),
+            x: edgeInset + Math.random() * Math.max(1, canvas.width - w - laneInset),
             y: -h - 10,
             w,
             h,
@@ -194,11 +264,12 @@ function spawnNosokDrop(type = 'random') {
         return;
     }
 
-    const w = 44;
-    const h = 44;
+    const size = getNosokScaledSize(44, 44, 26, 26);
+    const w = size.w;
+    const h = size.h;
     nosokSpecialBonuses.push({
         type: actual,
-        x: 12 + Math.random() * Math.max(1, canvas.width - w - 24),
+        x: edgeInset + Math.random() * Math.max(1, canvas.width - w - laneInset),
         y: -h - 10,
         w,
         h,
@@ -334,7 +405,7 @@ function applyBulletImpulseToNosokBall(bullet, forceNx, forceNy) {
         }
     }
 
-    const groundY = canvas.height - 20 - Math.max(10, Math.round(player.h * 0.12));
+    const groundY = canvas.height - getNosokGroundInset() - Math.max(10, Math.round(player.h * 0.12));
     const grounded = nosokBall.y + nosokBall.r >= groundY - 2;
     const minLift = bullet.isBonus ? -0.52 : -0.44;
     if (grounded && dy > minLift) {
@@ -470,7 +541,7 @@ function updateNosokBall(dt) {
     const ball = nosokBall;
     const gravity = canvas.height * 1.45;
     // В режиме "Носок" мяч держим немного выше земли, чтобы по нему удобнее попадать.
-    const groundY = canvas.height - 20 - Math.max(10, Math.round(player.h * 0.12));
+    const groundY = canvas.height - getNosokGroundInset() - Math.max(10, Math.round(player.h * 0.12));
     if (typeof ball.noOwnGoalTimer === 'number' && ball.noOwnGoalTimer > 0) {
         ball.noOwnGoalTimer = Math.max(0, ball.noOwnGoalTimer - dt);
     } else if (typeof ball.noOwnGoalTimer !== 'number') {
@@ -732,25 +803,26 @@ function updateNosokBall(dt) {
  * @param {number} dt - время кадра.
  */
 function updateNosokPlayerBullets(dt) {
+    const adaptive = getNosokAdaptiveRuntime(dt);
     const perf = window.BHBulletPerf;
     const rotationEnabled = perf ? perf.bulletRotationEnabled() : true;
     bullets.forEach(b => {
         b.prevX = b.x;
         b.prevY = b.y;
         if (typeof b.vx === 'number' && typeof b.vy === 'number') {
-            b.x += b.vx;
-            b.y += b.vy;
+            b.x += b.vx * adaptive.frameMul * adaptive.speedMul;
+            b.y += b.vy * adaptive.frameMul * adaptive.speedMul;
         } else {
-            b.y -= b.speed;
+            b.y -= b.speed * adaptive.frameMul * adaptive.speedMul;
         }
         if (rotationEnabled && b.playerType === 'dron' && typeof b.rotation === 'number') {
-            b.rotation += 0.3;
+            b.rotation += 0.3 * adaptive.frameMul;
         }
         if (b.playerType === 'max') {
             if (b.isBonus && rotationEnabled && typeof b.rotation === 'number') {
-                b.rotation += 0.3;
+                b.rotation += 0.3 * adaptive.frameMul;
             } else if (!b.isBonus) {
-                b.swayAge = (b.swayAge || 0) + 0.15;
+                b.swayAge = (b.swayAge || 0) + 0.15 * adaptive.frameMul;
             }
         }
     });
@@ -829,6 +901,7 @@ function updateNosokPlayerBullets(dt) {
  */
 function updateNosokEnemyBullets(dt) {
     if (!enemyBullets || enemyBullets.length === 0) return;
+    const balance = getNosokMobileBalance();
 
     for (let i = 0; i < enemyBullets.length; i++) {
         const eb = enemyBullets[i];
@@ -849,7 +922,7 @@ function updateNosokEnemyBullets(dt) {
         const ny = dy / d;
 
         const homingScale = (eb.age < 0.35) ? (isNosokFish ? 0.72 : 0.55) : 1.0;
-        const homingPower = isNosokFish ? canvas.width * 0.074 : canvas.width * 0.055;
+        const homingPower = (isNosokFish ? canvas.width * 0.074 : canvas.width * 0.055) * balance.homing;
         eb.vx += nx * (eb.homing || 0.35) * homingScale * dt * homingPower;
         eb.vy += (eb.gravity || canvas.height * 0.95) * dt;
         if (eb.curveAmp) {
@@ -968,17 +1041,19 @@ function resolveNosokPlayerBossOverlap() {
  * @param {number} dt - время кадра.
  */
 function updateNosokDrops(dt) {
+    const adaptive = getNosokAdaptiveRuntime(dt);
+    const balance = getNosokMobileBalance();
     bottles.forEach(b => {
-        b.y += 2;
-        b.x += Math.sin((b.y + (b.waveSeed || 0)) / 20) * 1.5;
+        b.y += 2 * balance.dropFallSpeed * adaptive.frameMul * adaptive.speedMul;
+        b.x += Math.sin((b.y + (b.waveSeed || 0)) / 20) * 1.5 * adaptive.frameMul * adaptive.speedMul;
     });
     hearts.forEach(h => {
-        h.y += 2;
-        h.x += Math.sin((h.y + (h.waveSeed || 0)) / 20) * 1.5;
+        h.y += 2 * balance.dropFallSpeed * adaptive.frameMul * adaptive.speedMul;
+        h.x += Math.sin((h.y + (h.waveSeed || 0)) / 20) * 1.5 * adaptive.frameMul * adaptive.speedMul;
     });
     nosokSpecialBonuses.forEach(p => {
-        p.y += p.vy;
-        p.x += Math.sin((p.y + p.driftSeed) / 22) * 1.3;
+        p.y += p.vy * balance.dropFallSpeed * adaptive.frameMul * adaptive.speedMul;
+        p.x += Math.sin((p.y + p.driftSeed) / 22) * 1.3 * adaptive.frameMul * adaptive.speedMul;
     });
 
     bottles = bottles.filter(b => b.y < canvas.height + 40);

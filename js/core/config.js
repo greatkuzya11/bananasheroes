@@ -24,3 +24,61 @@ const FRAME_67_H = 326;
 const BONUS_CHANCE = 0.1; // 10% шанс выпадения бонуса
 const HEART_CHANCE = 0.08; // 8% шанс выпадения сердечка
 
+// Базовое референс-разрешение, под которое изначально балансировалась игра.
+const REF_WIDTH = 1920;
+const REF_HEIGHT = 1080;
+
+/**
+ * Возвращает true, если сейчас мобильное устройство в горизонтальной ориентации.
+ * Адаптив боевых параметров включается только в этом случае.
+ * @returns {boolean}
+ */
+function isMobileLandscapeGameplay() {
+    if (window.BHMobileAdaptive && typeof window.BHMobileAdaptive.isLandscapeTouch === 'function') {
+        return window.BHMobileAdaptive.isLandscapeTouch();
+    }
+    const hasCoarsePointer = !!(window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
+    const hasTouch = (navigator.maxTouchPoints || 0) > 0 || ('ontouchstart' in window);
+    const isLandscape = window.innerWidth > window.innerHeight;
+    return (hasCoarsePointer || hasTouch) && isLandscape;
+}
+
+/**
+ * Мягкий коэффициент масштаба геймплея относительно референса.
+ * Используется в мобильном landscape для уровней с адаптивом.
+ * @returns {number}
+ */
+function getMobileLandscapeAdaptiveScale(mode = gameMode) {
+    if (window.BHMobileAdaptive && typeof window.BHMobileAdaptive.getScale === 'function') {
+        return window.BHMobileAdaptive.getScale(mode || gameMode);
+    }
+    const rw = canvas.width / REF_WIDTH;
+    const rh = canvas.height / REF_HEIGHT;
+    const raw = Math.min(rw, rh);
+    // Не даём масштабу опускаться слишком низко, чтобы не "ломать" темп боя.
+    return Math.max(0.4, Math.min(1, raw));
+}
+
+/**
+ * Проверяет, нужно ли включать мобильный адаптив для боевых уровней:
+ * normal, survival, 67, mode67.
+ * @param {string} mode - текущий игровой режим.
+ * @returns {boolean}
+ */
+function isMobileAdaptiveCombatMode(mode) {
+    if (window.BHMobileAdaptive && typeof window.BHMobileAdaptive.isActive === 'function') {
+        return window.BHMobileAdaptive.isActive(mode);
+    }
+    if (!isMobileLandscapeGameplay()) return false;
+    return mode === 'normal'
+        || mode === 'survival'
+        || mode === '67'
+        || mode === 'mode67'
+        || mode === 'o4ko'
+        || mode === 'nosok'
+        || mode === 'platforms'
+        || mode === 'lovlyu'
+        || mode === 'runner'
+        || mode === 'library';
+}
+

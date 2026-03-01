@@ -247,7 +247,12 @@ function initRunWorldByMode(mode) {
 
     if (startMode === '67') {
         setRunBackground('img/forest2.png');
-        player.x = 20;
+        const adaptiveScale = ((typeof isMobileAdaptiveCombatMode === 'function')
+            && isMobileAdaptiveCombatMode(startMode)
+            && (typeof getMobileLandscapeAdaptiveScale === 'function'))
+            ? getMobileLandscapeAdaptiveScale()
+            : 1;
+        player.x = Math.max(8, Math.round(20 * adaptiveScale));
         playerBulletDir = 'right';
         enemy67 = new Enemy67(player.x, player.y);
         if (window.BHBulletPerf) window.BHBulletPerf.setEnemy67RenderMode('tp');
@@ -256,7 +261,12 @@ function initRunWorldByMode(mode) {
 
     if (startMode === 'mode67') {
         setRunBackground('img/forest2.png');
-        player.x = 20;
+        const adaptiveScale = ((typeof isMobileAdaptiveCombatMode === 'function')
+            && isMobileAdaptiveCombatMode(startMode)
+            && (typeof getMobileLandscapeAdaptiveScale === 'function'))
+            ? getMobileLandscapeAdaptiveScale()
+            : 1;
+        player.x = Math.max(8, Math.round(20 * adaptiveScale));
         playerBulletDir = 'right';
         enemy67 = new Enemy67(player.x, player.y);
         if (window.BHBulletPerf) window.BHBulletPerf.setEnemy67RenderMode('sheet');
@@ -265,7 +275,12 @@ function initRunWorldByMode(mode) {
 
     if (startMode === 'o4ko') {
         setRunBackground('img/bg-avs.png');
-        player.x = 20;
+        const adaptiveScale = ((typeof isMobileAdaptiveCombatMode === 'function')
+            && isMobileAdaptiveCombatMode(startMode)
+            && (typeof getMobileLandscapeAdaptiveScale === 'function'))
+            ? getMobileLandscapeAdaptiveScale(startMode)
+            : 1;
+        player.x = Math.max(8, Math.round(20 * adaptiveScale));
         playerBulletDir = 'right';
         bossO4ko = new BossO4ko(player.x, player.y);
         return;
@@ -273,7 +288,12 @@ function initRunWorldByMode(mode) {
 
     if (startMode === 'nosok') {
         setRunBackground('img/bn-bg.png');
-        player.x = 20;
+        const adaptiveScale = ((typeof isMobileAdaptiveCombatMode === 'function')
+            && isMobileAdaptiveCombatMode(startMode)
+            && (typeof getMobileLandscapeAdaptiveScale === 'function'))
+            ? getMobileLandscapeAdaptiveScale(startMode)
+            : 1;
+        player.x = Math.max(8, Math.round(20 * adaptiveScale));
         playerBulletDir = 'right';
         initNosokLevel();
         return;

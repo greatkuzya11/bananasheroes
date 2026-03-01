@@ -929,6 +929,35 @@ document.addEventListener('DOMContentLoaded', () => {
         };
     }
 
+    // ==== FULLSCREEN TOGGLE ====
+    (function () {
+        const fsBtn = document.getElementById('fullscreen-btn');
+        if (!fsBtn) return;
+        const fsEnabled = document.fullscreenEnabled || document.webkitFullscreenEnabled;
+        if (!fsEnabled) return;
+
+        fsBtn.style.display = 'block'; // supported — show the button
+
+        const updateIcon = () => {
+            const inFs = !!(document.fullscreenElement || document.webkitFullscreenElement);
+            fsBtn.textContent = inFs ? '\u2715' : '\u26F6'; // ✕ or ⛶
+            fsBtn.title = inFs ? 'Выйти из полного экрана' : 'Полный экран';
+        };
+
+        fsBtn.onclick = () => {
+            if (document.fullscreenElement || document.webkitFullscreenElement) {
+                (document.exitFullscreen || document.webkitExitFullscreen).call(document);
+            } else {
+                const el = document.documentElement;
+                (el.requestFullscreen || el.webkitRequestFullscreen).call(el).catch(() => {});
+            }
+        };
+
+        document.addEventListener('fullscreenchange', updateIcon);
+        document.addEventListener('webkitfullscreenchange', updateIcon);
+        updateIcon();
+    })();
+
     // ==== SCORES OVERLAY (mobile) ====
     const scoresToggleBtn = document.getElementById('scores-toggle-btn');
     const scoresOverlay = document.getElementById('scores-overlay');

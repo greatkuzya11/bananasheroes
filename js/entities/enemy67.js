@@ -49,12 +49,31 @@ class Enemy67 {
      * @param {boolean} platformMode - true для режима платформ.
      */
     constructor(playerX, playerY, platformMode = false) {
+        const adaptiveCombat = (typeof isMobileAdaptiveCombatMode === 'function')
+            && isMobileAdaptiveCombatMode(gameMode);
+        const adaptiveScale = adaptiveCombat
+            && (typeof getMobileLandscapeAdaptiveScale === 'function')
+            ? getMobileLandscapeAdaptiveScale()
+            : 1;
+        this.mobileAdaptiveScale = adaptiveScale;
+        const mobileBalance = (window.BHMobileAdaptive
+            && typeof window.BHMobileAdaptive.getBalance === 'function'
+            && typeof window.BHMobileAdaptive.isActive === 'function'
+            && window.BHMobileAdaptive.isActive(gameMode))
+            ? window.BHMobileAdaptive.getBalance(gameMode)
+            : null;
+        this.mobileBalance = mobileBalance || {
+            enemyFireRate: 1,
+            enemyProjectileSpeed: 1,
+            enemyMoveSpeed: 1
+        };
         // Размер: высота = 1/2 экрана, но в режиме платформ больше (в 2.25 раза)
         this.h = platformMode ? (canvas.height * 0.3375) : (canvas.height * 0.5);
         this.w = this.h; // квадратный спрайт
         // Позиция: почти с правого угла или на платформе
-        this.x = platformMode ? (bossPlatform.x + (bossPlatform.w - this.w) / 2) : (canvas.width - this.w - 20);
-        this.y = platformMode ? (bossPlatform.y - this.h * 0.92) : (canvas.height - this.h - 20);
+        const edgePad = Math.max(8, Math.round(20 * adaptiveScale));
+        this.x = platformMode ? (bossPlatform.x + (bossPlatform.w - this.w) / 2) : (canvas.width - this.w - edgePad);
+        this.y = platformMode ? (bossPlatform.y - this.h * 0.92) : (canvas.height - this.h - edgePad);
         // Анимация: отдельные интервалы для старого sheet и для покадрового tp.
         this.frame = 0;
         this.timer = 0;
@@ -65,8 +84,8 @@ class Enemy67 {
         this.baseY = this.y;
         this.swayTime = 0;
         // Амплитуда и скорость покачивания
-        this.swayAmplitudeX = platformMode ? 5 : 15; // меньше в режиме платформ
-        this.swayAmplitudeY = platformMode ? 0 : 10; // не качается по вертикали на платформе
+        this.swayAmplitudeX = platformMode ? 5 : 15 * adaptiveScale; // меньше в режиме платформ
+        this.swayAmplitudeY = platformMode ? 0 : 10 * adaptiveScale; // не качается по вертикали на платформе
         this.swaySpeedX = 1.2;
         this.swaySpeedY = 1.5;
         // Здоровье (HP) и атака
@@ -75,10 +94,10 @@ class Enemy67 {
         this.attackTimer = 0; // начинаем с 0
         this.attackDelay = platformMode ? 0 : 5.0; // в режиме 67 ждем 5 сек, на платформе сразу
         this.shootTimer = 0;
-        this.shootInterval = 0.8; // в 3 раза быстрее сирени (~1 сек)
+        this.shootInterval = 0.8 / Math.max(0.2, this.mobileBalance.enemyFireRate); // в 3 раза быстрее сирени (~1 сек)
         this.bulletEmojis = ['🪳', '🧨', '7️⃣', '6️⃣', '💩'];
         // Движение к игроку
-        this.moveSpeed = platformMode ? 0 : 50; // не движется в режиме платформ
+        this.moveSpeed = platformMode ? 0 : 50 * adaptiveScale * this.mobileBalance.enemyMoveSpeed; // не движется в режиме платформ
         this.sizeIncreaseTimer = 0; // таймер для увеличения размера каждую секунду
         this.platformMode = platformMode; // флаг режима платформ
     }
@@ -168,11 +187,14 @@ class Enemy67 {
         const dx = player.x + player.w / 2 - bx;
         const dy = player.y + player.h / 2 - by;
         const dist = Math.sqrt(dx * dx + dy * dy);
-        const speed = 10; // в 5 раз медленнее начальной скорости (350/5=70)
+        const speed = 10 * this.mobileBalance.enemyProjectileSpeed; // в 5 раз медленнее начальной скорости (350/5=70)
         const vx = (dx / dist) * speed;
         const vy = (dy / dist) * speed;
         
-        enemyBullets.push({ x: bx, y: by, w: 16, h: 24, emoji, vx, vy });
+        const bulletScale = this.mobileAdaptiveScale || 1;
+        const bulletW = Math.max(8, Math.round(16 * bulletScale));
+        const bulletH = Math.max(12, Math.round(24 * bulletScale));
+        enemyBullets.push({ x: bx, y: by, w: bulletW, h: bulletH, emoji, vx, vy });
         if (window.BHAudio && typeof window.BHAudio.playEnemyShoot === 'function') {
             window.BHAudio.playEnemyShoot('67');
         }

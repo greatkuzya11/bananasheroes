@@ -7,14 +7,34 @@ class BossNosok {
      * Создает босса-вратаря.
      */
     constructor() {
-        this.h = Math.max(72, player.h * 1.35);
-        this.w = Math.max(72, this.h * 0.92);
-        this.baseY = canvas.height - this.h - 20;
+        const adaptiveScale = (typeof isMobileAdaptiveCombatMode === 'function'
+            && isMobileAdaptiveCombatMode('nosok')
+            && typeof getMobileLandscapeAdaptiveScale === 'function')
+            ? getMobileLandscapeAdaptiveScale('nosok')
+            : 1;
+        const mobileBalance = (window.BHMobileAdaptive
+            && typeof window.BHMobileAdaptive.getBalance === 'function'
+            && typeof window.BHMobileAdaptive.isActive === 'function'
+            && window.BHMobileAdaptive.isActive('nosok'))
+            ? window.BHMobileAdaptive.getBalance('nosok')
+            : null;
+        this.mobileAdaptiveScale = adaptiveScale;
+        this.mobileBalance = mobileBalance || {
+            enemyFireRate: 1,
+            enemyProjectileSpeed: 1,
+            enemyMoveSpeed: 1,
+            bossMoveSpeed: 1,
+            homing: 1
+        };
+        const minBody = Math.max(48, Math.round(72 * adaptiveScale));
+        this.h = Math.max(minBody, player.h * 1.35);
+        this.w = Math.max(minBody, this.h * 0.92);
+        this.baseY = canvas.height - this.h - Math.max(8, Math.round(20 * adaptiveScale));
 
         this.goalX = canvas.width * 0.9;
         this.zoneWidth = canvas.width * 0.24;
         this.minX = this.goalX - this.zoneWidth;
-        this.maxX = this.goalX - this.w - 10;
+        this.maxX = this.goalX - this.w - Math.max(6, Math.round(10 * adaptiveScale));
         this.homeX = this.maxX - this.w * 0.35;
         this.homeX = Math.max(this.minX, Math.min(this.maxX, this.homeX));
 
@@ -24,8 +44,8 @@ class BossNosok {
         this.vy = 0;
         this.facingDir = 'left';
 
-        this.reaction = 5.2;
-        this.maxSpeed = canvas.width * 0.36;
+        this.reaction = 5.2 * this.mobileBalance.enemyMoveSpeed;
+        this.maxSpeed = canvas.width * 0.36 * this.mobileBalance.bossMoveSpeed;
         this.idleSwayTimer = 0;
 
         this.isJumping = false;
@@ -47,9 +67,9 @@ class BossNosok {
         this.returnToY = this.baseY;
 
         this.volleyTimer = 0;
-        this.nextVolley = this.rand(1.6, 2.5);
+        this.nextVolley = this.rand(1.6, 2.5) / Math.max(0.2, this.mobileBalance.enemyFireRate);
         this.fishVolleyTimer = 0;
-        this.nextFishVolley = this.rand(1.05, 1.55);
+        this.nextFishVolley = this.rand(1.05, 1.55) / Math.max(0.2, this.mobileBalance.enemyFireRate);
 
         this.frame = 0;
         this.animTimer = 0;
@@ -73,14 +93,29 @@ class BossNosok {
      * Ставит босса в зону ворот при ресайзе экрана.
      */
     refreshBounds() {
-        this.baseY = canvas.height - this.h - 20;
+        const adaptiveScale = (typeof isMobileAdaptiveCombatMode === 'function'
+            && isMobileAdaptiveCombatMode('nosok')
+            && typeof getMobileLandscapeAdaptiveScale === 'function')
+            ? getMobileLandscapeAdaptiveScale('nosok')
+            : (this.mobileAdaptiveScale || 1);
+        const mobileBalance = (window.BHMobileAdaptive
+            && typeof window.BHMobileAdaptive.getBalance === 'function'
+            && typeof window.BHMobileAdaptive.isActive === 'function'
+            && window.BHMobileAdaptive.isActive('nosok'))
+            ? window.BHMobileAdaptive.getBalance('nosok')
+            : this.mobileBalance;
+        if (mobileBalance) this.mobileBalance = mobileBalance;
+        this.mobileAdaptiveScale = adaptiveScale;
+        this.reaction = 5.2 * (this.mobileBalance ? this.mobileBalance.enemyMoveSpeed : 1);
+        this.maxSpeed = canvas.width * 0.36 * (this.mobileBalance ? this.mobileBalance.bossMoveSpeed : 1);
+        this.baseY = canvas.height - this.h - Math.max(8, Math.round(20 * adaptiveScale));
         const goalPostX = (typeof nosokGoalSensor !== 'undefined' && nosokGoalSensor)
             ? nosokGoalSensor.x
             : canvas.width * 0.9;
         this.goalX = goalPostX;
         this.zoneWidth = canvas.width * 0.24;
         this.minX = this.goalX - this.zoneWidth;
-        this.maxX = this.goalX - this.w - 10;
+        this.maxX = this.goalX - this.w - Math.max(6, Math.round(10 * adaptiveScale));
         this.homeX = this.maxX - this.w * 0.35;
         this.homeX = Math.max(this.minX, Math.min(this.maxX, this.homeX));
         if (this.knockbackState === 'none') {
@@ -182,7 +217,7 @@ class BossNosok {
         const dx = aimX - sx;
         const dy = aimY - sy;
         const dist = Math.max(1, Math.hypot(dx, dy));
-        const speed = this.rand(canvas.width * 0.31, canvas.width * 0.44);
+        const speed = this.rand(canvas.width * 0.31, canvas.width * 0.44) * this.mobileBalance.enemyProjectileSpeed;
         const lift = this.rand(canvas.height * 0.13, canvas.height * 0.24);
         const vx = (dx / dist) * speed;
         const vy = (dy / dist) * speed - lift;
@@ -196,7 +231,7 @@ class BossNosok {
             vx,
             vy,
             gravity: canvas.height * this.rand(0.72, 0.90),
-            homing: this.rand(0.34, 0.62),
+            homing: this.rand(0.34, 0.62) * this.mobileBalance.homing,
             curveAmp,
             curveFreq: this.rand(3.8, 7.2),
             curvePhase: Math.random() * Math.PI * 2,
@@ -228,7 +263,7 @@ class BossNosok {
         const dx = aimX - sx;
         const dy = aimY - sy;
         const dist = Math.max(1, Math.hypot(dx, dy));
-        const speed = this.rand(canvas.width * 0.46, canvas.width * 0.62);
+        const speed = this.rand(canvas.width * 0.46, canvas.width * 0.62) * this.mobileBalance.enemyProjectileSpeed;
         const lift = this.rand(canvas.height * 0.06, canvas.height * 0.14);
         const vx = (dx / dist) * speed;
         const vy = (dy / dist) * speed - lift;
@@ -248,7 +283,7 @@ class BossNosok {
             vx,
             vy,
             gravity: canvas.height * this.rand(0.46, 0.64),
-            homing: this.rand(0.76, 1.08),
+            homing: this.rand(0.76, 1.08) * this.mobileBalance.homing,
             curveAmp,
             curveFreq: this.rand(4.1, 6.6),
             curvePhase: Math.random() * Math.PI * 2,
@@ -351,7 +386,7 @@ class BossNosok {
                 this.fishVolleyTimer += dt;
                 if (this.fishVolleyTimer >= this.nextFishVolley) {
                     this.fishVolleyTimer = 0;
-                    this.nextFishVolley = this.rand(0.9, 1.38);
+                    this.nextFishVolley = this.rand(0.9, 1.38) / Math.max(0.2, this.mobileBalance.enemyFireRate);
                     this.shootFish();
                 }
             } else {
@@ -360,7 +395,7 @@ class BossNosok {
                 this.volleyTimer += dt;
                 if (this.volleyTimer >= this.nextVolley) {
                     this.volleyTimer = 0;
-                    this.nextVolley = this.rand(1.6, 2.45);
+                    this.nextVolley = this.rand(1.6, 2.45) / Math.max(0.2, this.mobileBalance.enemyFireRate);
                     this.shootSock();
                 }
             }

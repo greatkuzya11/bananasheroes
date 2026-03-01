@@ -69,6 +69,68 @@ const runnerFixedBallisticJump = {
 };
 
 /**
+ * Возвращает runtime-параметры мобильного адаптива для уровня "Бегун".
+ * @param {number} dt - время кадра.
+ * @returns {{active:boolean,scale:number,frameMul:number,speedMul:number}}
+ */
+function getRunnerAdaptiveRuntime(dt) {
+    const ma = window.BHMobileAdaptive;
+    if (ma && typeof ma.runtime === 'function') {
+        return ma.runtime(dt, 'runner');
+    }
+    return { active: false, scale: 1, frameMul: 1, speedMul: 1 };
+}
+
+/**
+ * Масштабирует пиксельное значение для режима "Бегун" в mobile landscape.
+ * @param {number} v - базовое значение.
+ * @param {number} minV - минимальное значение.
+ * @param {boolean} round - округлять ли результат.
+ * @returns {number}
+ */
+function runnerPx(v, minV = 0, round = true) {
+    const ma = window.BHMobileAdaptive;
+    if (ma && typeof ma.px === 'function') {
+        return ma.px(v, 'runner', minV, round);
+    }
+    return v;
+}
+
+/**
+ * Масштабирует размеры прямоугольника бонуса режима "Бегун".
+ * @param {number} w - базовая ширина.
+ * @param {number} h - базовая высота.
+ * @returns {{w:number,h:number}}
+ */
+function runnerSize(w, h) {
+    const ma = window.BHMobileAdaptive;
+    if (ma && typeof ma.size === 'function') {
+        return ma.size(w, h, 'runner', 24, 24);
+    }
+    return { w, h };
+}
+
+/**
+ * Возвращает профиль мобильного баланса для уровня "Бегун".
+ * @returns {{enemyFireRate:number,enemyProjectileSpeed:number,enemyMoveSpeed:number,dropFallSpeed:number,bossMoveSpeed:number,homing:number,targetFallSpeed:number}}
+ */
+function getRunnerMobileBalance() {
+    const ma = window.BHMobileAdaptive;
+    if (ma && typeof ma.getBalance === 'function') {
+        return ma.getBalance('runner');
+    }
+    return {
+        enemyFireRate: 1,
+        enemyProjectileSpeed: 1,
+        enemyMoveSpeed: 1,
+        dropFallSpeed: 1,
+        bossMoveSpeed: 1,
+        homing: 1,
+        targetFallSpeed: 1
+    };
+}
+
+/**
  * Возвращает параметры сохраненного старого прыжка "фиксированный баллистический".
  * @returns {{jumpSpeedScale:number,gravityScale:number,maxFallScale:number}}
  */
@@ -178,11 +240,11 @@ function refreshRunnerLayout(preserveActors = false, prevW = canvas.width, prevH
     const stripe = usableHeight / 4;
     // Толщина платформ как в уровне "Платформы" (по высоте),
     // длины/расположение оставляем по ТЗ "Бегуна".
-    const platformH = Math.max(12, Math.round(canvas.height * 0.075));
+    const platformH = Math.max(runnerPx(12, 10), Math.round(canvas.height * 0.075));
 
     // Полосы: 0 = земля (нижняя), 1 = вторая снизу, 2 = третья, 3 = верхняя.
     // Земля остается у нижней кромки, как в других режимах.
-    const bandGroundY = canvas.height - 20;
+    const bandGroundY = canvas.height - runnerPx(20, 10);
     const band2Y = stripe * 3 - platformH * 0.5;
     const band3Y = stripe * 2 - platformH * 0.5;
     const band4Y = Math.max(12, stripe * 1 - platformH * 0.5);
@@ -227,18 +289,18 @@ function refreshRunnerLayout(preserveActors = false, prevW = canvas.width, prevH
             player.x = Math.max(-player.w, Math.min(canvas.width, oldPlayerRatioX * canvas.width));
             player.y = Math.min(player.y, runnerGround.y - player.h + playerFootOffset);
         } else {
-            player.x = 20;
+            player.x = runnerPx(20, 8);
             player.y = runnerGround.y - player.h + playerFootOffset;
         }
     }
 
     if (runnerBoss) {
-        const bossFootOffset = (typeof runnerBoss.runnerFootOffset === 'number') ? runnerBoss.runnerFootOffset : 28;
+        const bossFootOffset = (typeof runnerBoss.runnerFootOffset === 'number') ? runnerBoss.runnerFootOffset : runnerPx(28, 16);
         if (preserveActors && oldBossRatioX !== null) {
             runnerBoss.x = Math.max(-runnerBoss.w, Math.min(canvas.width, oldBossRatioX * canvas.width));
             runnerBoss.y = Math.min(runnerBoss.y, runnerGround.y - runnerBoss.h + bossFootOffset);
         } else {
-            runnerBoss.x = canvas.width - runnerBoss.w - 24;
+            runnerBoss.x = canvas.width - runnerBoss.w - runnerPx(24, 10);
             runnerBoss.y = runnerGround.y - runnerBoss.h + bossFootOffset;
         }
     }
@@ -249,9 +311,9 @@ function refreshRunnerLayout(preserveActors = false, prevW = canvas.width, prevH
  */
 function initRunnerBoss() {
     const size = Math.max(player.w * 1.02, canvas.height * 0.18);
-    const footOffset = 28;
+    const footOffset = runnerPx(28, 16);
     runnerBoss = {
-        x: canvas.width - size - 24,
+        x: canvas.width - size - runnerPx(24, 10),
         y: runnerBands[0] - size + footOffset,
         w: size,
         h: size,
@@ -616,12 +678,14 @@ function updateRunnerPlayerAnimation(dt, movingHoriz) {
  */
 function updateRunnerBossAi(dt, playerMoving) {
     if (!runnerBoss || !player) return;
+    const balance = getRunnerMobileBalance();
+    const bossSpeedMul = Math.max(0.75, balance.bossMoveSpeed || 1);
 
     const playerCenterX = player.x + player.w * 0.5;
     const bossCenterX = runnerBoss.x + runnerBoss.w * 0.5;
     const distX = Math.abs(playerCenterX - bossCenterX);
 
-    const baseBossSpeed = runnerPlayerMoveSpeed * 2 * (runnerEnergyActive ? 1.35 : 1.0);
+    const baseBossSpeed = runnerPlayerMoveSpeed * 2 * bossSpeedMul * (runnerEnergyActive ? 1.35 : 1.0);
     let targetSpeed = baseBossSpeed;
 
     if (!playerMoving) {
@@ -717,7 +781,7 @@ function updateRunnerBossAi(dt, playerMoving) {
     if (runnerBoss.postWarpTimer > 0) {
         runnerBoss.postWarpTimer = Math.max(0, runnerBoss.postWarpTimer - dt);
         moveDir = runnerBoss.postWarpDir || moveDir;
-        const minPostWarpSpeed = runnerPlayerMoveSpeed * (runnerBossSlowTimer > 0 ? 0.95 : 2.1);
+        const minPostWarpSpeed = runnerPlayerMoveSpeed * (runnerBossSlowTimer > 0 ? 0.95 : 2.1 * bossSpeedMul);
         targetSpeed = Math.max(targetSpeed, minPostWarpSpeed);
     }
 
@@ -770,7 +834,7 @@ function updateRunnerBossAnimation(dt) {
     const moving = speedAbs > 2 || !runnerBoss.onGround;
     let interval = 0.18;
     if (moving) {
-        const speedNorm = Math.min(1.2, speedAbs / Math.max(1, runnerPlayerMoveSpeed * 2));
+        const speedNorm = Math.min(1.2, speedAbs / Math.max(1, runnerPlayerMoveSpeed * 2 * bossSpeedMul));
         interval = 0.115 - speedNorm * 0.04;
         if (!runnerBoss.onGround) interval *= 0.9;
         interval = Math.max(0.06, interval);
@@ -874,13 +938,15 @@ function updateRunnerTurboTrail(dt) {
  * @param {number} dt - время кадра.
  */
 function updateRunnerFakeBonuses(dt) {
-    const fallSpeed = 135; // px/сек, визуально близко к "Ловлю"
+    const adaptive = getRunnerAdaptiveRuntime(dt);
+    const balance = getRunnerMobileBalance();
+    const fallSpeed = runnerPx(135, 80, false) * balance.dropFallSpeed; // px/сек, визуально близко к "Ловлю"
 
     // Падающие энергетики.
     for (let i = 0; i < runnerEnergyDrops.length; i++) {
         const b = runnerEnergyDrops[i];
         b.y += fallSpeed * dt;
-        b.x += Math.sin((b.y + b.phase) / 15) * 1.3;
+        b.x += Math.sin((b.y + b.phase) / 15) * 1.3 * adaptive.speedMul;
     }
     runnerEnergyDrops = runnerEnergyDrops.filter(b => b.y < canvas.height + 20);
 
@@ -888,7 +954,7 @@ function updateRunnerFakeBonuses(dt) {
     for (let i = 0; i < runnerCigarDrops.length; i++) {
         const b = runnerCigarDrops[i];
         b.y += fallSpeed * dt;
-        b.x += Math.sin((b.y + b.phase) / 15) * 1.3;
+        b.x += Math.sin((b.y + b.phase) / 15) * 1.3 * adaptive.speedMul;
     }
     runnerCigarDrops = runnerCigarDrops.filter(b => b.y < canvas.height + 20);
 
@@ -935,9 +1001,12 @@ function updateRunnerFakeBonuses(dt) {
     if (!runnerVictory && !levelCompleteShown && runnerEnergyDropTimer >= 1.0) {
         runnerEnergyDropTimer -= 1.0;
         if (Math.random() < 0.04) {
-            const w = 40, h = 40;
+            const s = runnerSize(40, 40);
+            const w = s.w, h = s.h;
+            const edgeInset = runnerPx(12, 8);
+            const laneInset = edgeInset * 2;
             runnerEnergyDrops.push({
-                x: 12 + Math.random() * Math.max(1, canvas.width - w - 24),
+                x: edgeInset + Math.random() * Math.max(1, canvas.width - w - laneInset),
                 y: -h - 10,
                 w, h,
                 phase: Math.random() * 1000
@@ -950,9 +1019,12 @@ function updateRunnerFakeBonuses(dt) {
     if (!runnerVictory && !levelCompleteShown && runnerCigarDropTimer >= 1.0) {
         runnerCigarDropTimer -= 1.0;
         if (Math.random() < 0.04) {
-            const w = 40, h = 40;
+            const s = runnerSize(40, 40);
+            const w = s.w, h = s.h;
+            const edgeInset = runnerPx(12, 8);
+            const laneInset = edgeInset * 2;
             runnerCigarDrops.push({
-                x: 12 + Math.random() * Math.max(1, canvas.width - w - 24),
+                x: edgeInset + Math.random() * Math.max(1, canvas.width - w - laneInset),
                 y: -h - 10,
                 w, h,
                 phase: Math.random() * 1000
@@ -1008,8 +1080,8 @@ function drawRunnerFakeBonuses() {
  * @returns {{x:number,y:number,w:number,h:number}}
  */
 function getRunnerCigaretteRect() {
-    const w = Math.max(16, player.w * 0.24);
-    const h = Math.max(8, player.h * 0.08);
+    const w = Math.max(runnerPx(16, 10), player.w * 0.24);
+    const h = Math.max(runnerPx(8, 5), player.h * 0.08);
     // Для спрайта Кузи: сигарета ниже из-за прозрачного поля снизу в PNG Sequences
     const cigYFraction = (player && player.spriteSystem === 'kuzy') ? 0.62 : 0.44;
     const cy = player.y + player.h * cigYFraction - h * 0.5;
@@ -1059,6 +1131,8 @@ function getRunnerCigaretteVisualRect() {
  */
 function resolveRunnerPlayerBossSeparation() {
     if (!player || !runnerBoss) return;
+    const balance = getRunnerMobileBalance();
+    const bossSpeedMul = Math.max(0.75, balance.bossMoveSpeed || 1);
 
     const a = { x: player.x, y: player.y, w: player.w, h: player.h };
     const b = { x: runnerBoss.x, y: runnerBoss.y, w: runnerBoss.w, h: runnerBoss.h };
@@ -1075,7 +1149,7 @@ function resolveRunnerPlayerBossSeparation() {
         : (player.x - runnerBoss.w - gap);
 
     runnerBoss.x = targetX;
-    const minEscapeSpeed = runnerPlayerMoveSpeed * (runnerBossSlowTimer > 0 ? 0.95 : 2.2);
+    const minEscapeSpeed = runnerPlayerMoveSpeed * (runnerBossSlowTimer > 0 ? 0.95 : 2.2 * bossSpeedMul);
     runnerBoss.vx = dir * Math.max(Math.abs(runnerBoss.vx), minEscapeSpeed);
     runnerBoss.escapeDir = dir;
 
@@ -1091,6 +1165,8 @@ function resolveRunnerPlayerBossSeparation() {
  */
 function enforceRunnerBossMinDistance(dt) {
     if (!player || !runnerBoss) return;
+    const balance = getRunnerMobileBalance();
+    const bossSpeedMul = Math.max(0.75, balance.bossMoveSpeed || 1);
 
     const playerCenterX = player.x + player.w * 0.5;
     const bossCenterX = runnerBoss.x + runnerBoss.w * 0.5;
@@ -1102,7 +1178,7 @@ function enforceRunnerBossMinDistance(dt) {
 
     const dir = dx >= 0 ? 1 : -1; // куда уводим босса от игрока
     runnerBoss.escapeDir = dir;
-    const minEscapeSpeed = runnerPlayerMoveSpeed * (runnerBossSlowTimer > 0 ? 0.85 : 2.05);
+    const minEscapeSpeed = runnerPlayerMoveSpeed * (runnerBossSlowTimer > 0 ? 0.85 : 2.05 * bossSpeedMul);
     const desiredEscapeVx = dir * Math.max(Math.abs(runnerBoss.vx), minEscapeSpeed);
     runnerBoss.vx += (desiredEscapeVx - runnerBoss.vx) * Math.min(1, dt * 14);
 
@@ -1159,7 +1235,8 @@ function initRunnerLevel() {
     runnerScoreDecayTimer = 0;
 
     // Скорости в px/сек.
-    runnerPlayerMoveSpeed = player.speed * 60;
+    const adaptiveScale = getRunnerAdaptiveRuntime(0).speedMul;
+    runnerPlayerMoveSpeed = player.speed * 60 * adaptiveScale;
     runnerGravity = canvas.height * 2.45;
     runnerMaxFallSpeed = canvas.height * 2.2;
 
@@ -1187,8 +1264,8 @@ function initRunnerLevel() {
 
     refreshRunnerLayout(false);
 
-    player.runnerFootOffset = 30;
-    player.x = 20;
+    player.runnerFootOffset = runnerPx(30, 16);
+    player.x = runnerPx(20, 8);
     player.y = getRunnerSurfaceSnapY(player, runnerGround);
     player.vx = 0;
     player.vy = 0;
@@ -1218,6 +1295,8 @@ function initRunnerLevel() {
  */
 function onRunnerResize(prevW, prevH) {
     if (gameMode !== 'runner') return;
+    const adaptiveScale = getRunnerAdaptiveRuntime(0).speedMul;
+    runnerPlayerMoveSpeed = player.speed * 60 * adaptiveScale;
     runnerGravity = canvas.height * 2.45;
     runnerMaxFallSpeed = canvas.height * 2.2;
     if (player && runnerPlayerJumpProfiles) {

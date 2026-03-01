@@ -168,6 +168,82 @@ function spawnEnemiesOnPlatforms() {
 
 // ---------- ВРАГИ ----------
 
+/**
+ * Параметры сетки сирени для текущего режима.
+ * Desktop-значения не меняем.
+ * Для mobile landscape в normal/survival используем адаптив относительно Full HD.
+ * Для остальных режимов (включая 67/mode67) этот layout не используется.
+ * @returns {{startX:number,startY:number,spacingX:number,spacingY:number,enemyW:number,enemyH:number}}
+ */
+function getLilacFormationLayout() {
+    const adaptiveLilacMode = (gameMode === 'normal' || gameMode === 'survival')
+        && (typeof isMobileAdaptiveCombatMode === 'function')
+        && isMobileAdaptiveCombatMode(gameMode);
+    if (!adaptiveLilacMode) {
+        return {
+            startX: 100,
+            startY: ENEMY_START_Y,
+            spacingX: ENEMY_X_SPACING,
+            spacingY: ENEMY_Y_SPACING,
+            enemyW: canvas.height * ENEMY_WIDTH_RATIO,
+            enemyH: canvas.height * ENEMY_HEIGHT_RATIO
+        };
+    }
+
+    const scale = (typeof getMobileLandscapeAdaptiveScale === 'function')
+        ? getMobileLandscapeAdaptiveScale()
+        : 1;
+
+    const enemyW = Math.max(32, Math.round(REF_HEIGHT * ENEMY_WIDTH_RATIO * scale));
+    const enemyH = Math.max(32, Math.round(REF_HEIGHT * ENEMY_HEIGHT_RATIO * scale));
+
+    const sideMargin = Math.max(10, Math.round(canvas.width * 0.04));
+    const fullFormationW = Math.max(enemyW, canvas.width - sideMargin * 2);
+    // На мобиле слегка "сжимаем" построение по X, чтобы сирени были ближе,
+    // но оставались по центру и визуально походили на desktop-раскладку.
+    const compactFactor = 0.86;
+    const formationW = Math.max(enemyW, Math.round(fullFormationW * compactFactor));
+    const spacingX = (ENEMY_COLS > 1) ? ((formationW - enemyW) / (ENEMY_COLS - 1)) : 0;
+    const startX = Math.round((canvas.width - formationW) * 0.5);
+
+    const startY = Math.max(16, Math.round(canvas.height * 0.08));
+    const maxFormationH = canvas.height * 0.33;
+    const spacingY = (ENEMY_ROWS > 1)
+        ? Math.min(Math.max(enemyH * 0.62, 18), maxFormationH / (ENEMY_ROWS - 1))
+        : 0;
+
+    return {
+        startX,
+        startY,
+        spacingX,
+        spacingY,
+        enemyW,
+        enemyH
+    };
+}
+
+/**
+ * Размеры обычных бонусов normal/survival (бутылка/сердце) с учетом mobile-landscape адаптива.
+ * В desktop возвращает исторические размеры без изменений.
+ * @param {'bottle'|'heart'} kind - тип бонуса.
+ * @returns {{w:number,h:number}}
+ */
+function getCombatPickupSize(kind) {
+    const base = (kind === 'heart')
+        ? { w: 48, h: 48 }
+        : { w: 18, h: 36 };
+    if (!(typeof isMobileAdaptiveCombatMode === 'function' && isMobileAdaptiveCombatMode(gameMode))) {
+        return base;
+    }
+    const scale = (typeof getMobileLandscapeAdaptiveScale === 'function')
+        ? getMobileLandscapeAdaptiveScale()
+        : 1;
+    return {
+        w: Math.max(kind === 'heart' ? 24 : 10, Math.round(base.w * scale)),
+        h: Math.max(kind === 'heart' ? 24 : 20, Math.round(base.h * scale))
+    };
+}
+
 // ==== ЛОГИКА ВРАГОВ ====
 /**
  * Генерирует массив врагов в виде сетки
@@ -177,6 +253,7 @@ function spawnEnemiesOnPlatforms() {
  */
 function spawnEnemies() {
     const lilacColors = ["#b57edc", "#c084fc", "#a855f7", "#e1bee7", "#ede7f6"];
+    const layout = getLilacFormationLayout();
     enemies = [];
     for (let r = 0; r < ENEMY_ROWS; r++) {
         for (let c = 0; c < ENEMY_COLS; c++) {
@@ -192,10 +269,10 @@ function spawnEnemies() {
                 flowers.push({relX, relY, rad, sizeK, color});
             }
             enemies.push({
-                x: 100 + c * ENEMY_X_SPACING,
-                y: ENEMY_START_Y + r * ENEMY_Y_SPACING,
-                w: canvas.height * ENEMY_WIDTH_RATIO,
-                h: canvas.height * ENEMY_HEIGHT_RATIO,
+                x: layout.startX + c * layout.spacingX,
+                y: layout.startY + r * layout.spacingY,
+                w: layout.enemyW,
+                h: layout.enemyH,
                 dir: 1,
                 diving: false,
                 targetX: 0,
@@ -212,6 +289,7 @@ function spawnEnemies() {
  */
 function spawnNormalPhase(phase, immediate = true) {
     const lilacColors = ["#b57edc", "#c084fc", "#a855f7", "#e1bee7", "#ede7f6"];
+    const layout = getLilacFormationLayout();
     enemies = [];
     const phaseMap = {
         1: { speedMul: 0.5, shootMul: 0.5 },
@@ -232,10 +310,10 @@ function spawnNormalPhase(phase, immediate = true) {
                 const color = lilacColors[Math.floor(Math.random() * lilacColors.length)];
                 flowers.push({relX, relY, rad, sizeK, color});
             }
-            const enemyW = canvas.height * ENEMY_WIDTH_RATIO;
-            const enemyH = canvas.height * ENEMY_HEIGHT_RATIO;
-            const ex = 100 + c * ENEMY_X_SPACING;
-            const ey = ENEMY_START_Y + r * ENEMY_Y_SPACING;
+            const enemyW = layout.enemyW;
+            const enemyH = layout.enemyH;
+            const ex = layout.startX + c * layout.spacingX;
+            const ey = layout.startY + r * layout.spacingY;
             enemies.push({
                 x: ex,
                 y: ey,
@@ -284,10 +362,11 @@ function spawnOneNormalEnemy(phase, idx) {
         const color = lilacColors[Math.floor(Math.random() * lilacColors.length)];
         flowers.push({relX, relY, rad, sizeK, color});
     }
-    const enemyW = canvas.height * ENEMY_WIDTH_RATIO;
-    const enemyH = canvas.height * ENEMY_HEIGHT_RATIO;
-    const ex = 100 + c * ENEMY_X_SPACING;
-    const ey = ENEMY_START_Y + r * ENEMY_Y_SPACING;
+    const layout = getLilacFormationLayout();
+    const enemyW = layout.enemyW;
+    const enemyH = layout.enemyH;
+    const ex = layout.startX + c * layout.spacingX;
+    const ey = layout.startY + r * layout.spacingY;
     const phaseMap = {1: { speedMul: 0.5, shootMul: 0.5 }, 2: { speedMul: 0.5, shootMul: 0.5 }, 3: { speedMul: 1.0, shootMul: 1.0 }, 4: { speedMul: 1.5, shootMul: 1.5 }};
     const mul = phaseMap[phase] || phaseMap[2];
     enemies.push({
@@ -313,7 +392,8 @@ function spawnOneNormalEnemy(phase, idx) {
  */
 function trySpawnBonus(x, y) {
     if (Math.random() < BONUS_CHANCE) {
-        bottles.push({ x, y, w: 18, h: 36 });
+        const size = getCombatPickupSize('bottle');
+        bottles.push({ x, y, w: size.w, h: size.h });
     }
 }
 
@@ -329,7 +409,8 @@ function trySpawnBonus(x, y) {
  */
 function trySpawnHeart(x, y) {
     if (Math.random() < HEART_CHANCE) {
-        hearts.push({ x, y, w: 48, h: 48 });
+        const size = getCombatPickupSize('heart');
+        hearts.push({ x, y, w: size.w, h: size.h });
     }
 }
 
@@ -339,6 +420,13 @@ function trySpawnHeart(x, y) {
  * @returns {'beer'|'heart'|'banana'} фактически созданный тип.
  */
 function spawnO4koDrop(kind = 'random') {
+    const ma = window.BHMobileAdaptive;
+    const o4koScale = (ma && typeof ma.getScale === 'function' && typeof ma.isActive === 'function' && ma.isActive('o4ko'))
+        ? ma.getScale('o4ko')
+        : 1;
+    const edgeInset = Math.max(8, Math.round(12 * o4koScale));
+    const laneInset = edgeInset * 2;
+
     let actual = kind;
     if (actual === 'random') {
         // random для уровня "Очко": 70% пиво, 30% сердце
@@ -346,23 +434,23 @@ function spawnO4koDrop(kind = 'random') {
     }
 
     if (actual === 'beer') {
-        const w = 36;
-        const h = 36;
-        const x = 12 + Math.random() * Math.max(1, canvas.width - w - 24);
+        const w = Math.max(20, Math.round(36 * o4koScale));
+        const h = Math.max(20, Math.round(36 * o4koScale));
+        const x = edgeInset + Math.random() * Math.max(1, canvas.width - w - laneInset);
         bottles.push({ x, y: -h - 8, w, h, fromTop: true });
         return 'beer';
     }
     if (actual === 'heart') {
-        const w = 40;
-        const h = 40;
-        const x = 12 + Math.random() * Math.max(1, canvas.width - w - 24);
+        const w = Math.max(24, Math.round(40 * o4koScale));
+        const h = Math.max(24, Math.round(40 * o4koScale));
+        const x = edgeInset + Math.random() * Math.max(1, canvas.width - w - laneInset);
         hearts.push({ x, y: -h - 8, w, h, fromTop: true });
         return 'heart';
     }
 
-    const w = 40;
-    const h = 40;
-    const x = 12 + Math.random() * Math.max(1, canvas.width - w - 24);
+    const w = Math.max(24, Math.round(40 * o4koScale));
+    const h = Math.max(24, Math.round(40 * o4koScale));
+    const x = edgeInset + Math.random() * Math.max(1, canvas.width - w - laneInset);
     bananaBonuses.push({ x, y: -h - 8, w, h, fromTop: true });
     return 'banana';
 }
@@ -386,8 +474,9 @@ function spawnEnemyAt(cx, cy) {
         const color = lilacColors[Math.floor(Math.random() * lilacColors.length)];
         flowers.push({relX, relY, rad, sizeK, color});
     }
-    const w = canvas.height * ENEMY_WIDTH_RATIO;
-    const h = canvas.height * ENEMY_HEIGHT_RATIO;
+    const layout = getLilacFormationLayout();
+    const w = layout.enemyW;
+    const h = layout.enemyH;
     enemies.push({ x: cx - w/2, y: cy - h/2, w, h, dir: 1, diving: false, targetX: 0, shootTimer: 0, flowers });
 }
 
@@ -401,13 +490,14 @@ function spawnEnemyAt(cx, cy) {
 function scheduleWave(cx, cy, count, intervalMs) {
     // Если волна большая (например, 12), спавним их по горизонтали по всему полю
     if (count >= 12) {
+        const layout = getLilacFormationLayout();
         const spacing = canvas.width / (count + 1);
         for (let i = 0; i < count; i++) {
             // Коллбек таймера спавнит очередного врага волны
             scheduleEnemySpawnTimeout(() => {
                 if (!canSpawnScheduledLilacNow()) return;
                 const rx = spacing * (i + 1);
-                const ry = ENEMY_START_Y + (Math.random() - 0.5) * 20;
+                const ry = layout.startY + (Math.random() - 0.5) * Math.max(10, layout.enemyH * 0.2);
                 spawnEnemyAt(rx, ry);
             }, i * intervalMs);
         }

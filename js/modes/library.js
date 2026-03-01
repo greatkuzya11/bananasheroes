@@ -72,6 +72,70 @@ let libraryCatchPlatformDebugTimer = 0;
 const libraryAlphaMaskCache = new WeakMap();
 
 /**
+ * Возвращает runtime-параметры мобильного адаптива для уровня "Библиотека".
+ * @param {number} dt - время кадра.
+ * @returns {{active:boolean,scale:number,frameMul:number,speedMul:number}}
+ */
+function getLibraryAdaptiveRuntime(dt) {
+    const ma = window.BHMobileAdaptive;
+    if (ma && typeof ma.runtime === 'function') {
+        return ma.runtime(dt, 'library');
+    }
+    return { active: false, scale: 1, frameMul: 1, speedMul: 1 };
+}
+
+/**
+ * Масштабирует пиксельное значение под mobile landscape для уровня "Библиотека".
+ * @param {number} value - базовое значение.
+ * @param {number} minValue - минимальное значение.
+ * @param {boolean} round - округление.
+ * @returns {number}
+ */
+function libraryPx(value, minValue = 0, round = true) {
+    const ma = window.BHMobileAdaptive;
+    if (ma && typeof ma.px === 'function') {
+        return ma.px(value, 'library', minValue, round);
+    }
+    return value;
+}
+
+/**
+ * Масштабирует размеры бонусов/пуль под mobile landscape для уровня "Библиотека".
+ * @param {number} w - базовая ширина.
+ * @param {number} h - базовая высота.
+ * @param {number} minW - минимальная ширина.
+ * @param {number} minH - минимальная высота.
+ * @returns {{w:number,h:number}}
+ */
+function librarySize(w, h, minW = 1, minH = 1) {
+    const ma = window.BHMobileAdaptive;
+    if (ma && typeof ma.size === 'function') {
+        return ma.size(w, h, 'library', minW, minH);
+    }
+    return { w, h };
+}
+
+/**
+ * Возвращает профиль мобильного баланса для уровня "Библиотека".
+ * @returns {{enemyFireRate:number,enemyProjectileSpeed:number,enemyMoveSpeed:number,dropFallSpeed:number,bossMoveSpeed:number,homing:number,targetFallSpeed:number}}
+ */
+function getLibraryMobileBalance() {
+    const ma = window.BHMobileAdaptive;
+    if (ma && typeof ma.getBalance === 'function') {
+        return ma.getBalance('library');
+    }
+    return {
+        enemyFireRate: 1,
+        enemyProjectileSpeed: 1,
+        enemyMoveSpeed: 1,
+        dropFallSpeed: 1,
+        bossMoveSpeed: 1,
+        homing: 1,
+        targetFallSpeed: 1
+    };
+}
+
+/**
  * Возвращает случайное число с плавающей точкой в диапазоне [min, max].
  * Используется для случайных таймеров, скоростей и интервалов в уровне «Библиотека».
  * @param {number} min - Нижняя граница диапазона.
@@ -273,10 +337,12 @@ function createLibraryBoss(type, x, y, w, h, speed) {
  * @returns {number} Время в секундах до следующего выстрела.
  */
 function getLibraryBossShootDelay(type) {
+    const bal = getLibraryAdaptiveRuntime(0).active ? getLibraryMobileBalance() : null;
+    const fireRate = bal ? Math.max(0.2, bal.enemyFireRate) : 1;
     // Частота стрельбы снижена примерно в 3 раза для баланса.
-    if (type === 'o4ko') return libraryRand(4.05, 5.7);
-    if (type === 'nosok') return libraryRand(9.6, 14.4);
-    return libraryRand(4.35, 5.25);
+    if (type === 'o4ko') return libraryRand(4.05, 5.7) / fireRate;
+    if (type === 'nosok') return libraryRand(9.6, 14.4) / fireRate;
+    return libraryRand(4.35, 5.25) / fireRate;
 }
 
 
@@ -306,14 +372,15 @@ function getLibraryBossById(id) {
  * При первом запуске создаёт боссов и подготавливает их таймеры атак.
  */
 function refreshLibraryLayout() {
-    libraryGroundY = canvas.height - 20;
+    const edgePad = libraryPx(20, 10);
+    libraryGroundY = canvas.height - edgePad;
     libraryTopRail = {
-        x: Math.max(16, canvas.width * 0.04),
+        x: Math.max(libraryPx(16, 8), canvas.width * 0.04),
         y: canvas.height * 0.26,
         w: Math.max(120, canvas.width * 0.92)
     };
-    if (libraryTopRail.x + libraryTopRail.w > canvas.width - 16) {
-        libraryTopRail.w = Math.max(120, canvas.width - libraryTopRail.x - 16);
+    if (libraryTopRail.x + libraryTopRail.w > canvas.width - libraryPx(16, 8)) {
+        libraryTopRail.w = Math.max(120, canvas.width - libraryTopRail.x - libraryPx(16, 8));
     }
 
     if (!libraryToilet) {
@@ -323,13 +390,13 @@ function refreshLibraryLayout() {
             : 1.0;
         const w = Math.max(h * 0.8, h * ratio);
         libraryToilet = {
-            x: canvas.width - w - 28,
+            x: canvas.width - w - libraryPx(28, 12),
             y: libraryGroundY - h,
             w,
             h,
             baseY: libraryGroundY - h,
             zoneMinX: canvas.width * 0.5,
-            zoneMaxX: canvas.width - w - 18,
+            zoneMaxX: canvas.width - w - libraryPx(18, 8),
             actionTimer: libraryRand(0.9, 2.8),
             isHopping: false,
             hopFromX: 0,
@@ -351,7 +418,7 @@ function refreshLibraryLayout() {
         libraryToilet.baseY = libraryGroundY - libraryToilet.h;
         libraryToilet.y = Math.min(libraryToilet.y, libraryToilet.baseY);
         libraryToilet.zoneMinX = canvas.width * 0.5;
-        libraryToilet.zoneMaxX = canvas.width - libraryToilet.w - 18;
+        libraryToilet.zoneMaxX = canvas.width - libraryToilet.w - libraryPx(18, 8);
         libraryToilet.x = Math.max(libraryToilet.zoneMinX, Math.min(libraryToilet.zoneMaxX, libraryToilet.x));
         if (typeof libraryToilet.volleyPendingCount !== 'number') libraryToilet.volleyPendingCount = 0;
         if (typeof libraryToilet.volleyChargeTimer !== 'number') libraryToilet.volleyChargeTimer = 0;
@@ -439,21 +506,26 @@ function getLibraryPhaseParams() {
 function spawnLibraryBook() {
     const h = canvas.height * 0.095;
     const w = h * 0.72;
-    const x = 24 + Math.random() * Math.max(1, canvas.width - w - 48);
+    const edgeInset = libraryPx(24, 10);
+    const laneInset = edgeInset * 2;
+    const x = edgeInset + Math.random() * Math.max(1, canvas.width - w - laneInset);
     const y = Math.random() * Math.max(1, canvas.height * (2 / 3) - h);
     const sets = ['br', 'bg', 'bb'];
     const spriteSet = sets[Math.floor(Math.random() * sets.length)];
     const arr = getLibrarySpriteArray(spriteSet);
     const frameCount = Math.max(1, arr.length);
 
+    const speedMul = getLibraryAdaptiveRuntime(0).speedMul;
+    const bal = getLibraryMobileBalance();
+    const fallMul = bal.targetFallSpeed || 1;
     libraryBooks.push({
         x,
         y,
         w,
         h,
-        vx: (Math.random() - 0.5) * 55,
-        vy: 75 + Math.random() * 70,
-        gravity: 180,
+        vx: (Math.random() - 0.5) * (55 * speedMul * fallMul),
+        vy: (75 + Math.random() * 70) * speedMul * fallMul,
+        gravity: 180 * speedMul * fallMul,
         state: 'falling',
         rotation: (Math.random() - 0.5) * 0.4,
         rotSpeed: (Math.random() - 0.5) * 1.2,
@@ -472,16 +544,17 @@ function spawnLibraryBook() {
  * @param {number} y - Координата Y точки эффекта.
  */
 function spawnLibraryCatchSplash(x, y) {
+    const speedMul = getLibraryAdaptiveRuntime(0).speedMul;
     const colors = ['#f5cf4c', '#8a5a2b', '#74b83f'];
-    const vxs = [-90, 0, 90];
+    const vxs = [-90 * speedMul, 0, 90 * speedMul];
     for (let i = 0; i < 3; i++) {
         libraryCatchSplashes.push({
             x,
             y,
-            vx: vxs[i] + libraryRand(-16, 16),
-            vy: -libraryRand(120, 185),
-            gravity: 280 + libraryRand(0, 120),
-            r: libraryRand(4.5, 8.2),
+            vx: vxs[i] + libraryRand(-16 * speedMul, 16 * speedMul),
+            vy: -libraryRand(120 * speedMul, 185 * speedMul),
+            gravity: (280 + libraryRand(0, 120)) * speedMul,
+            r: libraryRand(libraryPx(4.5, 3, false), libraryPx(8.2, 5, false)),
             timer: 0,
             life: 2.0,
             color: colors[i]
@@ -820,6 +893,7 @@ function updateLibraryToiletShots(dt) {
  * @param {object} boss - Босс-стрелок типа `o4ko`.
  */
 function shootLibraryBossO4ko(boss) {
+    const bal = getLibraryMobileBalance();
     const bx = boss.x + boss.w * 0.5;
     const by = boss.y + boss.h * 0.5;
     const px = player.x + player.w * 0.5;
@@ -831,7 +905,7 @@ function shootLibraryBossO4ko(boss) {
     for (let i = 0; i < count; i++) {
         const offset = (i - (count - 1) * 0.5) * spread;
         const angle = baseAngle + offset;
-        const speed = 3.4 + Math.random() * 1.0; // Описание.
+        const speed = (3.4 + Math.random() * 1.0) * bal.enemyProjectileSpeed; // Описание.
         const size = Math.round(24 * (1 + Math.random() * 1.2));
         const img = (o4koPoopImgs && o4koPoopImgs.length > 0)
             ? o4koPoopImgs[Math.floor(Math.random() * o4koPoopImgs.length)]
@@ -863,6 +937,7 @@ function shootLibraryBossO4ko(boss) {
  * @param {object} boss - Босс-стрелок типа `nosok`.
  */
 function shootLibraryBossNosok(boss) {
+    const bal = getLibraryMobileBalance();
     const shootFish = boss.nosokNextType === 'fish';
     boss.nosokNextType = shootFish ? 'sock' : 'fish';
 
@@ -879,7 +954,7 @@ function shootLibraryBossNosok(boss) {
 
     if (!shootFish) {
         const size = Math.max(24, boss.w * 0.34);
-        const speed = libraryRand(canvas.width * 0.29, canvas.width * 0.39);
+        const speed = libraryRand(canvas.width * 0.29, canvas.width * 0.39) * bal.enemyProjectileSpeed;
         const mvx = (dx / dist) * speed;
         const mvy = (dy / dist) * speed - libraryRand(canvas.height * 0.14, canvas.height * 0.24);
         enemyBullets.push({
@@ -892,7 +967,7 @@ function shootLibraryBossNosok(boss) {
             mvx,
             mvy,
             gravity: canvas.height * libraryRand(0.68, 0.9),
-            homing: libraryRand(0.28, 0.52),
+            homing: libraryRand(0.28, 0.52) * bal.homing,
             age: 0,
             rotation: Math.random() * Math.PI * 2,
             rotationSpeed: (Math.random() < 0.5 ? -1 : 1) * libraryRand(2.1, 3.9),
@@ -919,7 +994,7 @@ function shootLibraryBossNosok(boss) {
     const fishAspect = Math.max(1.1, Math.min(4.0, fishAspectRaw));
     const fishW = fishBaseW;
     const fishH = Math.max(12, fishW / fishAspect);
-    const fishSpeed = libraryRand(canvas.width * 0.41, canvas.width * 0.55);
+    const fishSpeed = libraryRand(canvas.width * 0.41, canvas.width * 0.55) * bal.enemyProjectileSpeed;
     const fvx = (dx / dist) * fishSpeed;
     const fvy = (dy / dist) * fishSpeed - libraryRand(canvas.height * 0.07, canvas.height * 0.15);
     enemyBullets.push({
@@ -932,7 +1007,7 @@ function shootLibraryBossNosok(boss) {
         mvx: fvx,
         mvy: fvy,
         gravity: canvas.height * libraryRand(0.42, 0.62),
-        homing: libraryRand(0.62, 0.95),
+        homing: libraryRand(0.62, 0.95) * bal.homing,
         age: 0,
         rotation: Math.random() * Math.PI * 2,
         rotationSpeed: (Math.random() < 0.5 ? -1 : 1) * libraryRand(2.8, 5.2),
@@ -955,6 +1030,7 @@ function shootLibraryBossNosok(boss) {
  * @param {object} boss - Босс-стрелок типа `tele`.
  */
 function shootLibraryBossE67(boss) {
+    const bal = getLibraryMobileBalance();
     const emojis = ['', '', '7', '6', ''];
     const emoji = emojis[Math.floor(Math.random() * emojis.length)];
     const bx = boss.x + boss.w * 0.5;
@@ -964,13 +1040,25 @@ function shootLibraryBossE67(boss) {
     const dx = px - bx;
     const dy = py - by;
     const dist = Math.max(1, Math.hypot(dx, dy));
-    const speed = 5.0 + Math.random() * 1.0;
-    enemyBullets.push({ x: bx, y: by, w: 16, h: 24, vx: (dx / dist) * speed, vy: (dy / dist) * speed, emoji, libraryBullet: true, libraryOwnerId: boss.id });
+    const speed = (5.0 + Math.random() * 1.0) * bal.enemyProjectileSpeed;
+    const bs = librarySize(16, 24, 8, 12);
+    enemyBullets.push({
+        x: bx,
+        y: by,
+        w: bs.w,
+        h: bs.h,
+        vx: (dx / dist) * speed,
+        vy: (dy / dist) * speed,
+        emoji,
+        libraryBullet: true,
+        libraryOwnerId: boss.id
+    });
     if (window.BHAudio && typeof window.BHAudio.playEnemyShoot === 'function') {
         window.BHAudio.playEnemyShoot('67');
     }
 }
 function shootLibraryBossTele(boss) {
+    const bal = getLibraryMobileBalance();
     const emojis = ['\u{1FAB3}', '\u{1F9E8}', '7\uFE0F\u20E3', '6\uFE0F\u20E3', '\u{1F4A9}'];
     const emoji = emojis[Math.floor(Math.random() * emojis.length)];
     const bx = boss.x + boss.w * 0.5;
@@ -980,12 +1068,13 @@ function shootLibraryBossTele(boss) {
     const dx = px - bx;
     const dy = py - by;
     const dist = Math.max(1, Math.hypot(dx, dy));
-    const speed = 4.6 + Math.random() * 0.9; // Описание.
+    const speed = (4.6 + Math.random() * 0.9) * bal.enemyProjectileSpeed; // Описание.
+    const bs = librarySize(16, 24, 8, 12);
     enemyBullets.push({
         x: bx,
         y: by,
-        w: 16,
-        h: 24,
+        w: bs.w,
+        h: bs.h,
         vx: (dx / dist) * speed,
         vy: (dy / dist) * speed,
         emoji,
@@ -1007,6 +1096,7 @@ function updateLibraryBosses(dt) {
     const aliveCount = alive.length;
     if (aliveCount <= 0) return;
     const frequencyMul = (aliveCount === 1) ? 2 : 1;
+    const bal = getLibraryMobileBalance();
 
     for (let i = 0; i < libraryBosses.length; i++) {
         const b = libraryBosses[i];
@@ -1033,7 +1123,7 @@ function updateLibraryBosses(dt) {
 
         b.wavePhase += dt * b.waveFreq;
         const micro = 1 + Math.sin(b.wavePhase) * b.waveAmp;
-        b.x += b.dir * b.speed * b.speedScale * micro * dt;
+        b.x += b.dir * b.speed * b.speedScale * micro * bal.enemyMoveSpeed * dt;
 
         if (b.x <= b.minX) {
             b.x = b.minX;
@@ -1066,6 +1156,7 @@ function updateLibraryBosses(dt) {
  */
 function updateLibraryManagedEnemyBullets(dt) {
     if (!enemyBullets || enemyBullets.length === 0) return;
+    const bal = getLibraryMobileBalance();
     for (let i = enemyBullets.length - 1; i >= 0; i--) {
         const eb = enemyBullets[i];
         if (!eb.libraryManaged || !eb.libraryNosok) continue;
@@ -1084,7 +1175,7 @@ function updateLibraryManagedEnemyBullets(dt) {
         const nx = dx / d;
 
         const homingScale = (eb.age < 0.35) ? (isFish ? 0.72 : 0.52) : 1.0;
-        const homingPower = isFish ? canvas.width * 0.070 : canvas.width * 0.052;
+        const homingPower = (isFish ? canvas.width * 0.070 : canvas.width * 0.052) * bal.homing;
         eb.mvx += nx * (eb.homing || 0.35) * homingScale * dt * homingPower;
         eb.mvy += (eb.gravity || canvas.height * 0.95) * dt;
 
@@ -1347,10 +1438,13 @@ function updateLibraryDropTimers(dt) {
     if (libraryHeartDropTimer >= 1.0) {
         libraryHeartDropTimer -= 1.0;
         if (Math.random() < 0.05) {
-            const w = 40;
-            const h = 40;
+            const hs = librarySize(40, 40, 24, 24);
+            const w = hs.w;
+            const h = hs.h;
+            const edgeInset = libraryPx(12, 8);
+            const laneInset = edgeInset * 2;
             hearts.push({
-                x: 12 + Math.random() * Math.max(1, canvas.width - w - 24),
+                x: edgeInset + Math.random() * Math.max(1, canvas.width - w - laneInset),
                 y: -h - 10,
                 w,
                 h,
@@ -1363,10 +1457,13 @@ function updateLibraryDropTimers(dt) {
     if (libraryBeerDropTimer >= libraryNextBeerDropTime) {
         libraryBeerDropTimer = 0;
         libraryNextBeerDropTime = libraryRand(10, 15);
-        const w = 36;
-        const h = 36;
+        const bs = librarySize(36, 36, 20, 20);
+        const w = bs.w;
+        const h = bs.h;
+        const edgeInset = libraryPx(12, 8);
+        const laneInset = edgeInset * 2;
         bottles.push({
-            x: 12 + Math.random() * Math.max(1, canvas.width - w - 24),
+            x: edgeInset + Math.random() * Math.max(1, canvas.width - w - laneInset),
             y: -h - 10,
             w,
             h,
@@ -1428,7 +1525,7 @@ function updateLibraryBooks(dt) {
         libraryLayoutWidth = canvas.width;
         libraryLayoutHeight = canvas.height;
     }
-    libraryGroundY = canvas.height - 20;
+    libraryGroundY = canvas.height - libraryPx(20, 10);
     if (libraryCatchPlatformDebugTimer > 0) {
         libraryCatchPlatformDebugTimer = Math.max(0, libraryCatchPlatformDebugTimer - dt);
     }

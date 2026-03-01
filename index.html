@@ -507,6 +507,19 @@
         }
 
         @media (max-width: 960px), (pointer: coarse) {
+            /* ---- Global mobile CSS vars (available to all elements incl. #fullscreen-btn) ---- */
+            :root {
+                --m-edge:    min(2.5vw, 2.5svh);
+                --m-btn-fs:  min(3.2vw, 2.3svh);
+                --m-btn-pv:  min(1.8vw, 1.5svh);
+                --m-btn-ph:  min(2.8vw, 2svh);
+                --m-btn-h:   min(8vw,   6svh);
+                --m-btn-gap: min(3vw, 2.5svh);
+            }
+            /* ---- FULLSCREEN BUTTON (mobile only, shown by JS) ---- */
+            #fullscreen-btn {
+                display: none; /* overridden to block by JS when fullscreen API is available */
+            }
             /* ---- MENU: compact, no-scroll layout ---- */
             #menu {
                 height: 100dvh;
@@ -581,15 +594,7 @@
                 line-height: 1.2;
             }
 
-            /* === CSS vars for mobile button geometry (all relative) === */
-            #menu {
-                --m-edge:    min(2.5vw, 2.5svh);   /* distance from screen/safe-area edge */
-                --m-btn-fs:  min(3.2vw, 2.3svh);   /* button font-size */
-                --m-btn-pv:  min(1.8vw, 1.5svh);   /* button padding vertical */
-                --m-btn-ph:  min(2.8vw, 2svh);     /* button padding horizontal */
-                --m-btn-h:   min(8vw,   6svh);      /* estimated button height */
-                --m-btn-gap: min(3vw, 2.5svh);     /* gap between button rows (bigger!) */
-            }
+            /* CSS vars are now on :root (see top of this media query) */
 
             /* === Utility row: fixed grid container, 2 cols × 2 rows === */
             #menu-util-row {
@@ -651,6 +656,31 @@
             /* Menu content must not hide behind the 2 rows of fixed buttons */
             .menu-inner {
                 padding-bottom: calc(var(--m-edge) * 2 + var(--m-btn-h) * 2 + var(--m-btn-gap));
+            }
+
+            /* ---- Fullscreen button ---- */
+            #fullscreen-btn {
+                position: fixed !important;
+                top: calc(var(--m-edge) + env(safe-area-inset-top)) !important;
+                left: var(--m-edge) !important;
+                z-index: 1045 !important;
+                width: min(8vw, 5.5svh) !important;
+                height: min(8vw, 5.5svh) !important;
+                min-width: unset !important;
+                padding: 0 !important;
+                font-size: min(4.5vw, 3.2svh) !important;
+                line-height: 1 !important;
+                border-radius: 6px !important;
+                background: rgba(0, 0, 0, 0.45) !important;
+                color: #fff !important;
+                border: 1px solid rgba(255, 255, 255, 0.25) !important;
+                backdrop-filter: blur(4px) !important;
+                -webkit-backdrop-filter: blur(4px) !important;
+                transition: background 0.15s !important;
+            }
+            #fullscreen-btn:active {
+                background: rgba(0, 0, 0, 0.7) !important;
+                transform: scale(0.92);
             }
 
             /* ---- HUD ---- */
@@ -737,6 +767,36 @@
         }
         #help-btn:active {
             transform: scale(0.95);
+        }
+
+        /* ==== FULLSCREEN BUTTON ==== */
+        #fullscreen-btn {
+            display: none;
+            position: fixed;
+            top: 8px;
+            left: 8px;
+            z-index: 1045;
+            width: 32px;
+            height: 32px;
+            min-width: unset;
+            padding: 0;
+            font-size: 16px;
+            line-height: 1;
+            border-radius: 6px;
+            background: rgba(0, 0, 0, 0.45);
+            color: #fff;
+            border: 1px solid rgba(255, 255, 255, 0.25);
+            backdrop-filter: blur(4px);
+            -webkit-backdrop-filter: blur(4px);
+            cursor: pointer;
+            transition: background 0.15s;
+        }
+        #fullscreen-btn:hover {
+            background: rgba(0, 0, 0, 0.65);
+        }
+        #fullscreen-btn:active {
+            background: rgba(0, 0, 0, 0.8);
+            transform: scale(0.92);
         }
 
         /* ==== HELP SCREEN ==== */
@@ -1077,6 +1137,8 @@
     </div>
 </div>
 
+<button id="fullscreen-btn" type="button" title="Полный экран" aria-label="Полный экран">⛶</button>
+
 <div id="landscape-warning">
     <div class="lw-icon">📱</div>
     <p>Поверни устройство горизонтально</p>
@@ -1281,6 +1343,7 @@
 </div>
 
 <script src="js/core/config.js"></script>
+<script src="js/core/mobileAdaptive.js"></script>
 <script src="js/core/state.js"></script>
 <script src="js/core/audio.js"></script>
 <script src="js/core/assets.js"></script>

@@ -63,17 +63,24 @@ class Player {
     update(dt) {
         const nosokMoveMul = (gameMode === 'nosok') ? 1.5 : 1;
         const nosokJumpMul = (gameMode === 'nosok') ? 1.5 : 1;
+        const adaptiveCombat = (typeof isMobileAdaptiveCombatMode === 'function') && isMobileAdaptiveCombatMode(gameMode);
+        const adaptiveScale = adaptiveCombat && (typeof getMobileLandscapeAdaptiveScale === 'function')
+            ? getMobileLandscapeAdaptiveScale()
+            : 1;
+        // В desktop сохраняем историческую "покадровую" скорость.
+        // В mobile landscape для адаптируемых режимов переводим в dt + масштаб.
+        const moveMul = adaptiveCombat ? (dt * 60 * adaptiveScale) : 1;
         // Альтернативный режим стрельбы: стрелки меняют направление
         if (altShootMode) {
             if (keys["ArrowLeft"]) {
                 playerBulletDir = 'left';
                 this.facingDir = 'left';
-                this.x -= this.speed * nosokMoveMul;
+                this.x -= this.speed * nosokMoveMul * moveMul;
             }
             if (keys["ArrowRight"]) {
                 playerBulletDir = 'right';
                 this.facingDir = 'right';
-                this.x += this.speed * nosokMoveMul;
+                this.x += this.speed * nosokMoveMul * moveMul;
             }
             // Клавиша ArrowDown стреляет вверх в альтернативном режиме
             if (keys["ArrowDown"]) {
@@ -85,10 +92,10 @@ class Player {
         } else {
             // Обычный режим: только горизонтальное движение
             if (keys["ArrowLeft"]) {
-                this.x -= this.speed * nosokMoveMul;
+                this.x -= this.speed * nosokMoveMul * moveMul;
             }
             if (keys["ArrowRight"]) {
-                this.x += this.speed * nosokMoveMul;
+                this.x += this.speed * nosokMoveMul * moveMul;
             }
         }
         this.x = Math.max(10, Math.min(canvas.width - this.w - 10, this.x));

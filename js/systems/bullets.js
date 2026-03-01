@@ -26,6 +26,10 @@ function shootPlayerBullet(p) {
     }
 
     let isBonus = false;
+    const adaptiveCombat = (typeof isMobileAdaptiveCombatMode === 'function') && isMobileAdaptiveCombatMode(gameMode);
+    const adaptiveScale = adaptiveCombat && (typeof getMobileLandscapeAdaptiveScale === 'function')
+        ? getMobileLandscapeAdaptiveScale()
+        : 1;
     if (bonusMode && bonusShots > 0) {
         r *= 1.8;
         speed *= 1.8;
@@ -40,6 +44,8 @@ function shootPlayerBullet(p) {
     }
     // Точные радиусы пуль Макса: не бонусная 10, бонусная 12
     if (p.type === 'max') r = isBonus ? 12 : 10;
+    // В mobile landscape для адаптируемых режимов уменьшаем радиусы под масштаб экрана.
+    if (adaptiveCombat) r = Math.max(4, r * adaptiveScale);
     if (window.BHAudio && typeof window.BHAudio.playPlayerShoot === 'function') {
         window.BHAudio.playPlayerShoot(p.type, isBonus);
     }

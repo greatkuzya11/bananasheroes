@@ -39,6 +39,53 @@ let lovlyuLightningDropTimer = 0;    // таймер спавна молнии (
 let lovlyuLightningDuration = 13;    // длительность эффекта молнии (сек)
 
 /**
+ * Возвращает runtime-параметры мобильного адаптива для уровня "Ловлю".
+ * @param {number} dt - время кадра.
+ * @returns {{active:boolean,scale:number,frameMul:number,speedMul:number}}
+ */
+function getLovlyuAdaptiveRuntime(dt) {
+    const ma = window.BHMobileAdaptive;
+    if (ma && typeof ma.runtime === 'function') {
+        return ma.runtime(dt, 'lovlyu');
+    }
+    return { active: false, scale: 1, frameMul: 1, speedMul: 1 };
+}
+
+/**
+ * Масштабирует размеры бонусов уровня "Ловлю" для мобильного landscape.
+ * @param {number} w - базовая ширина.
+ * @param {number} h - базовая высота.
+ * @returns {{w:number,h:number}}
+ */
+function getLovlyuScaledSize(w, h) {
+    const ma = window.BHMobileAdaptive;
+    if (ma && typeof ma.size === 'function') {
+        return ma.size(w, h, 'lovlyu', 24, 24);
+    }
+    return { w, h };
+}
+
+/**
+ * Возвращает профиль мобильного баланса для уровня "Ловлю".
+ * @returns {{enemyFireRate:number,enemyProjectileSpeed:number,enemyMoveSpeed:number,dropFallSpeed:number,bossMoveSpeed:number,homing:number,targetFallSpeed:number}}
+ */
+function getLovlyuMobileBalance() {
+    const ma = window.BHMobileAdaptive;
+    if (ma && typeof ma.getBalance === 'function') {
+        return ma.getBalance('lovlyu');
+    }
+    return {
+        enemyFireRate: 1,
+        enemyProjectileSpeed: 1,
+        enemyMoveSpeed: 1,
+        dropFallSpeed: 1,
+        bossMoveSpeed: 1,
+        homing: 1,
+        targetFallSpeed: 1
+    };
+}
+
+/**
  * Сбрасывает runtime-состояние уровня "Ловлю".
  */
 function resetLovlyuLevelState() {
@@ -71,7 +118,9 @@ function resetLovlyuLevelState() {
  */
 function initLovlyuLevel() {
     resetLovlyuLevelState();
-    lovlyuGroundY = canvas.height - 20; // земля на 20px от низа (как в обычном режиме)
+    const ma = window.BHMobileAdaptive;
+    const groundPad = (ma && typeof ma.px === 'function') ? ma.px(20, 'lovlyu', 10, true) : 20;
+    lovlyuGroundY = canvas.height - groundPad; // земля с адаптивным отступом от низа
 }
 
 /**
@@ -170,7 +219,8 @@ function spawnLovlyuChar() {
 
     const mirrored = Math.random() < 0.5;
 
-    const fallSpeed = canvas.height * 0.30;
+    const balance = getLovlyuMobileBalance();
+    const fallSpeed = canvas.height * 0.30 * balance.targetFallSpeed;
     const peekDuration = 0.3 + Math.random() * 0.3;
 
     lovlyuChars.push({
@@ -206,6 +256,8 @@ function spawnLovlyuChar() {
  */
 function updateLovlyuMode(dt) {
     if (invuln > 0) invuln -= dt;
+    const adaptive = getLovlyuAdaptiveRuntime(dt);
+    const balance = getLovlyuMobileBalance();
 
     player.update(dt);
 
@@ -233,8 +285,8 @@ function updateLovlyuMode(dt) {
 
     // Обновляем сердечки (падающие бонусы, аналогично другим режимам)
     hearts.forEach(h => {
-        h.y += 1.5;
-        h.x += Math.sin(h.y / 20) * 1.5;
+        h.y += 1.5 * balance.dropFallSpeed * adaptive.frameMul * adaptive.speedMul;
+        h.x += Math.sin(h.y / 20) * 1.5 * adaptive.frameMul * adaptive.speedMul;
     });
     hearts = hearts.filter(h => h.y < canvas.height + 20);
 
@@ -252,8 +304,8 @@ function updateLovlyuMode(dt) {
     // ==== Бонус "Магнит" ====
     // Обновляем падающие магниты
     lovlyuMagnets.forEach(m => {
-        m.y += 1.5;
-        m.x += Math.sin(m.y / 18) * 1.1;
+        m.y += 1.5 * balance.dropFallSpeed * adaptive.frameMul * adaptive.speedMul;
+        m.x += Math.sin(m.y / 18) * 1.1 * adaptive.frameMul * adaptive.speedMul;
     });
     lovlyuMagnets = lovlyuMagnets.filter(m => m.y < canvas.height + 20);
 
@@ -280,7 +332,8 @@ function updateLovlyuMode(dt) {
     if (!lovlyuVictoryShown && lovlyuMagnetDropTimer >= 1.0) {
         lovlyuMagnetDropTimer -= 1.0;
         if (Math.random() < 0.03) {
-            const mw = 40, mh = 40;
+            const ms = getLovlyuScaledSize(40, 40);
+            const mw = ms.w, mh = ms.h;
             lovlyuMagnets.push({
                 x: 12 + Math.random() * Math.max(1, canvas.width - mw - 24),
                 y: -mh - 10,
@@ -292,8 +345,8 @@ function updateLovlyuMode(dt) {
     // ==== Бонус "Молния" ====
     // Обновляем падающие молнии (скорость в 1.5 раза выше)
     lovlyuLightnings.forEach(l => {
-        l.y += 1.5 * 1.5;
-        l.x += Math.sin(l.y / 15) * 1.3;
+        l.y += 1.5 * 1.5 * balance.dropFallSpeed * adaptive.frameMul * adaptive.speedMul;
+        l.x += Math.sin(l.y / 15) * 1.3 * adaptive.frameMul * adaptive.speedMul;
     });
     lovlyuLightnings = lovlyuLightnings.filter(l => l.y < canvas.height + 20);
 
@@ -322,7 +375,8 @@ function updateLovlyuMode(dt) {
     if (!lovlyuVictoryShown && lovlyuLightningDropTimer >= 1.0) {
         lovlyuLightningDropTimer -= 1.0;
         if (Math.random() < 0.04) {
-            const lw = 40, lh = 40;
+            const ls = getLovlyuScaledSize(40, 40);
+            const lw = ls.w, lh = ls.h;
             lovlyuLightnings.push({
                 x: 12 + Math.random() * Math.max(1, canvas.width - lw - 24),
                 y: -lh - 10,
@@ -336,8 +390,9 @@ function updateLovlyuMode(dt) {
     if (!lovlyuVictoryShown && lovlyuHeartDropTimer >= 1.0) {
         lovlyuHeartDropTimer -= 1.0;
         if (Math.random() < 0.05) {
-            const w = 40;
-            const h = 40;
+            const hs = getLovlyuScaledSize(40, 40);
+            const w = hs.w;
+            const h = hs.h;
             hearts.push({
                 x: 12 + Math.random() * Math.max(1, canvas.width - w - 24),
                 y: -h - 10,
@@ -510,7 +565,8 @@ function updateLovlyuMode(dt) {
                         lovlyuMagnetComboCount++;
                         if (lovlyuMagnetComboCount >= 10) {
                             lovlyuMagnetComboCount = 0;
-                            const mw = 40, mh = 40;
+                            const ms = getLovlyuScaledSize(40, 40);
+                            const mw = ms.w, mh = ms.h;
                             lovlyuMagnets.push({
                                 x: 12 + Math.random() * Math.max(1, canvas.width - mw - 24),
                                 y: -mh - 10,
