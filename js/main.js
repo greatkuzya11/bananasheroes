@@ -961,6 +961,13 @@ if (typeof window !== 'undefined') {
             if (helpScreen) helpScreen.style.display = 'none';
             if (bonusScreen) bonusScreen.style.display = 'flex';
             updateBonusSkinSelection();
+            // focus selected skin card or first card for keyboard navigation
+            setTimeout(() => {
+                const sel = document.querySelector('.skin-card.selected');
+                if (sel) sel.focus(); else if (skinCards[0]) skinCards[0].focus();
+            }, 10);
+            // attach keyboard handler for navigation while bonus is open
+            document.addEventListener('keydown', bonusKeyHandler);
         });
     }
 
@@ -969,6 +976,10 @@ if (typeof window !== 'undefined') {
         bonusBackBtn.addEventListener('click', function() {
             if (bonusScreen) bonusScreen.style.display = 'none';
             if (helpScreen) helpScreen.style.display = 'block';
+            // focus help back button so keyboard users remain in help
+            setTimeout(() => { const hb = document.getElementById('help-back-btn'); if (hb) hb.focus(); }, 10);
+            // remove bonus keyboard handler
+            document.removeEventListener('keydown', bonusKeyHandler);
         });
     }
 
@@ -984,13 +995,41 @@ if (typeof window !== 'undefined') {
     });
 
     // Escape from bonus screen
-    (function() {
-        const originalListener = function(ev) {
-            if (ev.key === 'Escape' && bonusScreen && bonusScreen.style.display === 'flex') {
-                ev.preventDefault();
-                if (bonusBackBtn) bonusBackBtn.click();
+    // Keyboard navigation handler for bonus screen
+    function bonusKeyHandler(ev) {
+        if (!bonusScreen || bonusScreen.style.display !== 'flex') return;
+        const focused = document.activeElement;
+        if (ev.key === 'Escape') {
+            ev.preventDefault();
+            if (bonusBackBtn) bonusBackBtn.click();
+            return;
+        }
+        if (ev.key === 'ArrowLeft' || ev.key === 'ArrowRight') {
+            ev.preventDefault();
+            const arr = Array.from(skinCards);
+            let idx = arr.indexOf(focused);
+            if (idx === -1) { if (arr[0]) arr[0].focus(); return; }
+            idx = (ev.key === 'ArrowLeft') ? (idx - 1 + arr.length) % arr.length : (idx + 1) % arr.length;
+            arr[idx].focus();
+            return;
+        }
+        if (ev.key === 'ArrowUp') {
+            ev.preventDefault();
+            // go back to help; focus help back button
+            if (bonusBackBtn) { bonusBackBtn.click(); setTimeout(()=>{ const hb=document.getElementById('help-back-btn'); if (hb) hb.focus(); },10); }
+            return;
+        }
+        if (ev.key === 'ArrowDown') {
+            ev.preventDefault();
+            if (bonusBackBtn) bonusBackBtn.focus();
+            return;
+        }
+        if (ev.key === 'Enter' || ev.key === ' ') {
+            if (focused && focused.classList && focused.classList.contains('skin-card')) {
+                ev.preventDefault(); focused.click();
+                return;
             }
-        };
-        document.addEventListener('keydown', originalListener);
-    })();
+            if (focused === bonusBackBtn) { ev.preventDefault(); bonusBackBtn.click(); return; }
+        }
+    }
 }
