@@ -958,6 +958,34 @@ document.addEventListener('DOMContentLoaded', () => {
         updateIcon();
     })();
 
+    // ==== FULLSCREEN HINT (mobile) ====
+    // Defensive init: shows #fullscreen-hint on mobile when fullscreen is supported
+    // and the hint has not been permanently dismissed via localStorage.
+    // This mirrors the inline script in index.html but runs after the fullscreen
+    // button is already shown/updated by the IIFE above, ensuring correct timing.
+    try {
+        const fsBtnEl = document.getElementById('fullscreen-btn');
+        const fsHintEl = document.getElementById('fullscreen-hint');
+        if (fsHintEl) {
+            const fsAvailable = document.fullscreenEnabled || document.webkitFullscreenEnabled;
+            const mqCoarse = window.matchMedia ? window.matchMedia('(pointer: coarse)') : null;
+            const mqNarrow = window.matchMedia ? window.matchMedia('(max-width: 960px)') : null;
+            const isMobileDevice = (mqCoarse && mqCoarse.matches) || (mqNarrow && mqNarrow.matches);
+            const LS_HINT_KEY = 'bh_fullscreen_hint_dismissed';
+            let hintDismissed = false;
+            try { hintDismissed = !!localStorage.getItem(LS_HINT_KEY); } catch (_e) {}
+            if (fsAvailable && isMobileDevice && !hintDismissed) {
+                fsHintEl.style.display = 'block';
+                const dismissFsHint = () => {
+                    fsHintEl.style.display = 'none';
+                    try { localStorage.setItem(LS_HINT_KEY, '1'); } catch (_e) {}
+                };
+                fsHintEl.addEventListener('click', dismissFsHint, { once: true });
+                if (fsBtnEl) fsBtnEl.addEventListener('click', dismissFsHint, { once: true });
+            }
+        }
+    } catch (_e) {}
+
     // ==== SCORES OVERLAY (mobile) ====
     const scoresToggleBtn = document.getElementById('scores-toggle-btn');
     const scoresOverlay = document.getElementById('scores-overlay');
