@@ -351,38 +351,83 @@
             display: block;
         }
 
-        #touch-controls .touch-pad {
+        /* ---- touch blocks: CSS var for fire-btn width ---- */
+        #touch-controls { --tf: 78px; }
+
+        /* ---- touch blocks: common ---- */
+        #touch-controls .touch-joystick,
+        #touch-controls .touch-block-modifiers,
+        #touch-controls .touch-block-fire,
+        #touch-controls .touch-block-up {
             position: absolute;
+            pointer-events: none;
+            transform-origin: center bottom;
+        }
+
+        /* ---- Joystick (LEFT / RIGHT) ---- */
+        #touch-controls .touch-joystick {
             left: calc(12px + env(safe-area-inset-left));
             bottom: calc(var(--hud-h, 0px) + 18px + env(safe-area-inset-bottom));
+            width: 110px;
+            height: 110px;
+            border-radius: 50%;
+            background: rgba(17, 24, 39, 0.35);
+            border: 2px solid rgba(255,255,255,0.22);
+            backdrop-filter: blur(3px);
+            -webkit-backdrop-filter: blur(3px);
+            pointer-events: auto;
+            touch-action: none;
+            -webkit-tap-highlight-color: transparent;
             display: flex;
-            flex-direction: column;
-            gap: 8px;
-            pointer-events: none;
+            align-items: center;
+            justify-content: center;
         }
-
-        #touch-controls .touch-actions {
+        #touch-controls .touch-joystick-knob {
             position: absolute;
-            right: calc(12px + env(safe-area-inset-right));
-            bottom: calc(12px + env(safe-area-inset-bottom));
-            display: flex;
-            flex-direction: row;
-            align-items: stretch;
-            gap: 8px;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            background: rgba(250, 204, 21, 0.75);
+            border: 2px solid rgba(255,255,255,0.55);
             pointer-events: none;
+            will-change: transform;
+            transition: background 0.08s;
         }
+        #touch-controls .touch-joystick.active-left  .touch-joystick-knob { background: rgba(100, 200, 255, 0.9); }
+        #touch-controls .touch-joystick.active-right .touch-joystick-knob { background: rgba(255, 140, 60, 0.9); }
 
-        #touch-controls .touch-col {
+        /* ---- Modifiers block: vertical (default) / horizontal (double-tap) ---- */
+        #touch-controls .touch-block-modifiers {
+            right: calc(12px + env(safe-area-inset-right) + var(--tf) + 8px + var(--tf) + 8px);
+            bottom: calc(12px + env(safe-area-inset-bottom));
             display: flex;
             flex-direction: column;
             gap: 6px;
-            pointer-events: none;
+        }
+        #touch-controls .touch-block-modifiers.horizontal {
+            flex-direction: row;
+            align-items: flex-end;
+        }
+        /* State-indicator buttons: stay yellow when mode is active */
+        #touch-controls .touch-btn.state-on {
+            background: rgba(250, 204, 21, 0.88) !important;
+            color: #111 !important;
+            border-color: rgba(255,255,255,0.9) !important;
         }
 
-        #touch-controls .touch-row {
-            display: flex;
-            gap: 8px;
-            pointer-events: none;
+        /* ---- Fire block ---- */
+        #touch-controls .touch-block-fire {
+            right: calc(12px + env(safe-area-inset-right) + var(--tf) + 8px);
+            bottom: calc(12px + env(safe-area-inset-bottom));
+        }
+
+        /* ---- Up block ---- */
+        #touch-controls .touch-block-up {
+            right: calc(12px + env(safe-area-inset-right));
+            bottom: calc(12px + env(safe-area-inset-bottom));
         }
 
         #touch-controls .touch-btn {
@@ -411,9 +456,8 @@
 
         #touch-controls .touch-btn.fire {
             min-height: 116px;
-            min-width: 78px;
+            min-width: var(--tf, 78px);
             font-size: 24px;
-            align-self: stretch;
         }
 
         #touch-controls .touch-btn.small {
@@ -428,20 +472,15 @@
             letter-spacing: 0.2px;
         }
 
-        /* Drag-режим блоков управления (в паузе) */
-        .touch-pad.dragging-mode,
-        .touch-actions.dragging-mode {
+        /* ---- Drag-режим блоков управления (в паузе) ---- */
+        #touch-controls [data-block-key].dragging-mode {
             outline: 2px dashed rgba(255, 255, 255, 0.6);
             outline-offset: 4px;
             border-radius: 14px;
             user-select: none;
             -webkit-user-select: none;
         }
-        .touch-pad.dragging-mode:active,
-        .touch-actions.dragging-mode:active { cursor: grabbing; }
-        /* Иконка перемещения над каждым блоком */
-        .touch-pad.dragging-mode::before,
-        .touch-actions.dragging-mode::before {
+        #touch-controls [data-block-key].dragging-mode::before {
             content: '✥';
             position: absolute;
             top: -22px;
@@ -452,8 +491,6 @@
             pointer-events: none;
             text-shadow: 0 0 6px rgba(0,0,0,0.8);
         }
-        /* touch-pad нужен position:relative чтобы ::before позиционировался */
-        .touch-pad { position: absolute; }
 
         #mobile-controls-hint {
             position: absolute;
@@ -693,6 +730,15 @@
             }
 
             /* ---- Touch controls ---- */
+            #touch-controls { --tf: 74px; }
+            #touch-controls .touch-joystick { width: 92px; height: 92px; }
+            #touch-controls .touch-joystick-knob { width: 40px; height: 40px; }
+            #touch-controls .touch-block-modifiers {
+                right: calc(12px + env(safe-area-inset-right) + var(--tf) + 8px + var(--tf) + 8px);
+            }
+            #touch-controls .touch-block-fire {
+                right: calc(12px + env(safe-area-inset-right) + var(--tf) + 8px);
+            }
             #touch-controls .touch-btn {
                 min-width: 56px;
                 min-height: 46px;
@@ -748,10 +794,8 @@
                 padding: 0;
             }
             #touch-controls .touch-btn.fire { min-height: 50px; font-size: 14px; }
-            #touch-controls .touch-pad { gap: 5px; }
-            #touch-controls .touch-row { gap: 5px; }
-            #touch-controls .touch-actions { gap: 5px; }
-            #touch-controls .touch-col { gap: 4px; }
+            #touch-controls .touch-joystick { width: 74px; height: 74px; }
+            #touch-controls .touch-joystick-knob { width: 30px; height: 30px; }
         }
 
         /* ==== HELP BUTTON ==== */
@@ -1251,10 +1295,10 @@
                 <h3>🎁 Бонусы</h3>
                 <h4>Общие бонусы (большинство режимов)</h4>
                 <table class="help-table">
-                    <tr><td>🍺 Бутылка</td><td>+3 бонусных выстрела</td></tr>
+                    <tr><td>🍺 Пиво</td><td>+3 бонусных выстрела</td></tr>
                     <tr><td>❤️ Сердечко</td><td>+1 жизнь (если жизни на максимуме — +5 бонусных выстрелов)</td></tr>
                 </table>
-                <p class="help-hint">Каждые 5 убийств подряд (комбо) гарантированно выпадает бутылка.</p>
+                <p class="help-hint">Каждые 5 убийств подряд (комбо) гарантированно выпадает пиво.</p>
                 <h4>Специальные бонусы</h4>
                 <table class="help-table">
                     <tr><td>🍌 Банан</td><td>+1 жизнь, +5 бонусных выстрелов, +3 очка <em>(только Очко)</em></td></tr>
@@ -1263,8 +1307,7 @@
                     <tr><td>🧲 Магнит</td><td>Притягивает падающих персонажей к игроку на 10 сек <em>(только Ловлю)</em></td></tr>
                     <tr><td>⚡ Молния</td><td>Удваивает скорость игрока на 13 сек <em>(только Ловлю)</em></td></tr>
                     <tr><td>⚡ Энергия</td><td>Ускоряет игрока ×1.5 на 10 сек <em>(только Бегун)</em></td></tr>
-                    <tr><td>🚬 Сигарета XL</td><td>Увеличивает сигарету ×2 визуально 10 сек <em>(только Бегун)</em></td></tr>
-                    <tr><td>💎 Рубин</td><td>Запускает появление кубка <em>(только Опять Телепузик)</em></td></tr>
+                    <tr><td>🚬 Сигарета XL</td><td>Увеличивает сигарету ×2 визуально на 10 сек <em>(только Бегун)</em></td></tr>
                     <tr><td>🏆 Кубок</td><td>Собери для победы <em>(только Опять Телепузик)</em></td></tr>
                 </table>
             </section>
@@ -1273,7 +1316,7 @@
                 <h3>🗺️ Режимы игры</h3>
                 <div class="help-mode">
                     <strong>🎮 Сирень и Букин</strong>
-                    <p>Уничтожь 4 волны врагов-сиреней, затем победи босса-сосиску «Букин» (20 HP). Враги становятся быстрее и агрессивнее с каждой фазой.</p>
+                    <p>Уничтожь 4 волны врагов-сиреней, затем победи босса-сосиску, чтобы освободить «Букина» (20 HP). Враги становятся быстрее и агрессивнее с каждой фазой.</p>
                 </div>
                 <div class="help-mode">
                     <strong>🔥 Выживание</strong>
@@ -1293,7 +1336,7 @@
                 </div>
                 <div class="help-mode">
                     <strong>🪵 Опять Телепузик</strong>
-                    <p>Прыгай по платформам и уничтожь телепузика-босса (76 HP) на верхней платформе. По мере урона спавнятся враги-сирени. После победы — собери 💎 рубин, затем 🏆 кубок для завершения.</p>
+                    <p>Прыгай по платформам и уничтожь телепузика-босса (76 HP) на верхней платформе. По мере урона спавнятся враги-сирени. После победы — активируй переключатель, затем возьми 🏆 кубок для завершения уровня.</p>
                 </div>
                 <div class="help-mode">
                     <strong>🫴 Ловлю</strong>
@@ -1333,15 +1376,15 @@
         <div class="bonus-skins">
             <div class="skin-card" data-skin="kuzy" tabindex="0" role="button" aria-label="Выбрать набор Кузя">
                 <img class="skin-preview" src="img/PNG Sequences/Idle/0_Bloody_Alchemist_Idle_000.png" alt="Кузя">
-                <div class="skin-desc">спизженные спрайты, вроде как бесплатные и не докопаться.</div>
+                <div class="skin-desc">Спизженные спрайты, вроде как бесплатные и не докопаться.</div>
             </div>
             <div class="skin-card" data-skin="dron" tabindex="0" role="button" aria-label="Выбрать набор Дрон">
                 <img class="skin-preview" src="img/shoot/0.png" alt="Дрон">
-                <div class="skin-desc">первые попытки сделать спрайтовую анимацию, это банановый герой курильщика.</div>
+                <div class="skin-desc">Первые попытки сделать спрайтовую анимацию, это банановый герой курильщика.</div>
             </div>
             <div class="skin-card" data-skin="max" tabindex="0" role="button" aria-label="Выбрать набор Макс">
                 <img class="skin-preview" src="img/bananSprites/walk/1.png" alt="Макс">
-                <div class="skin-desc">после месяца мучений нейронка смогла сделать нормального банана.</div>
+                <div class="skin-desc">После месяца мучений нейронка смогла сделать нормального банана.</div>
             </div>
         </div>
         <div style="height:8px"></div>
@@ -1354,22 +1397,23 @@
     <div id="hud"></div>
     <button id="pause-game-btn" aria-label="Пауза" title="Пауза">⏸</button>
     <div id="touch-controls" aria-hidden="true">
-        <div class="touch-pad">
-            <div class="touch-row" style="justify-content:center;">
-                <button class="touch-btn hold" data-key="ArrowUp" data-hold="1" title="Прыжок">UP</button>
-            </div>
-            <div class="touch-row">
-                <button class="touch-btn hold" data-key="ArrowLeft" data-hold="1" title="Влево">LEFT</button>
-                <button class="touch-btn hold dir" data-key="ArrowDown" data-hold="1" title="Смена направления / стрельба вверх">DIR/UP</button>
-                <button class="touch-btn hold" data-key="ArrowRight" data-hold="1" title="Вправо">RIGHT</button>
-            </div>
+        <!-- Блок 1: Джойстик LEFT / RIGHT -->
+        <div class="touch-joystick" data-block-key="bh_touch_joy_pos_v1">
+            <div class="touch-joystick-knob"></div>
         </div>
-        <div class="touch-actions">
-            <div class="touch-col">
-                <button class="touch-btn small tap" data-key="Shift" data-tap="1" title="Бонусный режим">BONUS</button>
-                <button class="touch-btn small tap" data-key="Control" data-tap="1" title="Альтернативная стрельба">ALT</button>
-            </div>
+        <!-- Блок 2: Модификаторы — BONUS / ALT / DIR-UP -->
+        <div class="touch-block-modifiers" data-block-key="bh_touch_mod_pos_v1">
+            <button class="touch-btn small tap" data-key="Shift" data-tap="1" data-mod="bonus" title="Бонусный режим">BONUS</button>
+            <button class="touch-btn small tap" data-key="Control" data-tap="1" data-mod="alt" title="Альтернативная стрельба">ALT</button>
+            <button class="touch-btn small hold dir" data-key="ArrowDown" data-hold="1" data-mod="dir" title="Смена направления / стрельба вверх">DIR</button>
+        </div>
+        <!-- Блок 3: Огонь -->
+        <div class="touch-block-fire" data-block-key="bh_touch_fire_pos_v1">
             <button class="touch-btn fire hold" data-key=" " data-hold="1" title="Огонь">FIRE</button>
+        </div>
+        <!-- Блок 4: Прыжок — того же размера что и FIRE -->
+        <div class="touch-block-up" data-block-key="bh_touch_up_pos_v1">
+            <button class="touch-btn fire hold" data-key="ArrowUp" data-hold="1" title="Прыжок">UP</button>
         </div>
     </div>
     <div id="mobile-controls-hint" aria-hidden="true">

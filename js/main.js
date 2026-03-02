@@ -316,6 +316,125 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         loadTouchBlockPositions();
+        loadTouchBlockScale();
+
+        // ==== Double-tap modifier block: toggle vertical ↔ horizontal layout ====
+        const modBlock = touchControlsEl.querySelector('.touch-block-modifiers');
+        if (modBlock) {
+            const MOD_LAYOUT_KEY = 'bh_touch_mod_layout_v1';
+            // restore saved layout
+            if (localStorage.getItem(MOD_LAYOUT_KEY) === 'horizontal') {
+                modBlock.classList.add('horizontal');
+            }
+            let lastTapTime = 0;
+            // Shared handler — called from normal listener AND from drag overlay
+            modBlock._handleDoubleTap = () => {
+                const now = Date.now();
+                if (now - lastTapTime < 350) {
+                    const isH = modBlock.classList.toggle('horizontal');
+                    localStorage.setItem(MOD_LAYOUT_KEY, isH ? 'horizontal' : 'vertical');
+                }
+                lastTapTime = now;
+            };
+            // Double-tap works ONLY in pause (via drag overlay's onDown → _handleDoubleTap).
+            // No listener during gameplay to avoid accidental triggers.
+        }
+
+        // ==== State-indicator polling: update button labels/highlight per game state ====
+        let modPollRaf = null;
+        const modPollButtons = modBlock ? {
+            bonus: modBlock.querySelector('[data-mod="bonus"]'),
+            alt:   modBlock.querySelector('[data-mod="alt"]'),
+            dir:   modBlock.querySelector('[data-mod="dir"]'),
+        } : null;
+
+        function updateModIndicators() {
+            if (!modPollButtons) return;
+            const { bonus: bBtn, alt: aBtn, dir: dBtn } = modPollButtons;
+
+            // BONUS — yellow when bonusMode is active AND shots remain
+            if (bBtn) {
+                const bonusOn = typeof bonusMode !== 'undefined' && bonusMode &&
+                                typeof bonusShots !== 'undefined' && bonusShots > 0;
+                bBtn.classList.toggle('state-on', !!bonusOn);
+            }
+
+            // ALT — yellow when altShootMode is on
+            if (aBtn) {
+                const altOn = typeof altShootMode !== 'undefined' && !!altShootMode;
+                aBtn.classList.toggle('state-on', altOn);
+            }
+
+            // DIR — shows current direction / alt-shoot-up state
+            if (dBtn) {
+                const dir = (typeof playerBulletDir !== 'undefined') ? playerBulletDir : 'up';
+                const altOn = typeof altShootMode !== 'undefined' && !!altShootMode;
+                if (altOn) {
+                    // In alt mode: ArrowDown held = shoot up; button stays grey (ready)
+                    dBtn.textContent = '↑ALT';
+                    dBtn.classList.remove('state-on');
+                } else {
+                    const icon = dir === 'up' ? '↑' : dir === 'left' ? '←' : '→';
+                    dBtn.textContent = icon;
+                    dBtn.classList.toggle('state-on', dir !== 'up'); // highlight when non-default dir chosen
+                }
+            }
+        }
+
+        function modIndicatorLoop() {
+            updateModIndicators();
+            modPollRaf = requestAnimationFrame(modIndicatorLoop);
+        }
+        modIndicatorLoop();
+        // expose stop/start so pauseGame/resumeGame can control it (optional — it's cheap)
+        touchControlsEl._stopModPoll = () => { if (modPollRaf) { cancelAnimationFrame(modPollRaf); modPollRaf = null; } };
+        touchControlsEl._startModPoll = () => { if (!modPollRaf) modIndicatorLoop(); };
+
+        // ==== Джойстик (LEFT / RIGHT без отрыва пальца) ====
+        const joystick = touchControlsEl.querySelector('.touch-joystick');
+        if (joystick) {
+            const knob = joystick.querySelector('.touch-joystick-knob');
+            const DEAD   = 14;  // px мёртвая зона от центра
+            const TRAVEL = 38;  // макс смещение ручки в px
+            let joyActive = false, joyCenterX = 0, joyKey = null;
+
+            const joyPress = (key) => {
+                if (joyKey === key) return;
+                if (joyKey) { releaseInputKey(joyKey, 'touch'); joystick.classList.remove('active-left', 'active-right'); }
+                joyKey = key;
+                if (key) { pressInputKey(key, 'touch'); joystick.classList.add(key === 'ArrowLeft' ? 'active-left' : 'active-right'); }
+            };
+            const joyRelease = () => {
+                if (joyKey) releaseInputKey(joyKey, 'touch');
+                joyKey = null;
+                joystick.classList.remove('active-left', 'active-right');
+                if (knob) knob.style.transform = 'translate(-50%, -50%)';
+            };
+
+            joystick.addEventListener('pointerdown', (e) => {
+                e.preventDefault();
+                joyActive = true;
+                const r = joystick.getBoundingClientRect();
+                joyCenterX = r.left + r.width / 2;
+                try { joystick.setPointerCapture(e.pointerId); } catch (_) {}
+            }, { passive: false });
+
+            joystick.addEventListener('pointermove', (e) => {
+                if (!joyActive) return;
+                e.preventDefault();
+                const dx = e.clientX - joyCenterX;
+                const t = Math.max(-TRAVEL, Math.min(TRAVEL, dx));
+                if (knob) knob.style.transform = `translate(calc(-50% + ${t}px), -50%)`;
+                if (dx < -DEAD) joyPress('ArrowLeft');
+                else if (dx > DEAD) joyPress('ArrowRight');
+                else joyRelease();
+            }, { passive: false });
+
+            const endJoy = () => { if (!joyActive) return; joyActive = false; joyRelease(); };
+            joystick.addEventListener('pointerup',          endJoy);
+            joystick.addEventListener('pointercancel',      endJoy);
+            joystick.addEventListener('lostpointercapture', endJoy);
+        }
 
         if (mobileHintEl) {
             const closeBtn = mobileHintEl.querySelector('[data-action="close-mobile-hint"]');
@@ -400,17 +519,31 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    const TOUCH_PAD_POS_KEY = 'bh_touch_pad_pos_v1';
-    const TOUCH_ACTIONS_POS_KEY = 'bh_touch_actions_pos_v1';
+    const TOUCH_SCALE_KEY = 'bh_touch_scale_v1';
+
+    function getTouchBlocks() {
+        if (!touchControlsEl) return [];
+        return Array.from(touchControlsEl.querySelectorAll('[data-block-key]'));
+    }
+
+    function loadTouchBlockScale() {
+        const raw = parseFloat(localStorage.getItem(TOUCH_SCALE_KEY) || '1');
+        const s = isNaN(raw) ? 1 : Math.max(0.5, Math.min(2.0, raw));
+        getTouchBlocks().forEach(el => { el.style.transform = `scale(${s})`; });
+    }
+
+    function changeTouchBlockScale(delta) {
+        const cur = parseFloat(localStorage.getItem(TOUCH_SCALE_KEY) || '1') || 1;
+        const next = Math.round(Math.max(0.5, Math.min(2.0, cur + delta)) * 10) / 10;
+        localStorage.setItem(TOUCH_SCALE_KEY, String(next));
+        getTouchBlocks().forEach(el => { el.style.transform = `scale(${next})`; });
+    }
 
     function loadTouchBlockPositions() {
         if (!touchControlsEl) return;
-        const blocks = [
-            { el: touchControlsEl.querySelector('.touch-pad'), key: TOUCH_PAD_POS_KEY },
-            { el: touchControlsEl.querySelector('.touch-actions'), key: TOUCH_ACTIONS_POS_KEY }
-        ];
-        blocks.forEach(({ el, key }) => {
-            if (!el) return;
+        getTouchBlocks().forEach(el => {
+            const key = el.dataset.blockKey;
+            if (!key) return;
             try {
                 const saved = localStorage.getItem(key);
                 if (!saved) return;
@@ -425,11 +558,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function resetTouchBlockPositions() {
         if (!touchControlsEl) return;
-        [TOUCH_PAD_POS_KEY, TOUCH_ACTIONS_POS_KEY].forEach(key => localStorage.removeItem(key));
-        const pad = touchControlsEl.querySelector('.touch-pad');
-        const act = touchControlsEl.querySelector('.touch-actions');
-        if (pad) { pad.style.left = ''; pad.style.top = ''; pad.style.bottom = ''; pad.style.right = ''; }
-        if (act) { act.style.left = ''; act.style.top = ''; act.style.bottom = ''; act.style.right = ''; }
+        getTouchBlocks().forEach(el => {
+            const key = el.dataset.blockKey;
+            if (key) localStorage.removeItem(key);
+            el.style.left = ''; el.style.top = ''; el.style.bottom = ''; el.style.right = '';
+        });
+        localStorage.removeItem(TOUCH_SCALE_KEY);
+        getTouchBlocks().forEach(el => { el.style.transform = ''; });
     }
 
     function enableTouchBlockDragging() {
@@ -437,10 +572,7 @@ document.addEventListener('DOMContentLoaded', () => {
         touchControlsEl.style.zIndex = '1050';
         touchControlsEl.style.display = 'block';
 
-        const blocks = [
-            { el: touchControlsEl.querySelector('.touch-pad'),     key: TOUCH_PAD_POS_KEY },
-            { el: touchControlsEl.querySelector('.touch-actions'), key: TOUCH_ACTIONS_POS_KEY }
-        ].filter(({ el }) => el);
+        const blocks = getTouchBlocks().map(el => ({ el, key: el.dataset.blockKey })).filter(({ el }) => !!el);
 
         blocks.forEach(({ el, key }) => {
             el.classList.add('dragging-mode');
@@ -462,6 +594,9 @@ document.addEventListener('DOMContentLoaded', () => {
             const DRAG_THRESHOLD = 6;
 
             const onDown = (e) => {
+                e.stopPropagation(); // не давать всплывать к собственным обработчикам блока (джойстик)
+                // Двойной тап на блоке модификаторов переключает layout (даже через overlay)
+                if (el._handleDoubleTap) el._handleDoubleTap();
                 const cr = touchControlsEl.getBoundingClientRect();
                 const br = el.getBoundingClientRect();
                 const computedLeft = br.left - cr.left;
@@ -512,10 +647,7 @@ document.addEventListener('DOMContentLoaded', () => {
         touchControlsEl.style.zIndex = '';
         touchControlsEl.style.display = '';
 
-        const blocks = [
-            touchControlsEl.querySelector('.touch-pad'),
-            touchControlsEl.querySelector('.touch-actions')
-        ].filter(Boolean);
+        const blocks = getTouchBlocks();
 
         blocks.forEach(el => {
             el.classList.remove('dragging-mode');
@@ -731,15 +863,44 @@ document.addEventListener('DOMContentLoaded', () => {
             });
             overlay.appendChild(dragHint);
 
+            const scaleRow = document.createElement('div');
+            Object.assign(scaleRow.style, {
+                marginTop: '10px', display: 'flex', alignItems: 'center', gap: '8px', maxWidth: '320px'
+            });
+            const mkScaleBtn = (lbl) => {
+                const b = document.createElement('button');
+                b.textContent = lbl;
+                Object.assign(b.style, {
+                    width: '40px', height: '40px', fontSize: '22px', lineHeight: '1',
+                    cursor: 'pointer', borderRadius: '8px',
+                    background: 'rgba(255,255,255,0.2)',
+                    border: '2px solid rgba(255,255,255,0.45)', color: '#fff',
+                    fontWeight: '700', flexShrink: '0'
+                });
+                return b;
+            };
+            const btnScaleMinus = mkScaleBtn('−');
+            btnScaleMinus.title = 'Уменьшить кнопки';
+            btnScaleMinus.onclick = () => changeTouchBlockScale(-0.1);
+
             const btnReset = document.createElement('button');
             btnReset.innerText = '↺ Сбросить позиции кнопок';
             Object.assign(btnReset.style, {
-                marginTop: '8px', padding: '8px 16px', fontSize: '14px', cursor: 'pointer',
+                padding: '8px 10px', fontSize: '13px', cursor: 'pointer',
                 borderRadius: '8px', background: 'rgba(255,255,255,0.15)',
-                border: '2px solid rgba(255,255,255,0.35)', color: '#fff'
+                border: '2px solid rgba(255,255,255,0.35)', color: '#fff',
+                flex: '1', textAlign: 'center'
             });
-            btnReset.onclick = () => { resetTouchBlockPositions(); };
-            overlay.appendChild(btnReset);
+            btnReset.onclick = () => resetTouchBlockPositions();
+
+            const btnScalePlus = mkScaleBtn('+');
+            btnScalePlus.title = 'Увеличить кнопки';
+            btnScalePlus.onclick = () => changeTouchBlockScale(+0.1);
+
+            scaleRow.appendChild(btnScaleMinus);
+            scaleRow.appendChild(btnReset);
+            scaleRow.appendChild(btnScalePlus);
+            overlay.appendChild(scaleRow);
         }
 
         document.body.appendChild(overlay);

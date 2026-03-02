@@ -46,6 +46,7 @@ let runnerVictory = false;
 let runnerBossSpeech = null;
 let runnerPlayerMoveSpeed = 0;
 let runnerPlayerJumpSpeed = 0;
+let runnerBossSpeedMul = 1;  // кэш, обновляется в updateRunnerBossAi
 let runnerGravity = 0;
 let runnerMaxFallSpeed = 0;
 let runnerBossJumpSpeed = 0;
@@ -680,6 +681,7 @@ function updateRunnerBossAi(dt, playerMoving) {
     if (!runnerBoss || !player) return;
     const balance = getRunnerMobileBalance();
     const bossSpeedMul = Math.max(0.75, balance.bossMoveSpeed || 1);
+    runnerBossSpeedMul = bossSpeedMul;  // обновляем кэш для updateRunnerBossAnimation
 
     const playerCenterX = player.x + player.w * 0.5;
     const bossCenterX = runnerBoss.x + runnerBoss.w * 0.5;
@@ -834,7 +836,7 @@ function updateRunnerBossAnimation(dt) {
     const moving = speedAbs > 2 || !runnerBoss.onGround;
     let interval = 0.18;
     if (moving) {
-        const speedNorm = Math.min(1.2, speedAbs / Math.max(1, runnerPlayerMoveSpeed * 2 * bossSpeedMul));
+        const speedNorm = Math.min(1.2, speedAbs / Math.max(1, runnerPlayerMoveSpeed * 2 * runnerBossSpeedMul));
         interval = 0.115 - speedNorm * 0.04;
         if (!runnerBoss.onGround) interval *= 0.9;
         interval = Math.max(0.06, interval);
