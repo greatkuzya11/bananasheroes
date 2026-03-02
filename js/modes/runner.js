@@ -1579,10 +1579,13 @@ function drawRunnerBossSpeech() {
     const alpha = Math.max(0, Math.min(1, lifeK));
 
     const text = runnerBossSpeech.text;
-    const fontSize = Math.max(13, Math.round(canvas.width * 0.016));
-    const pad = 12;
+    const mobileUiScale = (typeof getSpeechUiScale === 'function')
+        ? getSpeechUiScale('runner')
+        : (getRunnerAdaptiveRuntime(0).active ? Math.max(0.72, Math.min(1.00, getRunnerAdaptiveRuntime(0).scale * 1.25)) : 1);
+    const fontSize = Math.max(12, Math.round(canvas.width * 0.016 * mobileUiScale));
+    const pad = Math.max(8, Math.round(12 * mobileUiScale));
     const lineH = fontSize * 1.45;
-    const maxLineW = Math.min(canvas.width * 0.58, 340);
+    const maxLineW = Math.min(canvas.width * (mobileUiScale < 1 ? 0.66 : 0.58), Math.round(340 * (mobileUiScale < 1 ? 1.08 : 1)));
 
     ctx.save();
     ctx.globalAlpha = alpha;
@@ -1603,14 +1606,14 @@ function drawRunnerBossSpeech() {
     }
     if (cur) lines.push(cur);
 
-    const boxW = Math.min(maxLineW + pad * 2, canvas.width - 20);
+    const boxW = Math.min(maxLineW + pad * 2, canvas.width - Math.max(12, Math.round(20 * mobileUiScale)));
     const boxH = lines.length * lineH + pad * 2;
 
     let bx = runnerBoss.x + runnerBoss.w * 0.5 - boxW * 0.5;
     bx = Math.max(8, Math.min(canvas.width - boxW - 8, bx));
 
     // Стандартная позиция — над боссом.
-    let by = Math.max(12, runnerBoss.y - boxH - 18);
+    let by = Math.max(10, runnerBoss.y - boxH - Math.round(18 * mobileUiScale));
 
     // Когда активна победная табличка, она занимает примерно центральные 25–75%
     // высоты canvas. Если облачко попадает в эту зону — сдвигаем его:
@@ -1647,19 +1650,19 @@ function drawRunnerBossSpeech() {
 
     ctx.fillStyle = 'rgba(255,255,255,0.96)';
     ctx.strokeStyle = 'rgba(0,0,0,0.28)';
-    ctx.lineWidth = 2;
+    ctx.lineWidth = Math.max(1.5, 2 * mobileUiScale);
     ctx.beginPath();
-    ctx.roundRect(bx, by, boxW, boxH, 10);
+    ctx.roundRect(bx, by, boxW, boxH, Math.max(6, 10 * mobileUiScale));
     ctx.fill();
     ctx.stroke();
 
     // Хвостик привязан к центру спрайта босса, но не вылезает за края облачка.
-    const tailX = Math.max(bx + 16, Math.min(bx + boxW - 16, runnerBoss.x + runnerBoss.w * 0.5));
+    const tailX = Math.max(bx + 16 * mobileUiScale, Math.min(bx + boxW - 16 * mobileUiScale, runnerBoss.x + runnerBoss.w * 0.5));
     const tailY = by + boxH;
     ctx.beginPath();
-    ctx.moveTo(tailX - 10, tailY);
-    ctx.lineTo(tailX + 2, tailY + 14);
-    ctx.lineTo(tailX + 10, tailY);
+    ctx.moveTo(tailX - 10 * mobileUiScale, tailY);
+    ctx.lineTo(tailX + 2 * mobileUiScale, tailY + 14 * mobileUiScale);
+    ctx.lineTo(tailX + 10 * mobileUiScale, tailY);
     ctx.closePath();
     ctx.fill();
     ctx.stroke();

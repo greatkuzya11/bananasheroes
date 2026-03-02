@@ -45,6 +45,19 @@ function initPlatformLevel() {
     // Все размеры и позиции в процентах от размера canvas для адаптивности
     const cw = canvas.width;
     const ch = canvas.height;
+    const mobilePlatforms = (typeof isMobileAdaptiveCombatMode === 'function') && isMobileAdaptiveCombatMode('platforms');
+    let platformSpeedMul = 1;
+    if (mobilePlatforms) {
+        const scale = (typeof getMobileLandscapeAdaptiveScale === 'function')
+            ? getMobileLandscapeAdaptiveScale('platforms')
+            : 1;
+        const profileMul = (window.BHMobileAdaptive && typeof window.BHMobileAdaptive.getBalance === 'function')
+            ? (window.BHMobileAdaptive.getBalance('platforms').enemyMoveSpeed || 1)
+            : 1;
+        // На мобильном снижаем темп движущихся платформ до desktop-ощущения.
+        const scaleMul = Math.max(0.58, Math.min(0.80, scale * 1.25));
+        platformSpeedMul = scaleMul * profileMul;
+    }
     
     // ========== НАЧАЛЬНАЯ ПЛАТФОРМА (ДОМАШНЯЯ ПЛАТФОРМА) ==========
     // cw X: 7% от ширины (примерно центр слева)
@@ -82,7 +95,7 @@ function initPlatformLevel() {
     // Диапазон: 12% от ширины экрана (амплитуда движения)
     // Текстура: img/platform3.png
     // Видимость: true (по умолчанию)
-    platforms.push(new Platform(cw * 0.425, ch * 0.70, cw * 0.20, ch * 0.15, 'horizontal', 400, cw * 0.18, 'img/platform3.png'));
+    platforms.push(new Platform(cw * 0.425, ch * 0.70, cw * 0.20, ch * 0.15, 'horizontal', 400 * platformSpeedMul, cw * 0.18, 'img/platform3.png'));
     
     // ========== ПРАВАЯ ВЕРХНЯЯ ВЕРТИКАЛЬНАЯ ПЛАТФОРМА ==========
     // X: 80% от ширины экрана
@@ -94,7 +107,7 @@ function initPlatformLevel() {
     // Диапазон: 22% от высоты экрана (амплитуда движения)
     // Текстура: img/platform4.png
     // Видимость: true (по умолчанию)
-    bossPlatform = new Platform(cw * 0.80, ch * 0.55, cw * 0.15, ch * 0.11, 'vertical', 200, ch * 0.22, 'img/platform4.png')
+    bossPlatform = new Platform(cw * 0.80, ch * 0.55, cw * 0.15, ch * 0.11, 'vertical', 200 * platformSpeedMul, ch * 0.22, 'img/platform4.png')
     platforms.push(bossPlatform);
     
     // ========== ЛЕВАЯ ВЕРХНЯЯ ГОРИЗОНТАЛЬНАЯ ПЛАТФОРМА ==========
@@ -107,7 +120,7 @@ function initPlatformLevel() {
     // Диапазон: 50% от высоты экрана (большая амплитуда)
     // Текстура: img/platform5.png
     // Видимость: true (по умолчанию)
-    let movingPlatform = new Platform(cw * 0.55, ch * 0.25, cw * 0.15, ch * 0.11, 'horizontal', 800, ch * 0.18, 'img/platform5.png');
+    let movingPlatform = new Platform(cw * 0.55, ch * 0.25, cw * 0.15, ch * 0.11, 'horizontal', 800 * platformSpeedMul, ch * 0.18, 'img/platform5.png');
     platforms.push(movingPlatform);
     // платформа с кубком. 
     let trophyPlatform = new Platform(cw * 0.82, ch * 0.13, cw * 0.15, ch * 0.11, null, 180, ch * 0.50, 'img/platform8.png');

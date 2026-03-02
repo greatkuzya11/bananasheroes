@@ -812,85 +812,10 @@ function drawLovlyuMode() {
 
     // Рисуем облачки
     speechBalloons.forEach(sb => {
-        ctx.save();
-        const dur = (typeof sb.duration === 'number') ? sb.duration : SPEECH_BALLOON_DURATION;
-        ctx.globalAlpha = Math.max(0, 1 - sb.timer / dur);
-        const text = (typeof sb.text === 'string') ? sb.text : 'Сука';
-
-        if (sb.type === 'buk') {
-            let fontSize = 36 * (sb.scale || 1);
-            ctx.font = `bold ${fontSize}px Comic Sans MS, Arial`;
-            const maxWidth = canvas.width * 0.5;
-            let textWidth = ctx.measureText(text).width;
-            while (textWidth > maxWidth && fontSize > 10) {
-                fontSize -= 2;
-                ctx.font = `bold ${fontSize}px Comic Sans MS, Arial`;
-                textWidth = ctx.measureText(text).width;
-            }
-
-            const paddingX = 18 * (sb.scale || 1);
-            const paddingY = 10 * (sb.scale || 1);
-            const boxW = Math.ceil(textWidth + paddingX * 2);
-            const boxH = Math.ceil(fontSize + paddingY * 2);
-            const left = sb.x - boxW / 2;
-            const top = sb.y - boxH / 2;
-            const r = Math.min(14, boxH / 2);
-
-            ctx.beginPath();
-            ctx.moveTo(left + r, top);
-            ctx.lineTo(left + boxW - r, top);
-            ctx.quadraticCurveTo(left + boxW, top, left + boxW, top + r);
-            ctx.lineTo(left + boxW, top + boxH - r);
-            ctx.quadraticCurveTo(left + boxW, top + boxH, left + boxW - r, top + boxH);
-            ctx.lineTo(left + r, top + boxH);
-            ctx.quadraticCurveTo(left, top + boxH, left, top + boxH - r);
-            ctx.lineTo(left, top + r);
-            ctx.quadraticCurveTo(left, top, left + r, top);
-
-            const tailW = Math.min(28, boxW * 0.28);
-            const tailX = sb.x;
-            const tailY = top + boxH;
-            ctx.moveTo(tailX - tailW / 2, tailY);
-            ctx.lineTo(tailX, tailY + 18 * (sb.scale || 1));
-            ctx.lineTo(tailX + tailW / 2, tailY);
-
-            ctx.closePath();
-            ctx.fillStyle = '#fff';
-            ctx.strokeStyle = '#bbb';
-            ctx.lineWidth = 3;
-            ctx.fill();
-            ctx.stroke();
-
-            ctx.fillStyle = '#222';
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-            ctx.font = `bold ${fontSize}px Comic Sans MS, Arial`;
-            ctx.fillText(text, sb.x, sb.y - 2);
-
-        } else {
-            ctx.beginPath();
-            ctx.ellipse(sb.x, sb.y, 70, 40, Math.PI * 0.05, 0, Math.PI * 2);
-            ctx.moveTo(sb.x + 40, sb.y + 10);
-            ctx.ellipse(sb.x + 40, sb.y + 10, 18, 12, Math.PI * 0.1, 0, Math.PI * 2);
-            ctx.moveTo(sb.x - 40, sb.y + 10);
-            ctx.ellipse(sb.x - 40, sb.y + 10, 18, 12, Math.PI * 0.1, 0, Math.PI * 2);
-            ctx.closePath();
-            ctx.fillStyle = '#fff';
-            ctx.strokeStyle = '#bbb';
-            ctx.lineWidth = 3;
-            ctx.fill();
-            ctx.stroke();
-            ctx.font = 'bold 32px Comic Sans MS, Arial';
-            ctx.fillStyle = '#222';
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-            ctx.fillText(text, sb.x, sb.y);
+        if (typeof drawSpeechBalloonAdaptive === 'function') {
+            drawSpeechBalloonAdaptive(sb, 'lovlyu');
         }
-
-        ctx.restore();
     });
-
-    // Профайлер
     if (perf && perf.isEnabled()) {
         perf.drawOverlay(ctx, 0);
     }
