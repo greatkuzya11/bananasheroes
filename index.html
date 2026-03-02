@@ -719,6 +719,15 @@
             #mobile-controls-hint .hint-text {
                 font-size: clamp(12px, 3.4vw, 14px);
             }
+
+            /* ---- Fullscreen hint positioning (mobile) ---- */
+            #fullscreen-hint {
+                top: calc(var(--m-edge) + env(safe-area-inset-top, 0px) + min(8vw, 5.5svh) + 8px);
+                left: var(--m-edge);
+                font-size: min(3vw, 2.2svh);
+                max-width: min(45vw, 160px);
+                animation: fs-hint-bounce 1.2s ease-in-out infinite;
+            }
         }
 
         /* Landscape on small touch device — squish vertically, 4-column grid */
@@ -797,6 +806,40 @@
         #fullscreen-btn:active {
             background: rgba(0, 0, 0, 0.8);
             transform: scale(0.92);
+        }
+
+        /* ==== FULLSCREEN HINT (mobile only, shown by JS) ==== */
+        #fullscreen-hint {
+            display: none;
+            position: fixed;
+            z-index: 1046;
+            cursor: pointer;
+            pointer-events: auto;
+            background: rgba(255, 204, 0, 0.95);
+            color: #111;
+            border-radius: 8px;
+            padding: 6px 10px;
+            font-size: 12px;
+            font-weight: 700;
+            line-height: 1.35;
+            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.35);
+            user-select: none;
+            max-width: 160px;
+        }
+        #fullscreen-hint::before {
+            content: '';
+            position: absolute;
+            top: -7px;
+            left: 10px;
+            width: 0;
+            height: 0;
+            border: 7px solid transparent;
+            border-bottom-color: rgba(255, 204, 0, 0.95);
+            border-top: 0;
+        }
+        @keyframes fs-hint-bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-5px); }
         }
 
         /* ==== HELP SCREEN ==== */
@@ -1138,6 +1181,7 @@
 </div>
 
 <button id="fullscreen-btn" type="button" title="Полный экран" aria-label="Полный экран">⛶</button>
+<div id="fullscreen-hint" role="tooltip">⛶ Нажми для<br>полного экрана</div>
 
 <div id="landscape-warning">
     <div class="lw-icon">📱</div>
@@ -1366,6 +1410,36 @@
 <script src="js/ui/overlays.js"></script>
 <script src="js/perf_debug.js"></script>
 <script src="js/main.js"></script>
+<script>
+(function () {
+    'use strict';
+    var LS_KEY = 'bh_fullscreen_hint_dismissed';
+    function dismissHint() {
+        var hint = document.getElementById('fullscreen-hint');
+        if (hint) hint.style.display = 'none';
+        try { localStorage.setItem(LS_KEY, '1'); } catch (e) {}
+    }
+    function initFullscreenHint() {
+        var btn = document.getElementById('fullscreen-btn');
+        var hint = document.getElementById('fullscreen-hint');
+        if (!hint) return;
+        var isMobile = window.matchMedia && (
+            window.matchMedia('(pointer: coarse)').matches ||
+            window.matchMedia('(max-width: 960px)').matches
+        );
+        if (!isMobile) return;
+        try { if (localStorage.getItem(LS_KEY)) return; } catch (e) {}
+        hint.style.display = 'block';
+        hint.addEventListener('click', dismissHint, { once: true });
+        if (btn) btn.addEventListener('click', dismissHint, { once: true });
+    }
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initFullscreenHint);
+    } else {
+        initFullscreenHint();
+    }
+}());
+</script>
 </body>
 </html>
 
