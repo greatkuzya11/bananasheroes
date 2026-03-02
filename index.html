@@ -1413,25 +1413,45 @@
 <script>
 (function () {
     'use strict';
-    var LS_KEY = 'bh_fullscreen_hint_dismissed';
-    function dismissHint() {
+    function isMobile() {
+        return !!(window.matchMedia && (
+            window.matchMedia('(pointer: coarse)').matches ||
+            window.matchMedia('(max-width: 960px)').matches
+        ));
+    }
+    function showHint() {
+        var hint = document.getElementById('fullscreen-hint');
+        if (hint && isMobile()) hint.style.display = 'block';
+    }
+    function hideHint() {
         var hint = document.getElementById('fullscreen-hint');
         if (hint) hint.style.display = 'none';
-        try { localStorage.setItem(LS_KEY, '1'); } catch (e) {}
     }
     function initFullscreenHint() {
         var btn = document.getElementById('fullscreen-btn');
         var hint = document.getElementById('fullscreen-hint');
-        if (!hint) return;
-        var isMobile = window.matchMedia && (
-            window.matchMedia('(pointer: coarse)').matches ||
-            window.matchMedia('(max-width: 960px)').matches
-        );
-        if (!isMobile) return;
-        try { if (localStorage.getItem(LS_KEY)) return; } catch (e) {}
-        hint.style.display = 'block';
-        hint.addEventListener('click', dismissHint, { once: true });
-        if (btn) btn.addEventListener('click', dismissHint, { once: true });
+        var menu = document.getElementById('menu');
+        if (!hint || !menu) return;
+        // Show hint immediately if menu is currently visible on mobile
+        if (window.getComputedStyle(menu).display !== 'none') {
+            showHint();
+        }
+        // Watch menu visibility: show hint on enter, hide on leave
+        var observer = new MutationObserver(function (mutations) {
+            mutations.forEach(function (mutation) {
+                if (mutation.type === 'attributes' && mutation.attributeName === 'style') {
+                    if (window.getComputedStyle(menu).display !== 'none') {
+                        showHint();
+                    } else {
+                        hideHint();
+                    }
+                }
+            });
+        });
+        observer.observe(menu, { attributes: true, attributeFilter: ['style'] });
+        // Clicking the hint or the fullscreen button hides the hint for this visit
+        hint.addEventListener('click', hideHint);
+        if (btn) btn.addEventListener('click', hideHint);
     }
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', initFullscreenHint);
