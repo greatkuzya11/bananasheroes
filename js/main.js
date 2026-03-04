@@ -317,6 +317,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         loadTouchBlockPositions();
         loadTouchBlockScale();
+        applyJoyJumpMode(); // show/hide UP block based on saved pref
 
         // ==== Double-tap modifier block: toggle vertical ↔ horizontal layout ====
         const modBlock = touchControlsEl.querySelector('.touch-block-modifiers');
@@ -390,24 +391,31 @@ document.addEventListener('DOMContentLoaded', () => {
         touchControlsEl._stopModPoll = () => { if (modPollRaf) { cancelAnimationFrame(modPollRaf); modPollRaf = null; } };
         touchControlsEl._startModPoll = () => { if (!modPollRaf) modIndicatorLoop(); };
 
-        // ==== Джойстик (LEFT / RIGHT без отрыва пальца) ====
+        // ==== Джойстик (LEFT/RIGHT + UP если режим джойстика-прыжка) ====
         const joystick = touchControlsEl.querySelector('.touch-joystick');
         if (joystick) {
             const knob = joystick.querySelector('.touch-joystick-knob');
-            const DEAD   = 14;  // px мёртвая зона от центра
-            const TRAVEL = 38;  // макс смещение ручки в px
-            let joyActive = false, joyCenterX = 0, joyKey = null;
+            const DEAD_X = 14;   // мёртвая зона горизонтальной оси
+            const DEAD_Y = 18;   // мёртвая зона вертикальной оси (чуть больше чтоб не случайный прыжок)
+            const TRAVEL = 38;
+            let joyActive = false, joyCenterX = 0, joyCenterY = 0;
+            let joyHKey = null, joyVKey = null;
 
-            const joyPress = (key) => {
-                if (joyKey === key) return;
-                if (joyKey) { releaseInputKey(joyKey, 'touch'); joystick.classList.remove('active-left', 'active-right'); }
-                joyKey = key;
+            const joySetH = (key) => {
+                if (joyHKey === key) return;
+                if (joyHKey) { releaseInputKey(joyHKey, 'touch'); joystick.classList.remove('active-left', 'active-right'); }
+                joyHKey = key;
                 if (key) { pressInputKey(key, 'touch'); joystick.classList.add(key === 'ArrowLeft' ? 'active-left' : 'active-right'); }
             };
-            const joyRelease = () => {
-                if (joyKey) releaseInputKey(joyKey, 'touch');
-                joyKey = null;
-                joystick.classList.remove('active-left', 'active-right');
+            const joySetV = (key) => {
+                if (joyVKey === key) return;
+                if (joyVKey) releaseInputKey(joyVKey, 'touch');
+                joyVKey = key;
+                if (key) pressInputKey(key, 'touch');
+            };
+            const joyReleaseAll = () => {
+                joySetH(null);
+                joySetV(null);
                 if (knob) knob.style.transform = 'translate(-50%, -50%)';
             };
 
@@ -416,6 +424,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 joyActive = true;
                 const r = joystick.getBoundingClientRect();
                 joyCenterX = r.left + r.width / 2;
+                joyCenterY = r.top  + r.height / 2;
                 try { joystick.setPointerCapture(e.pointerId); } catch (_) {}
             }, { passive: false });
 
@@ -423,14 +432,26 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (!joyActive) return;
                 e.preventDefault();
                 const dx = e.clientX - joyCenterX;
-                const t = Math.max(-TRAVEL, Math.min(TRAVEL, dx));
-                if (knob) knob.style.transform = `translate(calc(-50% + ${t}px), -50%)`;
-                if (dx < -DEAD) joyPress('ArrowLeft');
-                else if (dx > DEAD) joyPress('ArrowRight');
-                else joyRelease();
+                const dy = e.clientY - joyCenterY; // negative = UP
+                const tx = Math.max(-TRAVEL, Math.min(TRAVEL, dx));
+                const ty = Math.max(-TRAVEL, Math.min(TRAVEL, dy));
+                if (knob) knob.style.transform = `translate(calc(-50% + ${tx}px), calc(-50% + ${ty}px))`;
+
+                // Horizontal axis
+                if (dx < -DEAD_X)      joySetH('ArrowLeft');
+                else if (dx > DEAD_X)  joySetH('ArrowRight');
+                else                   joySetH(null);
+
+                // Vertical axis: jump only when separate UP button is hidden
+                if (!isJoyJumpMode()) {
+                    if (dy < -DEAD_Y) joySetV('ArrowUp');
+                    else              joySetV(null);
+                } else {
+                    joySetV(null); // separate button handles jump
+                }
             }, { passive: false });
 
-            const endJoy = () => { if (!joyActive) return; joyActive = false; joyRelease(); };
+            const endJoy = () => { if (!joyActive) return; joyActive = false; joyReleaseAll(); };
             joystick.addEventListener('pointerup',          endJoy);
             joystick.addEventListener('pointercancel',      endJoy);
             joystick.addEventListener('lostpointercapture', endJoy);
@@ -520,6 +541,31 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     const TOUCH_SCALE_KEY = 'bh_touch_scale_v1';
+    const TOUCH_JOY_JUMP_KEY = 'bh_touch_joy_jump_v1'; // 'true' = separate UP btn, default = joystick jump
+
+    function isJoyJumpMode() {
+        return localStorage.getItem(TOUCH_JOY_JUMP_KEY) === 'true';
+    }
+
+    // Shows/hides the separate UP block and saves state
+    function applyJoyJumpMode(save) {
+        if (!touchControlsEl) return;
+        const upBlock = touchControlsEl.querySelector('.touch-block-up');
+        const on = isJoyJumpMode();
+        if (upBlock) upBlock.style.display = on ? '' : 'none';
+    }
+
+    function toggleJoyJumpMode(btn) {
+        const next = !isJoyJumpMode();
+        localStorage.setItem(TOUCH_JOY_JUMP_KEY, String(next));
+        applyJoyJumpMode();
+        // update button highlight
+        if (btn) Object.assign(btn.style, {
+            background: next ? 'rgba(250,204,21,0.88)' : 'rgba(255,255,255,0.2)',
+            color: next ? '#111' : '#fff',
+            borderColor: next ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.45)',
+        });
+    }
 
     function getTouchBlocks() {
         if (!touchControlsEl) return [];
@@ -879,6 +925,21 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
                 return b;
             };
+
+            // Toggle: separate UP button vs joystick-jump
+            const btnJoyJump = mkScaleBtn('⬆');
+            btnJoyJump.title = 'Отдельная кнопка прыжка (вкл) / Прыжок джойстиком (выкл)';
+            const refreshJoyJumpBtn = () => {
+                const on = isJoyJumpMode();
+                Object.assign(btnJoyJump.style, {
+                    background: on ? 'rgba(250,204,21,0.88)' : 'rgba(255,255,255,0.2)',
+                    color: on ? '#111' : '#fff',
+                    borderColor: on ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.45)',
+                });
+            };
+            refreshJoyJumpBtn();
+            btnJoyJump.onclick = () => { toggleJoyJumpMode(null); refreshJoyJumpBtn(); };
+
             const btnScaleMinus = mkScaleBtn('−');
             btnScaleMinus.title = 'Уменьшить кнопки';
             btnScaleMinus.onclick = () => changeTouchBlockScale(-0.1);
@@ -897,6 +958,7 @@ document.addEventListener('DOMContentLoaded', () => {
             btnScalePlus.title = 'Увеличить кнопки';
             btnScalePlus.onclick = () => changeTouchBlockScale(+0.1);
 
+            scaleRow.appendChild(btnJoyJump);
             scaleRow.appendChild(btnScaleMinus);
             scaleRow.appendChild(btnReset);
             scaleRow.appendChild(btnScalePlus);
