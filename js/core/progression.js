@@ -15,6 +15,21 @@ const CAMPAIGN_LEVEL_ORDER = Object.freeze([
 ]);
 
 /**
+ * Набор уровней "основного прохождения" (до финального уровня).
+ * После прохождения всех этих уровней открывается "Библиотека".
+ */
+const CAMPAIGN_RUN_LEVELS = Object.freeze([
+    'normal',
+    '67',
+    'o4ko',
+    'nosok',
+    'platforms',
+    'lovlyu',
+    'runner'
+]);
+const FINAL_CAMPAIGN_LEVEL = 'library';
+
+/**
  * Метаданные уровней для меню и стартовой таблички.
  */
 const CAMPAIGN_LEVEL_META = Object.freeze({
@@ -36,7 +51,9 @@ const PROGRESS_KEYS = Object.freeze({
     survivalNoticeShown: 'bh_survival_unlocked_notice_shown_v1',
     gameCompletedOnce: 'bh_game_completed_once_v1',
     mode67Unlocked: 'bh_mode67_unlocked_v1',
-    mode67NoticeShown: 'bh_mode67_notice_shown_v1'
+    mode67NoticeShown: 'bh_mode67_notice_shown_v1',
+    levelCompletedPrefix: 'bh_level_completed_v1_',
+    completionFlagsMigrated: 'bh_completion_flags_migrated_v1'
 });
 
 /**
@@ -107,6 +124,52 @@ function writeLS(key, value) {
 }
 
 /**
+ * Возвращает ключ флага "уровень пройден хотя бы один раз".
+ * @param {string} mode - идентификатор режима.
+ * @returns {string}
+ */
+function getLevelCompletedKey(mode) {
+    return `${PROGRESS_KEYS.levelCompletedPrefix}${mode}`;
+}
+
+/**
+ * Помечает уровень как пройденный.
+ * @param {string} mode - идентификатор режима.
+ */
+function setLevelCompleted(mode) {
+    if (!isCampaignMode(mode)) return;
+    writeLS(getLevelCompletedKey(mode), '1');
+}
+
+/**
+ * Проверяет, был ли уровень пройден хотя бы один раз.
+ * @param {string} mode - идентификатор режима.
+ * @returns {boolean}
+ */
+function isLevelCompleted(mode) {
+    if (!isCampaignMode(mode)) return false;
+    return readBoolLS(getLevelCompletedKey(mode), false);
+}
+
+/**
+ * Выполняет одноразовую миграцию старого индексного прогресса
+ * в флаги "уровень пройден".
+ */
+function migrateLegacyProgressToCompletionFlags() {
+    if (readBoolLS(PROGRESS_KEYS.completionFlagsMigrated, false)) return;
+    const legacyUnlockedIdx = readIntLS(PROGRESS_KEYS.unlockedCampaignIndex, -1);
+    if (legacyUnlockedIdx >= 0) {
+        const max = Math.min(CAMPAIGN_LEVEL_ORDER.length - 1, legacyUnlockedIdx);
+        for (let i = 0; i <= max; i++) {
+            setLevelCompleted(CAMPAIGN_LEVEL_ORDER[i]);
+        }
+    }
+    writeLS(PROGRESS_KEYS.completionFlagsMigrated, '1');
+}
+
+migrateLegacyProgressToCompletionFlags();
+
+/**
  * Возвращает максимальный открытый индекс кампании.
  * По умолчанию открыт только первый уровень (index 0).
  * @returns {number}
@@ -132,9 +195,7 @@ function setUnlockedCampaignIndex(idx) {
  * @returns {boolean}
  */
 function isSurvivalUnlocked() {
-    // Допускаем обратную совместимость: если уже открыт второй сюжетный уровень,
-    // то считаем "Выживание" открытым даже без явного флага.
-    return readBoolLS(PROGRESS_KEYS.survivalUnlocked, false) || getUnlockedCampaignIndex() >= 1;
+    return readBoolLS(PROGRESS_KEYS.survivalUnlocked, false);
 }
 
 /**
@@ -161,7 +222,9 @@ function isCampaignMode(mode) {
 function getNextCampaignMode(mode) {
     const idx = CAMPAIGN_LEVEL_ORDER.indexOf(mode);
     if (idx < 0 || idx >= CAMPAIGN_LEVEL_ORDER.length - 1) return null;
-    return CAMPAIGN_LEVEL_ORDER[idx + 1];
+    const next = CAMPAIGN_LEVEL_ORDER[idx + 1];
+    if (next === FINAL_CAMPAIGN_LEVEL && !areAllRunLevelsCompleted()) return null;
+    return next;
 }
 
 /**
@@ -208,8 +271,10 @@ function setMode67Unlocked() {
 function isModeUnlockedByProgress(mode) {
     if (mode === 'survival') return isSurvivalUnlocked();
     if (mode === 'mode67') return isMode67Unlocked();
+    if (mode === FINAL_CAMPAIGN_LEVEL) return areAllRunLevelsCompleted();
+    if (CAMPAIGN_RUN_LEVELS.indexOf(mode) >= 0) return true;
     const campaignIdx = CAMPAIGN_LEVEL_ORDER.indexOf(mode);
-    if (campaignIdx >= 0) return campaignIdx <= getUnlockedCampaignIndex();
+    if (campaignIdx >= 0) return true;
     return true;
 }
 
@@ -226,7 +291,9 @@ function refreshModeButtonsByProgress() {
             btn.classList.remove('selected');
             btn.style.opacity = '0.48';
             btn.style.cursor = 'not-allowed';
-            btn.title = 'Откроется после прохождения предыдущего уровня';
+            btn.title = (mode === FINAL_CAMPAIGN_LEVEL)
+                ? 'Откроется после прохождения всех уровней кампании'
+                : 'Откроется после выполнения условий прогрессии';
         } else {
             btn.style.opacity = '1';
             btn.style.cursor = 'pointer';
@@ -281,13 +348,8 @@ function prepareCampaignSessionForStart(mode, source = 'menu') {
  * @param {string} mode - пройденный режим.
  */
 function unlockByCompletedMode(mode) {
-    const idx = CAMPAIGN_LEVEL_ORDER.indexOf(mode);
-    if (idx >= 0 && idx < CAMPAIGN_LEVEL_ORDER.length - 1) {
-        const unlockedIdx = getUnlockedCampaignIndex();
-        const target = idx + 1;
-        if (target > unlockedIdx) {
-            setUnlockedCampaignIndex(target);
-        }
+    if (isCampaignMode(mode)) {
+        setLevelCompleted(mode);
     }
 
     if (mode === '67') {
@@ -318,6 +380,9 @@ function unlockByCompletedMode(mode) {
  * @param {number} levelScore - очки, набранные в режиме.
  */
 function registerCampaignLevelCompletion(mode, levelScore) {
+    if (isCampaignMode(mode)) {
+        setLevelCompleted(mode);
+    }
     unlockByCompletedMode(mode);
 
     if (campaignSession.active && isCampaignMode(mode)) {
@@ -388,20 +453,38 @@ function consumePendingMode67Notice() {
 }
 
 /**
- * Сбрасывает прогресс кампании до состояния "первая игра":
- * открыт только первый уровень, выживание закрыто, одноразовые уведомления сброшены.
+ * Сбрасывает прогресс кампании:
+ * уровни основного прохождения снова доступны сразу,
+ * финальный уровень "Библиотека" закрыт до выполнения условий,
+ * одноразовые уведомления сбрасываются.
  */
 function resetCampaignProgressState() {
-    setUnlockedCampaignIndex(0);
+    // Старый индексный ключ оставляем для совместимости, но больше не используем как источник логики.
+    setUnlockedCampaignIndex(CAMPAIGN_RUN_LEVELS.length - 1);
     writeLS(PROGRESS_KEYS.survivalUnlocked, '0');
     writeLS(PROGRESS_KEYS.survivalNoticeShown, '0');
     writeLS(PROGRESS_KEYS.gameCompletedOnce, '0');
+    for (let i = 0; i < CAMPAIGN_LEVEL_ORDER.length; i++) {
+        writeLS(getLevelCompletedKey(CAMPAIGN_LEVEL_ORDER[i]), '0');
+    }
+    writeLS(PROGRESS_KEYS.completionFlagsMigrated, '1');
     pendingProgressNotices.survivalUnlock = false;
     pendingProgressNotices.gameCompleted = false;
     pendingProgressNotices.mode67Unlock = false;
     writeLS(PROGRESS_KEYS.mode67Unlocked, '0');
     writeLS(PROGRESS_KEYS.mode67NoticeShown, '0');
     resetCampaignSessionForMenu();
+}
+
+/**
+ * Возвращает true, если все уровни "основного прохождения" пройдены.
+ * @returns {boolean}
+ */
+function areAllRunLevelsCompleted() {
+    for (let i = 0; i < CAMPAIGN_RUN_LEVELS.length; i++) {
+        if (!isLevelCompleted(CAMPAIGN_RUN_LEVELS[i])) return false;
+    }
+    return true;
 }
 
 // Экспорт в глобальную область (обычные script-теги).

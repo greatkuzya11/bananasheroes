@@ -1475,9 +1475,12 @@
                     (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
         return isIOS;
     }
+    function isInFullscreen() {
+        return !!(document.fullscreenElement || document.webkitFullscreenElement || navigator.standalone);
+    }
     function showHint() {
         var hint = document.getElementById('fullscreen-hint');
-        if (hint && isMobile() && isFullscreenAvailable()) hint.style.display = 'block';
+        if (hint && isMobile() && isFullscreenAvailable() && !isInFullscreen()) hint.style.display = 'block';
     }
     function hideHint() {
         var hint = document.getElementById('fullscreen-hint');
@@ -1508,6 +1511,16 @@
         // Clicking the hint or the fullscreen button hides the hint for this visit
         hint.addEventListener('click', hideHint);
         if (btn) btn.addEventListener('click', hideHint);
+
+        // Re-evaluate hint when fullscreen state changes
+        var onFsChange = function () {
+            var menuVisible = window.getComputedStyle(menu).display !== 'none';
+            if (menuVisible) {
+                if (isInFullscreen()) { hideHint(); } else { showHint(); }
+            }
+        };
+        document.addEventListener('fullscreenchange', onFsChange);
+        document.addEventListener('webkitfullscreenchange', onFsChange);
     }
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', initFullscreenHint);
@@ -1515,6 +1528,16 @@
         initFullscreenHint();
     }
 }());
+</script>
+
+<script>
+// ==== Service Worker (кеш ресурсов) ====
+if ('serviceWorker' in navigator) {
+    window.addEventListener('load', function () {
+        navigator.serviceWorker.register('./sw.js')
+            .catch(function (err) { console.warn('SW registration failed:', err); });
+    });
+}
 </script>
 </body>
 </html>

@@ -1065,10 +1065,35 @@ document.addEventListener('DOMContentLoaded', () => {
             btnScalePlus.title = 'Увеличить кнопки';
             btnScalePlus.onclick = () => changeTouchBlockScale(+0.1);
 
+            const btnAudio = mkScaleBtn('🔊');
+            btnAudio.title = 'Включить/выключить звук';
+            const refreshAudioBtn = () => {
+                const enabled = !(window.BHAudio && typeof window.BHAudio.isEnabled === 'function')
+                    ? true : !!window.BHAudio.isEnabled();
+                btnAudio.textContent = enabled ? '🔊' : '🔇';
+                Object.assign(btnAudio.style, {
+                    background: enabled ? 'rgba(255,255,255,0.2)' : 'rgba(255,80,80,0.35)',
+                    borderColor: enabled ? 'rgba(255,255,255,0.45)' : 'rgba(255,120,120,0.7)',
+                    color: '#fff'
+                });
+            };
+            refreshAudioBtn();
+            btnAudio.onclick = () => {
+                if (!window.BHAudio || typeof window.BHAudio.setEnabled !== 'function') return;
+                const wasEnabled = typeof window.BHAudio.isEnabled === 'function' ? !!window.BHAudio.isEnabled() : true;
+                if (wasEnabled) audioPlay('ui_click');
+                window.BHAudio.setEnabled(!wasEnabled);
+                if (!wasEnabled) audioPlay('ui_confirm');
+                refreshAudioBtn();
+                // Sync the menu audio button label too
+                if (typeof updateAudioToggleButtonLabel === 'function') updateAudioToggleButtonLabel();
+            };
+
             scaleRow.appendChild(btnJoyJump);
             scaleRow.appendChild(btnScaleMinus);
             scaleRow.appendChild(btnReset);
             scaleRow.appendChild(btnScalePlus);
+            scaleRow.appendChild(btnAudio);
             overlay.appendChild(scaleRow);
             overlay.appendChild(joyJumpDesc);
         }
