@@ -23,7 +23,7 @@ document.addEventListener('DOMContentLoaded', () => {
     ctx = canvas.getContext('2d');
     const touchControlsEl = document.getElementById('touch-controls');
     const mobileHintEl = document.getElementById('mobile-controls-hint');
-    const MOBILE_HINT_SEEN_KEY = 'bh_mobile_controls_hint_seen_v1';
+    const MOBILE_HINT_SEEN_KEY = 'bh_mobile_controls_hint_seen_v2';
     // Живая проверка — не кешируем, чтобы DevTools-эмуляция мобильного работала корректно
     const isTouchDevice = () => !!(window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
     const inputSourceState = {
@@ -209,7 +209,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     /**
-     * Скрывает подсказку мобильного управления.
+     * Скрывает подсказку мобильного управления (legacy — элемент внутри #game).
      */
     function hideMobileControlsHint() {
         if (!mobileHintEl) return;
@@ -218,16 +218,102 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     /**
-     * Показывает подсказку управления на мобильных устройствах при первом запуске.
+     * Подсказка теперь показывается ДО старта уровня через showMobileControlsHintModal().
+     * Эта функция оставлена как заглушка для совместимости.
      */
     function maybeShowMobileControlsHint() {
-        if (!isTouchDevice() || !mobileHintEl) return;
-        if (!running || paused) return;
-        if (hasSeenMobileHint()) return;
+        // Hint is now shown before the level starts — see showMobileControlsHintModal()
+    }
 
-        mobileHintEl.classList.add('active');
-        mobileHintEl.setAttribute('aria-hidden', 'false');
-        markMobileHintSeen();
+    /**
+     * Показывает блокирующий модал с обучением управления на мобиле.
+     * Вызывается перед стартом первого уровня.
+     * @returns {Promise<void>} Резолвится после нажатия «ОК».
+     */
+    function showMobileControlsHintModal() {
+        return new Promise(resolve => {
+            const modal = document.createElement('div');
+            Object.assign(modal.style, {
+                position: 'fixed', inset: '0', zIndex: '3000',
+                background: 'rgba(0,0,0,0.82)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                padding: '12px', boxSizing: 'border-box',
+                fontFamily: 'Arial, sans-serif'
+            });
+
+            const card = document.createElement('div');
+            Object.assign(card.style, {
+                width: 'min(94vw, 520px)',
+                background: 'rgba(15,23,42,0.97)',
+                border: '2px solid rgba(255,255,255,0.3)',
+                borderRadius: '16px',
+                padding: '18px 16px 14px',
+                boxShadow: '0 12px 40px rgba(0,0,0,0.6)',
+                color: '#fff',
+                maxHeight: '90svh',
+                overflowY: 'auto',
+                boxSizing: 'border-box'
+            });
+
+            const titleEl = document.createElement('div');
+            titleEl.textContent = '📱 Управление на телефоне';
+            Object.assign(titleEl.style, {
+                fontSize: '17px', fontWeight: '800',
+                marginBottom: '12px', textAlign: 'center'
+            });
+            card.appendChild(titleEl);
+
+            const rows = [
+                ['🕹️ Джойстик', 'Движение влево/вправо. В режиме 2D-джойстика: смахни вверх — прыжок.'],
+                ['⬆ UP', 'Прыжок (отдельная кнопка, если включена в паузе).'],
+                ['FIRE', 'Стрельба — удерживай.'],
+                ['BONUS', 'Бонусный режим — нажми (нужны заряды 🍺).'],
+                ['ALT', 'Альтернативная стрельба — нажми для переключения.'],
+                ['DIR', 'Смена направления пули (←/→/↑). Удерживай в режиме ALT — стрелять вверх.']
+            ];
+            const table = document.createElement('div');
+            Object.assign(table.style, { display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '6px 10px', fontSize: '13px', lineHeight: '1.4', marginBottom: '12px' });
+            rows.forEach(([key, desc]) => {
+                const k = document.createElement('div');
+                k.textContent = key;
+                Object.assign(k.style, { fontWeight: '700', color: '#ffd54f', whiteSpace: 'nowrap', paddingTop: '1px' });
+                const d = document.createElement('div');
+                d.textContent = desc;
+                d.style.opacity = '0.92';
+                table.appendChild(k);
+                table.appendChild(d);
+            });
+            card.appendChild(table);
+
+            const tip = document.createElement('div');
+            tip.innerHTML = '⚙️ <b>Настройка кнопок:</b> нажми <b>⏸ Пауза</b> во время игры. Можно перетаскивать блоки кнопок, менять их размер (+/−) и переключать режим прыжка (⬆).';
+            Object.assign(tip.style, {
+                fontSize: '12px', color: 'rgba(255,255,255,0.7)',
+                background: 'rgba(255,255,255,0.06)',
+                borderRadius: '8px', padding: '8px 10px',
+                lineHeight: '1.45', marginBottom: '14px'
+            });
+            card.appendChild(tip);
+
+            const okBtn = document.createElement('button');
+            okBtn.textContent = 'ОК, понял!';
+            Object.assign(okBtn.style, {
+                display: 'block', width: '100%',
+                padding: '12px', fontSize: '16px', fontWeight: '800',
+                borderRadius: '10px', border: '2px solid rgba(255,255,255,0.5)',
+                background: 'rgba(250,204,21,0.95)', color: '#111',
+                cursor: 'pointer', touchAction: 'manipulation'
+            });
+            okBtn.onclick = () => {
+                markMobileHintSeen();
+                modal.remove();
+                resolve();
+            };
+            card.appendChild(okBtn);
+
+            modal.appendChild(card);
+            document.body.appendChild(modal);
+        });
     }
 
     /**
@@ -747,10 +833,19 @@ document.addEventListener('DOMContentLoaded', () => {
             zIndex: 1000
         });
 
+        const isMob = isTouchDevice();
+        // Относительные размеры — используются для всех элементов оверлея паузы
+        const titleFs = isMob ? 'clamp(20px, 5vw, 30px)'  : 'clamp(36px, 5vw, 48px)';
+        const titleMB = isMob ? 'min(2vh, 14px)'           : 'min(4vh, 30px)';
+        const btnFs   = isMob ? 'clamp(13px, 3.5vw, 17px)' : 'clamp(18px, 2.5vw, 24px)';
+        const btnPad  = isMob ? 'clamp(7px, 1.5vw, 11px)'  : 'clamp(11px, 1.5vh, 15px)';
+        const btnMB   = isMob ? 'min(1.2vh, 8px)'           : 'min(1.6vh, 12px)';
+        const btnW    = isMob ? 'min(58vw, 220px)'          : 'min(42vw, 300px)';
+
         const title = document.createElement('div');
         title.innerHTML = '⏸️ ПАУЗА ⏸️';
-        title.style.fontSize = '48px';
-        title.style.marginBottom = '30px';
+        title.style.fontSize = titleFs;
+        title.style.marginBottom = titleMB;
         title.style.fontWeight = 'bold';
         overlay.appendChild(title);
 
@@ -758,16 +853,16 @@ document.addEventListener('DOMContentLoaded', () => {
         btnResume.innerText = '▶️ Продолжить';
         btnResume.dataset.pauseIdx = '0';
         Object.assign(btnResume.style, { 
-            padding: '15px', 
-            fontSize: '24px', 
+            padding: btnPad, 
+            fontSize: btnFs, 
             cursor: 'pointer', 
-            marginBottom: '10px',
+            marginBottom: btnMB,
             borderRadius: '10px',
             background: '#ffcc00',
             border: '3px solid transparent',
             transition: 'all 0.2s ease',
             color: '#000',
-            minWidth: '300px'
+            minWidth: btnW
         });
         // Обработчик наведения на кнопку "Продолжить"
         btnResume.onmouseover = () => {
@@ -798,16 +893,16 @@ document.addEventListener('DOMContentLoaded', () => {
         btnRestart.innerText = '🔄 Начать заново';
         btnRestart.dataset.pauseIdx = '1';
         Object.assign(btnRestart.style, { 
-            padding: '15px', 
-            fontSize: '24px', 
+            padding: btnPad, 
+            fontSize: btnFs, 
             cursor: 'pointer', 
-            marginBottom: '10px',
+            marginBottom: btnMB,
             borderRadius: '10px',
             background: '#ffcc00',
             border: '3px solid transparent',
             transition: 'all 0.2s ease',
             color: '#000',
-            minWidth: '300px'
+            minWidth: btnW
         });
         // Обработчик наведения на кнопку "Начать заново"
         btnRestart.onmouseover = () => {
@@ -846,15 +941,15 @@ document.addEventListener('DOMContentLoaded', () => {
         btnMain.innerText = '🏠 Главный экран';
         btnMain.dataset.pauseIdx = '2';
         Object.assign(btnMain.style, { 
-            padding: '15px', 
-            fontSize: '24px', 
+            padding: btnPad, 
+            fontSize: btnFs, 
             cursor: 'pointer',
             borderRadius: '10px',
             background: '#ffcc00',
             border: '3px solid transparent',
             transition: 'all 0.2s ease',
             color: '#000',
-            minWidth: '300px'
+            minWidth: btnW
         });
         // Обработчик наведения на кнопку "Главный экран"
         btnMain.onmouseover = () => {
@@ -911,13 +1006,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const scaleRow = document.createElement('div');
             Object.assign(scaleRow.style, {
-                marginTop: '10px', display: 'flex', alignItems: 'center', gap: '8px', maxWidth: '320px'
+                marginTop: 'min(1.5vh, 10px)', display: 'flex', alignItems: 'center', gap: '6px'
             });
             const mkScaleBtn = (lbl) => {
                 const b = document.createElement('button');
                 b.textContent = lbl;
                 Object.assign(b.style, {
-                    width: '40px', height: '40px', fontSize: '22px', lineHeight: '1',
+                    width: 'min(10vw, 40px)', height: 'min(10vw, 40px)', fontSize: 'min(5.5vw, 22px)', lineHeight: '1',
                     cursor: 'pointer', borderRadius: '8px',
                     background: 'rgba(255,255,255,0.2)',
                     border: '2px solid rgba(255,255,255,0.45)', color: '#fff',
@@ -938,7 +1033,18 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
             };
             refreshJoyJumpBtn();
-            btnJoyJump.onclick = () => { toggleJoyJumpMode(null); refreshJoyJumpBtn(); };
+            const joyJumpDesc = document.createElement('div');
+            Object.assign(joyJumpDesc.style, {
+                fontSize: 'clamp(10px, 2.6vw, 12px)', color: 'rgba(255,255,255,0.55)',
+                textAlign: 'left', width: btnW, boxSizing: 'border-box', lineHeight: '1.4'
+            });
+            const updateJoyJumpDesc = () => {
+                joyJumpDesc.textContent = isJoyJumpMode()
+                    ? '⬆ жёлтая — отдельная кнопка прыжка включена'
+                    : '⬆ серая — прыжок джойстиком вверх (без отрыва пальца)';
+            };
+            updateJoyJumpDesc();
+            btnJoyJump.onclick = () => { toggleJoyJumpMode(null); refreshJoyJumpBtn(); updateJoyJumpDesc(); };
 
             const btnScaleMinus = mkScaleBtn('−');
             btnScaleMinus.title = 'Уменьшить кнопки';
@@ -947,10 +1053,11 @@ document.addEventListener('DOMContentLoaded', () => {
             const btnReset = document.createElement('button');
             btnReset.innerText = '↺ Сбросить позиции кнопок';
             Object.assign(btnReset.style, {
-                padding: '8px 10px', fontSize: '13px', cursor: 'pointer',
+                padding: 'clamp(6px, 1.5vw, 9px) clamp(5px, 1.8vw, 10px)',
+                fontSize: 'clamp(10px, 2.8vw, 13px)', cursor: 'pointer',
                 borderRadius: '8px', background: 'rgba(255,255,255,0.15)',
                 border: '2px solid rgba(255,255,255,0.35)', color: '#fff',
-                flex: '1', textAlign: 'center'
+                width: btnW, flexShrink: '0', boxSizing: 'border-box', textAlign: 'center'
             });
             btnReset.onclick = () => resetTouchBlockPositions();
 
@@ -963,6 +1070,7 @@ document.addEventListener('DOMContentLoaded', () => {
             scaleRow.appendChild(btnReset);
             scaleRow.appendChild(btnScalePlus);
             overlay.appendChild(scaleRow);
+            overlay.appendChild(joyJumpDesc);
         }
 
         document.body.appendChild(overlay);
@@ -1097,6 +1205,11 @@ document.addEventListener('DOMContentLoaded', () => {
             // Выделяем выбранный
             m.classList.add('selected');
 
+            // На мобиле при первом запуске показываем обучение управлению ДО старта уровня
+            if (isTouchDevice() && !hasSeenMobileHint()) {
+                await showMobileControlsHintModal();
+            }
+
             if (typeof startModeWithIntro === 'function') {
                 await startModeWithIntro(targetMode, { source: 'menu' });
             } else {
@@ -1156,14 +1269,57 @@ document.addEventListener('DOMContentLoaded', () => {
     (function () {
         const fsBtn = document.getElementById('fullscreen-btn');
         if (!fsBtn) return;
-        const fsEnabled = document.fullscreenEnabled || document.webkitFullscreenEnabled;
-        if (!fsEnabled) return;
 
-        fsBtn.style.display = 'block'; // supported — show the button
+        const fsEnabled = !!(document.fullscreenEnabled || document.webkitFullscreenEnabled);
+        // iOS Safari: ни один из флагов не выставлен, но устройство мобильное
+        const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent) ||
+                      (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+        const isStandalone = !!navigator.standalone; // уже запущен как PWA с домашнего экрана
 
+        if (!fsEnabled && !isIOS) return; // десктоп-браузер без поддержки — не показываем
+
+        fsBtn.style.display = 'block';
+
+        if (isStandalone) {
+            // Уже в полноэкранном (standalone) режиме — кнопка не нужна
+            fsBtn.style.display = 'none';
+            return;
+        }
+
+        if (!fsEnabled && isIOS) {
+            // iOS: показываем кнопку с инструкцией через Safari
+            fsBtn.textContent = '⛶';
+            fsBtn.title = 'Полный экран';
+
+            // Тост-подсказка
+            const showIOSToast = () => {
+                const existing = document.getElementById('ios-fs-toast');
+                if (existing) { existing.remove(); return; }
+                const toast = document.createElement('div');
+                toast.id = 'ios-fs-toast';
+                Object.assign(toast.style, {
+                    position: 'fixed', zIndex: '9999',
+                    top: '60px', left: '50%', transform: 'translateX(-50%)',
+                    background: 'rgba(20,20,30,0.96)',
+                    color: '#fff', borderRadius: '12px',
+                    padding: '12px 16px', fontSize: '13px',
+                    lineHeight: '1.5', maxWidth: '260px',
+                    textAlign: 'center', boxShadow: '0 6px 24px rgba(0,0,0,0.5)',
+                    border: '1px solid rgba(255,255,255,0.2)',
+                    pointerEvents: 'none'
+                });
+                toast.innerHTML = '📱 Для полного экрана:<br>Нажмите <b>Поделиться</b> (<span style="font-size:16px">⎙</span>) в браузере → <b>«На экран "Домой"»</b>';
+                document.body.appendChild(toast);
+                setTimeout(() => toast.remove(), 5000);
+            };
+            fsBtn.onclick = showIOSToast;
+            return;
+        }
+
+        // Стандартный Fullscreen API
         const updateIcon = () => {
             const inFs = !!(document.fullscreenElement || document.webkitFullscreenElement);
-            fsBtn.textContent = inFs ? '\u2715' : '\u26F6'; // ✕ or ⛶
+            fsBtn.textContent = inFs ? '\u2715' : '\u26F6';
             fsBtn.title = inFs ? 'Выйти из полного экрана' : 'Полный экран';
         };
 
