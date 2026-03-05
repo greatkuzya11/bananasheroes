@@ -82,8 +82,8 @@ class Player {
                 this.facingDir = 'right';
                 this.x += this.speed * nosokMoveMul * moveMul;
             }
-            // Клавиша ArrowDown стреляет вверх в альтернативном режиме
-            if (keys["ArrowDown"]) {
+            // Клавиша ArrowDown или джойстик вверх в мобильном alt-режиме → целиться вверх
+            if (keys["ArrowDown"] || window._joyAimUp) {
                 playerBulletDir = 'up';
             } else if (!keys["ArrowLeft"] && !keys["ArrowRight"]) {
                 // Если клавиша вниз отпущена и игрок не двигается, стреляем по направлению взгляда
@@ -496,6 +496,11 @@ class Player {
         }
 
         const fps = (this.mAnim === 'walk' || this.mAnim === 'shootOnWalk') ? 20 : 15;
+        // Движение назад: не-альтернативный режим стрельбы, движение против facingDir
+        const isBackward = !altShootMode && movingHoriz && (
+            (this.facingDir === 'right' && keys['ArrowLeft'] && !keys['ArrowRight']) ||
+            (this.facingDir === 'left'  && keys['ArrowRight'] && !keys['ArrowLeft'])
+        );
         this.mTimer += dt;
         if (this.mTimer >= 1 / fps) {
             this.mTimer -= 1 / fps;
@@ -504,6 +509,9 @@ class Player {
             if (!movingHoriz && this.mAnim === 'walk') {
                 // Idle — стоим на первом кадре
                 this.mFrame = 0;
+            } else if (isBackward) {
+                // Движение спиной — кадры в обратном порядке
+                this.mFrame = (this.mFrame - 1 + count) % count;
             } else {
                 this.mFrame = (this.mFrame + 1) % count;
             }

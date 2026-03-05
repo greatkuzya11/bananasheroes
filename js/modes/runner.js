@@ -245,7 +245,8 @@ function refreshRunnerLayout(preserveActors = false, prevW = canvas.width, prevH
 
     // Полосы: 0 = земля (нижняя), 1 = вторая снизу, 2 = третья, 3 = верхняя.
     // Земля остается у нижней кромки, как в других режимах.
-    const bandGroundY = canvas.height - runnerPx(20, 10);
+    const groundLift = canvas.height * 0.05; // Поднимаем уровень земли на 5% высоты экрана
+    const bandGroundY = canvas.height - runnerPx(20, 10) - groundLift;
     const band2Y = stripe * 3 - platformH * 0.5;
     const band3Y = stripe * 2 - platformH * 0.5;
     const band4Y = Math.max(12, stripe * 1 - platformH * 0.5);

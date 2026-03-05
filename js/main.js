@@ -502,6 +502,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const joyReleaseAll = () => {
                 joySetH(null);
                 joySetV(null);
+                window._joyAimUp = false;
                 if (knob) knob.style.transform = 'translate(-50%, -50%)';
             };
 
@@ -535,6 +536,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 } else {
                     joySetV(null); // separate button handles jump
                 }
+                // В alt-режиме стрельбы: джойстик вверх → целиться вверх (без авто-выстрела)
+                window._joyAimUp = !!(typeof altShootMode !== 'undefined' && altShootMode && dy < -DEAD_Y);
             }, { passive: false });
 
             const endJoy = () => { if (!joyActive) return; joyActive = false; joyReleaseAll(); };
