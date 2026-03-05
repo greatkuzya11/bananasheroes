@@ -79,6 +79,12 @@ function update(dt) {
         return;
     }
 
+    // Отдельный игровой цикл бонусного уровня.
+    if (gameMode === 'bonus') {
+        updateBonusMode(dt);
+        return;
+    }
+
     if (invuln > 0) invuln -= dt;
     // Таймер визуального эффекта смены фазы
     if (normalPhaseEffectTimer > 0) normalPhaseEffectTimer = Math.max(0, normalPhaseEffectTimer - dt);

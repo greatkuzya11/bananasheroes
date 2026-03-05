@@ -20,6 +20,7 @@ function getIntroBackgroundForMode(mode) {
         platforms: 'img/pl-bg.png',
         lovlyu: 'img/avs-bg.png',
         runner: 'img/ud-bg.png',
+        bonus: 'img/bg-avs.png',
         library: 'img/lb2-bg.png'
     };
     return bgByMode[mode] || 'img/forest.png';
@@ -412,6 +413,7 @@ function showLevelComplete() {
     // Обработчик клика по кнопке "Главный экран"
     btnMain.onclick = async () => {
         if (window.BHAudio) window.BHAudio.play('ui_click');
+        const completedFromMode = gameMode;
         if (typeof window.clearGameInputs === 'function') {
             window.clearGameInputs();
         }
@@ -446,6 +448,23 @@ function showLevelComplete() {
             : '';
         if (completedText) {
             await showTransientInfoNotice(completedText, 3000);
+            const shouldAutoOpenBonus = (
+                completedFromMode === 'library'
+                && (typeof isBonusUnlocked === 'function' ? isBonusUnlocked() : true)
+            );
+            if (shouldAutoOpenBonus) {
+                if (typeof startModeWithIntro === 'function') {
+                    await startModeWithIntro('bonus', { source: 'next' });
+                } else {
+                    document.getElementById('menu').style.display = 'none';
+                    document.getElementById('game').style.display = 'block';
+                    beginGameRun('bonus', true);
+                    if (typeof window.setGameTouchControlsVisible === 'function') {
+                        window.setGameTouchControlsVisible(true);
+                    }
+                }
+                return;
+            }
         }
     };
 
@@ -760,7 +779,7 @@ function showGameOver() {
 
     const bestLine = document.createElement('div');
     const displayName = (charNames && charNames[selectedChar]) ? charNames[selectedChar] : selectedChar;
-    const modeNames = { 'normal': 'Сирень и Букин', 'survival': 'Выживание', '67': 'Телепузик', 'mode67': 'Режим 67', 'o4ko': 'Очко', 'nosok': 'Носок', 'platforms': 'Опять Телепузик', 'lovlyu': 'Ловлю', 'runner': 'Бегун', 'library': 'Библиотека' };
+    const modeNames = { 'normal': 'Сирень и Букин', 'survival': 'Выживание', '67': 'Телепузик', 'mode67': 'Режим 67', 'o4ko': 'Очко', 'nosok': 'Носок', 'platforms': 'Опять Телепузик', 'lovlyu': 'Ловлю', 'runner': 'Бегун', 'library': 'Библиотека', 'bonus': 'Бонусный уровень' };
     const modeName = modeNames[gameMode] || gameMode;
     if (isNosokMode) {
         const bestTime = parseInt(localStorage.getItem('bh_bestTime_' + (selectedChar || 'kuzy') + '_nosok') || '0', 10) || 0;

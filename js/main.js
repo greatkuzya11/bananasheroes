@@ -624,6 +624,9 @@ document.addEventListener('DOMContentLoaded', () => {
         if (gameMode === 'runner' && typeof onRunnerResize === 'function') {
             onRunnerResize(prevW, prevH);
         }
+        if (gameMode === 'bonus' && typeof onBonusResize === 'function') {
+            onBonusResize(prevW, prevH);
+        }
     }
 
     const TOUCH_SCALE_KEY = 'bh_touch_scale_v1';
@@ -1172,6 +1175,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const modeButtons = document.querySelectorAll('.mode');
     const audioToggleBtn = document.getElementById('audio-toggle-btn');
     const resetProgressBtn = document.getElementById('reset-progress-btn');
+    const bonusLevelBtn = document.getElementById('bonus-level-btn');
     const updateAudioToggleButtonLabel = () => {
         if (!audioToggleBtn) return;
         const enabled = !(window.BHAudio && typeof window.BHAudio.isEnabled === 'function')
@@ -1194,7 +1198,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (resetProgressBtn) {
         resetProgressBtn.onclick = () => {
             audioPlay('ui_click');
-            const ok = window.confirm('Сбросить прогресс кампании? Останется открыт только первый уровень.');
+            const ok = window.confirm('Сбросить прогресс кампании? Библиотека и Bonus снова будут закрыты.');
             if (!ok) return;
             if (typeof resetCampaignProgressState === 'function') {
                 resetCampaignProgressState();
@@ -1202,6 +1206,26 @@ document.addEventListener('DOMContentLoaded', () => {
             audioPlay('ui_confirm');
             modeButtons.forEach(mb => mb.classList.remove('selected'));
             if (typeof refreshModeButtonsByProgress === 'function') refreshModeButtonsByProgress();
+        };
+    }
+    if (bonusLevelBtn) {
+        bonusLevelBtn.onclick = async () => {
+            audioPlay('ui_click');
+            const targetMode = 'bonus';
+            if (typeof isModeUnlockedByProgress === 'function' && !isModeUnlockedByProgress(targetMode)) {
+                audioPlay('ui_error');
+                return;
+            }
+            if (typeof startModeWithIntro === 'function') {
+                await startModeWithIntro(targetMode, { source: 'menu' });
+            } else {
+                document.getElementById('menu').style.display = 'none';
+                document.getElementById('game').style.display = 'block';
+                gameMode = targetMode;
+                beginGameRun(gameMode, true);
+                setTouchControlsVisible(true);
+                setPauseGameBtnVisible(true);
+            }
         };
     }
     /**
@@ -1258,7 +1282,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // снимая его со всех остальных — чтобы не было двух одновременных фокусов.
     document.addEventListener('mouseover', e => {
         const el = e.target.closest(
-            '.char, .mode, #help-btn, #audio-toggle-btn, #reset-progress-btn, #help-back-btn, ' +
+            '.char, .mode, #help-btn, #audio-toggle-btn, #bonus-level-btn, #reset-progress-btn, #help-back-btn, ' +
             'button[data-pause-idx], button[data-overlay-btn-idx]'
         );
         if (!el || el.disabled) return;
@@ -1397,10 +1421,11 @@ document.addEventListener('DOMContentLoaded', () => {
         const mEls = Array.from(document.querySelectorAll('.mode'));
         const helpBtnEl = document.getElementById('help-btn');
         const audioBtnEl = document.getElementById('audio-toggle-btn');
+        const bonusBtnEl = document.getElementById('bonus-level-btn');
         const resetBtnEl = document.getElementById('reset-progress-btn');
         // Снимаем подсветку со всех элементов меню
         [...cEls, ...mEls].forEach(el => el.classList.remove('menu-kb-focus'));
-        [helpBtnEl, audioBtnEl, resetBtnEl].forEach(el => el && el.classList.remove('menu-kb-focus'));
+        [helpBtnEl, audioBtnEl, bonusBtnEl, resetBtnEl].forEach(el => el && el.classList.remove('menu-kb-focus'));
         if (section === 'char') {
             if (cEls[idx]) cEls[idx].classList.add('menu-kb-focus');
         } else if (section === 'mode') {
@@ -1409,6 +1434,10 @@ document.addEventListener('DOMContentLoaded', () => {
             if (helpBtnEl) helpBtnEl.classList.add('menu-kb-focus');
         } else if (section === 'audio') {
             if (audioBtnEl) audioBtnEl.classList.add('menu-kb-focus');
+        } else if (section === 'bonus') {
+            if (bonusBtnEl && bonusBtnEl.style.display !== 'none' && !bonusBtnEl.disabled) {
+                bonusBtnEl.classList.add('menu-kb-focus');
+            }
         } else if (section === 'reset') {
             if (resetBtnEl) resetBtnEl.classList.add('menu-kb-focus');
         }
@@ -1546,6 +1575,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const mEls = Array.from(document.querySelectorAll('.mode'));
         const helpBtnEl = document.getElementById('help-btn');
         const audioBtnEl = document.getElementById('audio-toggle-btn');
+        const bonusBtnEl = document.getElementById('bonus-level-btn');
         const resetBtnEl = document.getElementById('reset-progress-btn');
         const modesContainer = document.getElementById('modes');
         const modesVisible = modesContainer && modesContainer.style.display !== 'none';
@@ -1556,8 +1586,10 @@ document.addEventListener('DOMContentLoaded', () => {
         const fMode = mEls.findIndex(el => el.classList.contains('menu-kb-focus'));
         const fHelp = helpBtnEl && helpBtnEl.classList.contains('menu-kb-focus');
         const fAudio = audioBtnEl && audioBtnEl.classList.contains('menu-kb-focus');
+        const fBonus = bonusBtnEl && bonusBtnEl.classList.contains('menu-kb-focus');
         const fReset = resetBtnEl && resetBtnEl.classList.contains('menu-kb-focus');
         if (fReset)      { section = 'reset'; idx = 0; }
+        else if (fBonus) { section = 'bonus'; idx = 0; }
         else if (fAudio) { section = 'audio'; idx = 0; }
         else if (fHelp)  { section = 'help';  idx = 0; }
         else if (fMode >= 0 && modesVisible) { section = 'mode'; idx = fMode; }
@@ -1595,6 +1627,12 @@ document.addEventListener('DOMContentLoaded', () => {
             } else if (section === 'help') {
                 menuNavFocus('audio', 0);
             } else if (section === 'audio') {
+                if (bonusBtnEl && bonusBtnEl.style.display !== 'none' && !bonusBtnEl.disabled) {
+                    menuNavFocus('bonus', 0);
+                } else {
+                    menuNavFocus('reset', 0);
+                }
+            } else if (section === 'bonus') {
                 menuNavFocus('reset', 0);
             } else if (section === 'reset') {
                 menuNavFocus('mode', mEls.length - 1); // циклируем обратно
@@ -1608,8 +1646,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 menuNavFocus('mode', mEls.length - 1);
             } else if (section === 'audio') {
                 menuNavFocus('help', 0);
-            } else if (section === 'reset') {
+            } else if (section === 'bonus') {
                 menuNavFocus('audio', 0);
+            } else if (section === 'reset') {
+                if (bonusBtnEl && bonusBtnEl.style.display !== 'none' && !bonusBtnEl.disabled) {
+                    menuNavFocus('bonus', 0);
+                } else {
+                    menuNavFocus('audio', 0);
+                }
             }
             e.preventDefault();
         } else if (e.key === 'Enter' || e.key === ' ') {
@@ -1622,6 +1666,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 helpBtnEl?.click();
             } else if (section === 'audio') {
                 audioBtnEl?.click();
+            } else if (section === 'bonus') {
+                bonusBtnEl?.click();
             } else if (section === 'reset') {
                 resetBtnEl?.click();
             }

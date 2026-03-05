@@ -195,6 +195,7 @@ function resetGameRuntimeCore() {
     if (typeof resetNosokLevelState === 'function') resetNosokLevelState();
     if (typeof resetRunnerLevelState === 'function') resetRunnerLevelState();
     if (typeof resetLovlyuLevelState === 'function') resetLovlyuLevelState();
+    if (typeof resetBonusLevelState === 'function') resetBonusLevelState();
 }
 
 /**
@@ -311,6 +312,13 @@ function initRunWorldByMode(mode) {
         setRunBackground('img/ud-bg.png');
         playerBulletDir = 'right';
         initRunnerLevel();
+        return;
+    }
+
+    if (startMode === 'bonus') {
+        setRunBackground('img/bg-avs.png');
+        playerBulletDir = 'right';
+        if (typeof initBonusLevel === 'function') initBonusLevel();
         return;
     }
 

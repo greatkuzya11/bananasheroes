@@ -65,6 +65,31 @@
         #reset-progress-btn:active {
             transform: scale(0.95);
         }
+        #bonus-level-btn {
+            position: fixed;
+            right: 20px;
+            bottom: 132px;
+            z-index: 3;
+            cursor: pointer;
+            font-size: 18px;
+            padding: 12px 16px;
+            border-radius: 10px;
+            border: 3px solid transparent;
+            background: #ffcc00;
+            color: #000;
+            font-weight: 700;
+            transition: all 0.2s ease;
+            display: none;
+        }
+
+        #bonus-level-btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+        }
+
+        #bonus-level-btn:active {
+            transform: scale(0.95);
+        }
         #audio-toggle-btn {
             position: fixed;
             right: 20px;
@@ -184,7 +209,8 @@
 
         #help-btn.menu-kb-focus,
         #audio-toggle-btn.menu-kb-focus,
-        #reset-progress-btn.menu-kb-focus {
+        #reset-progress-btn.menu-kb-focus,
+        #bonus-level-btn.menu-kb-focus {
             outline: 3px solid #fff;
             transform: scale(1.08);
             box-shadow: 0 0 22px rgba(255,255,255,0.8);
@@ -633,7 +659,7 @@
 
             /* CSS vars are now on :root (see top of this media query) */
 
-            /* === Utility row: fixed grid container, 2 cols × 2 rows === */
+            /* === Utility row: fixed grid container === */
             #menu-util-row {
                 position: fixed !important;
                 bottom: calc(var(--m-edge) + env(safe-area-inset-bottom)) !important;
@@ -641,10 +667,11 @@
                 right: var(--m-edge) !important;
                 display: grid !important;
                 grid-template-columns: auto auto !important;
-                grid-template-rows: auto auto !important;
+                grid-template-rows: auto auto auto !important;
                 grid-template-areas:
-                    "scores reset"
-                    "help   audio" !important;
+                    "scores bonus"
+                    "help   reset"
+                    ".      audio" !important;
                 justify-content: space-between !important;
                 row-gap: 5px !important;
                 column-gap: 10px !important;
@@ -655,7 +682,8 @@
             #scores-toggle-btn,
             #help-btn,
             #audio-toggle-btn,
-            #reset-progress-btn {
+            #reset-progress-btn,
+            #bonus-level-btn {
                 position: static !important;
                 bottom: unset !important;
                 left: unset !important;
@@ -681,6 +709,12 @@
             }
             #scores-toggle-btn:active { transform: scale(0.95); background: #0288d1; color: #fff; }
             #help-btn    { grid-area: help  !important; }
+            #bonus-level-btn {
+                grid-area: bonus !important;
+                justify-self: end !important;
+                align-items: center !important;
+                justify-content: center !important;
+            }
             /* Right-column buttons align to the right edge */
             #reset-progress-btn {
                 grid-area: reset !important;
@@ -690,9 +724,9 @@
                 grid-area: audio !important;
                 justify-self: end !important;
             }
-            /* Menu content must not hide behind the 2 rows of fixed buttons */
+            /* Menu content must not hide behind fixed buttons */
             .menu-inner {
-                padding-bottom: calc(var(--m-edge) * 2 + var(--m-btn-h) * 2 + var(--m-btn-gap));
+                padding-bottom: calc(var(--m-edge) * 2 + var(--m-btn-h) * 3 + var(--m-btn-gap) * 2);
             }
 
             /* ---- Fullscreen button ---- */
@@ -1220,6 +1254,7 @@
         <button id="scores-toggle-btn" type="button">🏆 Рекорды</button>
         <button id="help-btn" type="button" title="Как играть">❓ Help</button>
         <button id="audio-toggle-btn" type="button" title="Включить/выключить все звуки">🔊 Звук: ВКЛ</button>
+        <button id="bonus-level-btn" type="button" title="Бонусный уровень">🎁 Bonus</button>
         <button id="reset-progress-btn" type="button" title="Сбросить открытые уровни">Сбросить прогресс</button>
     </div>
 </div>
@@ -1270,7 +1305,7 @@
                     <ul>
                         <li><b>Пуля:</b> большая 💦, медленная (скорость 5, радиус 18)</li>
                         <li><b>Прыжок:</b> плавный набор высоты — чем дольше держишь ↑, тем выше; набирает скорость постепенно</li>
-                        <li><b>Бонусная пуля:</b> при попадании по врагу — убивает ещё одного ближайшего врага. При попадании по пуле врага — уничтожает ещё 3 ближайшие пули. Урон ×2 по боссам</li>
+                        <li><b>Бонусная пуля:</b> Фонтан - при попадании по врагу — убивает ещё одного ближайшего врага. При попадании по пуле врага — уничтожает ещё 3 ближайшие пули. Урон ×2 по боссам</li>
                     </ul>
                 </div>
                 <div class="help-char">
@@ -1278,15 +1313,15 @@
                     <ul>
                         <li><b>Пуля:</b> средняя 🌀, быстрая (скорость 9, радиус 14)</li>
                         <li><b>Прыжок:</b> мгновенный бустовый прыжок — резкий старт, быстрый подъём</li>
-                        <li><b>Бонусная пуля:</b> пробивная — пролетает сквозь врагов и пули врага, не исчезая. Урон ×2 по боссам</li>
+                        <li><b>Бонусная пуля:</b> Злой рыг - пробивная — пролетает сквозь врагов и пули врага, не исчезая. Урон ×2 по боссам</li>
                     </ul>
                 </div>
                 <div class="help-char">
                     <strong>Макс 💩</strong>
                     <ul>
-                        <li><b>Пуля:</b> радиус 10, скорость 11 — плавно покачивается при полёте</li>
+                        <li><b>Пуля:</b> небольшая быстрая🦠(радиус 10, скорость 11) — плавно покачивается при полёте</li>
                         <li><b>Прыжок:</b> баллистический — фиксированная высота, чёткая параболическая траектория</li>
-                        <li><b>Бонусная пуля:</b> 3 пули веером (−15°, 0°, +15°), радиус 12 — покрывает широкую зону</li>
+                        <li><b>Бонусная пуля:</b> Пулемёт Максим - 3 пули веером (−15°, 0°, +15°), радиус 12 — покрывает широкую зону</li>
                     </ul>
                 </div>
             </section>
@@ -1320,11 +1355,11 @@
                 </div>
                 <div class="help-mode">
                     <strong>🔥 Выживание</strong>
-                    <p>Бесконечный режим — убивай волны врагов и набирай максимальный счёт. Враги и пули ускоряются каждые 30 убийств. Босса нет, выиграть нельзя — только побить рекорд.</p>
+                    <p>Бесконечный режим — убивай волны врагов-сиреней и набирай максимальный счёт. Враги и пули ускоряются каждые 30 убийств. Босса нет, выиграть нельзя — только побить рекорд.</p>
                 </div>
                 <div class="help-mode">
                     <strong>📺 Телепузик</strong>
-                    <p>Сражение с одним большим боссом «67» (67 HP). Он стреляет эмодзи-пулями (🪳🧨7️⃣6️⃣💩), медленно приближается и растёт в размерах. Стреляй и уклоняйся!</p>
+                    <p>Сражение с одним большим боссом Телепузик(или потом с 67) (67 HP). Он стреляет эмодзи-пулями (🪳🧨7️⃣6️⃣💩), медленно приближается и растёт в размерах. Стреляй и уклоняйся!</p>
                 </div>
                 <div class="help-mode">
                     <strong>🎯 Очко</strong>
@@ -1332,11 +1367,11 @@
                 </div>
                 <div class="help-mode">
                     <strong>🧦 Носок</strong>
-                    <p>Футбольный режим! Забей 10 голов в ворота, стреляя и ударяя мяч. Босс-вратарь кидается носками и рыбой. Используй 🧊 лёд и 🧨 динамит для преимущества. После 5 голов — вратарь переходит на тухлую рыбу! Считается время прохождения.</p>
+                    <p>Футбольный режим! Забей 10 голов в ворота, стреляя и ударяя мяч. Босс-вратарь(Носок) кидается вонючими носками и тухлой рыбой с опарышами. Используй 🧊 лёд и 🧨 динамит для преимущества. После 5 голов — вратарь переходит на тухлую рыбу! Считается время прохождения.</p>
                 </div>
                 <div class="help-mode">
                     <strong>🪵 Опять Телепузик</strong>
-                    <p>Прыгай по платформам и уничтожь телепузика-босса (76 HP) на верхней платформе. По мере урона спавнятся враги-сирени. После победы — активируй переключатель, затем возьми 🏆 кубок для завершения уровня.</p>
+                    <p>Прыгай по платформам и уничтожь Телепузика (76 HP) на верхней платформе. По мере урона спавнятся враги-сирени. После победы — активируй переключатель, затем возьми 🏆 кубок для завершения уровня.</p>
                 </div>
                 <div class="help-mode">
                     <strong>🫴 Ловлю</strong>
@@ -1344,11 +1379,11 @@
                 </div>
                 <div class="help-mode">
                     <strong>🏃 Бегун</strong>
-                    <p>Догони босса-прапора и коснись его сигаретой 🚬 (зажми Пробел). Стрельба отключена. Платформы + перенос через край экрана. Хитрость: стой неподвижно 20 сек и босс замедлится 🐢 на 5 сек. Очки: начинаешь со 100, −1 каждые 5 сек.</p>
+                    <p>Научи Дрона Курить! Догони босса-прапора и коснись его сигаретой 🚬 (зажми Пробел). Стрельба отключена. Платформы + перенос через край экрана. Хитрость: стой неподвижно 20 сек и босс замедлится 🐢 на 5 сек. Очки: начинаешь со 100, −1 каждые 5 сек.</p>
                 </div>
                 <div class="help-mode">
                     <strong>📚 Библиотека</strong>
-                    <p>Уничтожь 4 боссов на рельсе сверху (Враг 67 — 5 HP; Очко, Носок, Теле — по 10 HP каждый). Сверху падают книги — отбивай их пулями или телом. Справа унитаз: каждые 5 пойманных книг — он стреляет 💩 залпом по боссам. Боссы стреляют в ответ!</p>
+                    <p>Уничтожь 4 боссов на лестнице сверху (Враг 67 — 5 HP; Очко, Носок, Телепузик — по 10 HP каждый). Сверху падают книги — отбивай их пулями или телом. Справа унитаз: каждые 5 пойманных книг — он стреляет 5💩 по боссам. Боссы стреляют в ответ!</p>
                 </div>
             </section>
 
@@ -1360,7 +1395,7 @@
                     <li>У каждого персонажа уникальные прыжки и бонусные пули — попробуй всех!</li>
                     <li>Комбо x5 = гарантированная бутылка; сбивай пули врага для +1 к счёту</li>
                     <li>В «Носке» — удар головой (прыжок + контакт сверху) = мощный подброс мяча</li>
-                    <li>В «Платформах» — не стой на месте дольше 3 сек, иначе спавнятся враги</li>
+                    <li>В Опять телепузик на «Платформах» — не стой на месте дольше 3 сек, иначе спавнятся враги</li>
                     <li>Жизни: 7 ❤️ на старте (в боевых режимах). Неуязвимость после урона: 0.5 сек</li>
                 </ul>
             </section>
@@ -1448,6 +1483,7 @@
 <script src="js/modes/nosok.js"></script>
 <script src="js/modes/lovlyu.js"></script>
 <script src="js/modes/runner.js"></script>
+<script src="js/modes/bonus.js"></script>
 <script src="js/modes/library.js"></script>
 <script src="js/systems/bullets.js"></script>
 <script src="js/systems/spawn.js"></script>

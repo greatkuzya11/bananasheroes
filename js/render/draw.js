@@ -126,6 +126,12 @@ function draw() {
         return;
     }
 
+    // Отдельная отрисовка бонусного финального уровня.
+    if (gameMode === 'bonus') {
+        drawBonusMode();
+        return;
+    }
+
     // Рисуем адаптивный фон
     if (bgReady) {
         ctx.drawImage(bgImg, 0, 0, canvas.width, canvas.height);

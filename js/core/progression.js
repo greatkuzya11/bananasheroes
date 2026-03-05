@@ -42,6 +42,7 @@ const CAMPAIGN_LEVEL_META = Object.freeze({
     lovlyu:    { title: 'Ловлю', desc: 'Описание уровня в разработке.' },
     runner:    { title: 'Бегун', desc: 'Описание уровня в разработке.' },
     library:   { title: 'Библиотека', desc: 'Описание уровня в разработке.' },
+    bonus:     { title: 'Бонусный уровень', desc: 'Финальная секретная сцена после прохождения игры.' },
     mode67:   { title: 'Режим 67', desc: 'Сразись с оригинальным врагом 67  он снова вернулся!' }
 });
 
@@ -257,6 +258,15 @@ function isMode67Unlocked() {
 }
 
 /**
+ * Возвращает true, если открыт бонусный финальный уровень.
+ * Открывается после первого полного прохождения игры (победа в библиотеке).
+ * @returns {boolean}
+ */
+function isBonusUnlocked() {
+    return readBoolLS(PROGRESS_KEYS.gameCompletedOnce, false);
+}
+
+/**
  * Помечает режим 'Режим 67' как открытый.
  */
 function setMode67Unlocked() {
@@ -271,6 +281,7 @@ function setMode67Unlocked() {
 function isModeUnlockedByProgress(mode) {
     if (mode === 'survival') return isSurvivalUnlocked();
     if (mode === 'mode67') return isMode67Unlocked();
+    if (mode === 'bonus') return isBonusUnlocked();
     if (mode === FINAL_CAMPAIGN_LEVEL) return areAllRunLevelsCompleted();
     if (CAMPAIGN_RUN_LEVELS.indexOf(mode) >= 0) return true;
     const campaignIdx = CAMPAIGN_LEVEL_ORDER.indexOf(mode);
@@ -300,6 +311,20 @@ function refreshModeButtonsByProgress() {
             btn.title = '';
         }
     });
+
+    // Отдельная кнопка бонусного уровня в меню (вне блока #modes).
+    const bonusBtn = document.getElementById('bonus-level-btn');
+    if (bonusBtn) {
+        const unlocked = isModeUnlockedByProgress('bonus');
+        bonusBtn.disabled = !unlocked;
+        bonusBtn.style.display = unlocked ? 'inline-flex' : 'none';
+        if (!unlocked) bonusBtn.classList.remove('menu-kb-focus');
+        bonusBtn.style.opacity = unlocked ? '1' : '0.5';
+        bonusBtn.style.cursor = unlocked ? 'pointer' : 'not-allowed';
+        bonusBtn.title = unlocked
+            ? 'Открыть бонусный уровень'
+            : 'Откроется после первого прохождения игры';
+    }
 }
 
 /**
@@ -499,6 +524,7 @@ window.resetCampaignSessionForMenu = resetCampaignSessionForMenu;
 window.registerCampaignLevelCompletion = registerCampaignLevelCompletion;
 window.getCampaignSessionSummary = getCampaignSessionSummary;
 window.isMode67Unlocked = isMode67Unlocked;
+window.isBonusUnlocked = isBonusUnlocked;
 window.consumePendingMode67Notice = consumePendingMode67Notice;
 window.consumePendingSurvivalNotice = consumePendingSurvivalNotice;
 window.consumePendingGameCompletedNotice = consumePendingGameCompletedNotice;
