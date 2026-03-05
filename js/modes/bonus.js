@@ -26,8 +26,8 @@ let bonusMaxStandReady = false;
 bonusMaxStandImg.onload = () => { bonusMaxStandReady = true; };
 bonusMaxStandImg.src = 'img/max-stand.png';
 
-const BONUS_PRAPOR_LINES = ['Я тебя сука убью!', 'Уважай мою девственность!'];
-const BONUS_MAX_LINES = ['Хуй!', 'Хули Водка Чесаться??'];
+const BONUS_PRAPOR_LINES = ['Я тебя сука убью!', 'Уважай мою девственность!', 'Хуй В Сраку, В Сраку Хуй}!'];
+const BONUS_MAX_LINES = ['Хуй!', 'Хули Водка Чесаться??', 'Айкакаут!'];
 const BONUS_KUZY_LINES = ['2хуй!!', 'Твои проблемы!'];
 // Соотношения размеров персонажей по референсу heroes.png:
 // Кузя (центр) — база, Прапор (слева) больше, Max (справа) меньше.
@@ -35,6 +35,15 @@ const BONUS_REF_SCALE = Object.freeze({
     praporToKuzy: 1.16,
     maxToKuzy: 0.92
 });
+// Настройка размеров спрайтов бонус-уровня:
+// global=2 по ТЗ (все персонажи в 2 раза больше).
+// Можно менять вручную в консоли через window.BonusLevelScaleTool.set(...)
+const BONUS_SCALE_TUNING = {
+    global: 2.0,
+    kuzy: 0.8,
+    prapor: 0.9,
+    max: 1.6
+};
 
 let bonusGroundY = 0;
 let bonusInvisiblePlatform = null;
@@ -52,6 +61,12 @@ let bonusKuzySpawnTimer = 0;
 let bonusLastW = 0;
 let bonusLastH = 0;
 
+function bonusComputeGroundY() {
+    const basePad = Math.max(12, Math.round(canvas.height * 0.03));
+    const extraLift = canvas.height * 0.10; // поднять землю на 10% высоты экрана
+    return canvas.height - basePad - extraLift;
+}
+
 function bonusRand(min, max) {
     return min + Math.random() * (max - min);
 }
@@ -60,18 +75,25 @@ function bonusPick(arr) {
     return arr[Math.floor(Math.random() * arr.length)];
 }
 
-function bonusShuffle2(arr) {
-    if (!arr || arr.length < 2) return (arr || []).slice();
-    return Math.random() < 0.5 ? [arr[0], arr[1]] : [arr[1], arr[0]];
+function bonusShuffle(arr) {
+    const out = (arr || []).slice();
+    for (let i = out.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        const t = out[i];
+        out[i] = out[j];
+        out[j] = t;
+    }
+    return out;
 }
 
 function bonusGetKuzyBaseW() {
+    const scale = Math.max(0.25, BONUS_SCALE_TUNING.global * BONUS_SCALE_TUNING.kuzy);
     if (player && Number.isFinite(player.w) && player.w > 0) {
         // Ровно как в "Ловлю".
-        return player.w * 0.6375;
+        return player.w * 0.6375 * scale;
     }
     // fallback (player.w в игре по умолчанию = 20% высоты canvas).
-    return canvas.height * 0.2 * 0.6375;
+    return canvas.height * 0.2 * 0.6375 * scale;
 }
 
 function bonusGetKuzyReferenceHeight() {
@@ -84,6 +106,22 @@ function bonusGetKuzyReferenceHeight() {
     return Math.max(72, Math.round(dims.h));
 }
 
+function bonusGetPraporSpriteBounds() {
+    let maxW = 0;
+    let maxH = 0;
+    for (let i = 0; i < bonusPraporFrames.length; i++) {
+        const f = bonusPraporFrames[i];
+        if (!f || !f.complete || f.width <= 0 || f.height <= 0) continue;
+        if (f.width > maxW) maxW = f.width;
+        if (f.height > maxH) maxH = f.height;
+    }
+    if (maxW <= 0 || maxH <= 0) {
+        // Пока кадры не готовы: безопасный fallback без сплющивания.
+        return { w: 1, h: 1 };
+    }
+    return { w: maxW, h: maxH };
+}
+
 /**
  * Те же пропорции и выбор кадров, что в уровне "Ловлю".
  * @param {{baseW:number,state:string,animFrame:number,caughtFrame:number}} ch
@@ -93,17 +131,16 @@ function getBonusKuzyDims(ch) {
     let imgIdx = -1;
     if (ch.state === 'peek') imgIdx = 5;
     else if (ch.state === 'falling') imgIdx = ch.animFrame === 0 ? 3 : 2;
-    else if (ch.state === 'caught') imgIdx = ch.caughtFrame === 0 ? 1 : 0;
-    else if (ch.state === 'speak') imgIdx = 0;
+    else if (ch.state === 'caught') imgIdx = 1;
+    else if (ch.state === 'speak') imgIdx = 1;
     else if (ch.state === 'landed') imgIdx = 4;
 
     const sprite = (imgIdx >= 0 && imgIdx < bonusKuzyFrames.length) ? bonusKuzyFrames[imgIdx] : null;
     let drawW = ch.baseW;
     if (ch.state === 'peek') drawW = ch.baseW / 1.5;
     if (ch.state === 'falling') drawW = ch.baseW * 1.5;
-    if (ch.state === 'caught' && ch.caughtFrame === 0) drawW = ch.baseW * 1.5;
-    if (ch.state === 'caught' && ch.caughtFrame === 1) drawW = ch.baseW * 0.8;
-    if (ch.state === 'speak') drawW = ch.baseW * 0.8;
+    if (ch.state === 'caught') drawW = ch.baseW * 1.5;
+    if (ch.state === 'speak') drawW = ch.baseW * 1.5;
     if (ch.state === 'landed') drawW = ch.baseW * 1.5;
 
     let drawH = drawW;
@@ -133,7 +170,7 @@ function resetBonusLevelState() {
 
 function buildBonusSpeechCycle(lines, cycleDuration = 10, showDuration = 2) {
     return {
-        lines: (lines || []).slice(0, 2),
+        lines: (lines || []).filter(v => typeof v === 'string' && v.trim().length > 0),
         cycleDuration,
         showDuration,
         timer: 0,
@@ -145,16 +182,27 @@ function buildBonusSpeechCycle(lines, cycleDuration = 10, showDuration = 2) {
 }
 
 function scheduleBonusSpeechCycle(cycle) {
-    if (!cycle || !cycle.lines || cycle.lines.length < 2) return;
-    const ordered = bonusShuffle2(cycle.lines);
-    const t1 = bonusRand(0.7, 3.6);
-    const t2min = Math.max(t1 + cycle.showDuration + 0.45, 4.5);
-    const t2max = Math.max(t2min + 0.2, cycle.cycleDuration - cycle.showDuration - 0.25);
-    const t2 = bonusRand(t2min, t2max);
-    cycle.events = [
-        { t: t1, text: ordered[0] },
-        { t: t2, text: ordered[1] }
-    ];
+    if (!cycle || !cycle.lines || cycle.lines.length <= 0) return;
+    const ordered = bonusShuffle(cycle.lines);
+    const events = [];
+    const minGap = 0.35;
+    const maxGap = 0.95;
+    let t = bonusRand(0.55, 1.25);
+
+    for (let i = 0; i < ordered.length; i++) {
+        if (t + cycle.showDuration > cycle.cycleDuration - 0.2) break;
+        events.push({ t, text: ordered[i] });
+        t += cycle.showDuration + bonusRand(minGap, maxGap);
+    }
+
+    if (events.length === 0) {
+        events.push({
+            t: Math.min(0.6, Math.max(0.05, cycle.cycleDuration * 0.1)),
+            text: bonusPick(ordered)
+        });
+    }
+
+    cycle.events = events;
     cycle.nextEventIdx = 0;
     cycle.activeText = '';
     cycle.activeTimer = 0;
@@ -224,17 +272,20 @@ function bonusGetPraporSurfaceY(surface, p) {
 }
 
 function initBonusPrapor() {
-    const targetH = Math.max(72, Math.round(bonusGetKuzyReferenceHeight() * BONUS_REF_SCALE.praporToKuzy));
-    let targetW = Math.round(targetH * 0.82);
-    const frame0 = bonusPraporFrames[0];
-    if (frame0 && frame0.complete && frame0.width > 0 && frame0.height > 0) {
-        targetW = Math.max(28, Math.round(targetH * (frame0.width / frame0.height)));
-    }
+    const targetH = Math.max(
+        72,
+        Math.round(bonusGetKuzyReferenceHeight() * BONUS_REF_SCALE.praporToKuzy * BONUS_SCALE_TUNING.prapor)
+    );
+    const spriteBounds = bonusGetPraporSpriteBounds();
+    const spriteScale = targetH / Math.max(1, spriteBounds.h); // один масштаб по X/Y, без искажений
+    const targetW = Math.max(28, Math.round(spriteBounds.w * spriteScale));
+    const finalH = Math.max(72, Math.round(spriteBounds.h * spriteScale));
     bonusPrapor = {
         x: Math.max(0, canvas.width * 0.74 - targetW * 0.5),
         y: 0,
         w: targetW,
-        h: targetH,
+        h: finalH,
+        spriteScale,
         footOffset: Math.max(16, Math.round(canvas.height * 0.028)),
         speed: canvas.width * 0.24,
         dir: (Math.random() < 0.5 ? -1 : 1),
@@ -253,7 +304,10 @@ function initBonusPrapor() {
 }
 
 function initBonusMaxNpc() {
-    const baseH = Math.max(72, Math.round(bonusGetKuzyReferenceHeight() * BONUS_REF_SCALE.maxToKuzy));
+    const baseH = Math.max(
+        72,
+        Math.round(bonusGetKuzyReferenceHeight() * BONUS_REF_SCALE.maxToKuzy * BONUS_SCALE_TUNING.max)
+    );
     let w = Math.round(baseH * 0.74);
     if (bonusMaxStandReady && bonusMaxStandImg.width > 0 && bonusMaxStandImg.height > 0) {
         w = Math.max(24, Math.round(baseH * (bonusMaxStandImg.width / bonusMaxStandImg.height)));
@@ -272,7 +326,7 @@ function initBonusLevel() {
     resetBonusLevelState();
     bonusLastW = canvas.width;
     bonusLastH = canvas.height;
-    bonusGroundY = canvas.height - Math.max(12, Math.round(canvas.height * 0.03));
+    bonusGroundY = bonusComputeGroundY();
 
     buildBonusBottlesAndPlatform();
     initBonusPrapor();
@@ -284,7 +338,7 @@ function initBonusLevel() {
     scheduleBonusSpeechCycle(bonusMaxSpeech);
 
     bonusKuzy = null;
-    bonusKuzySpawnTimer = bonusRand(1.5, 3.5);
+    bonusKuzySpawnTimer = 1.0;
 }
 
 function onBonusResize(prevW, prevH) {
@@ -295,7 +349,7 @@ function onBonusResize(prevW, prevH) {
 
     bonusLastW = canvas.width;
     bonusLastH = canvas.height;
-    bonusGroundY = canvas.height - Math.max(12, Math.round(canvas.height * 0.03));
+    bonusGroundY = bonusComputeGroundY();
     buildBonusBottlesAndPlatform();
     initBonusMaxNpc();
 
@@ -441,7 +495,32 @@ function spawnBonusKuzy(keepTimer = false) {
     };
 
     if (!keepTimer) {
-        bonusKuzySpawnTimer = bonusRand(3.2, 5.8);
+        bonusKuzySpawnTimer = 1.0;
+    }
+}
+
+/**
+ * Переводит Кузю в новое состояние без визуального "скачка":
+ * сохраняет центр по X и корректно переставляет по Y с учетом новых размеров спрайта.
+ * @param {any} k - объект состояния Кузи.
+ * @param {'peek'|'falling'|'caught'|'speak'|'landed'} nextState - следующее состояние.
+ * @param {boolean} lockToGround - при true ставим на землю по нижней границе.
+ */
+function bonusTransitionKuzyState(k, nextState, lockToGround) {
+    if (!k) return;
+    const prevDims = getBonusKuzyDims(k);
+    const prevCx = k.x + prevDims.w * 0.5;
+    const prevBottom = k.y + prevDims.h;
+
+    k.state = nextState;
+    const nextDims = getBonusKuzyDims(k);
+
+    k.x = prevCx - nextDims.w * 0.5;
+    k.x = Math.max(5, Math.min(canvas.width - nextDims.w - 5, k.x));
+    if (lockToGround) {
+        k.y = bonusGroundY - nextDims.h;
+    } else {
+        k.y = prevBottom - nextDims.h;
     }
 }
 
@@ -458,7 +537,7 @@ function updateBonusKuzy(dt) {
 
     if (k.state === 'peek') {
         if (k.stateTimer >= k.peekDuration) {
-            k.state = 'falling';
+            bonusTransitionKuzyState(k, 'falling', false);
             k.stateTimer = 0;
             k.animFrame = 0;
             k.animTimer = 0;
@@ -491,8 +570,7 @@ function updateBonusKuzy(dt) {
         k.x = Math.max(5, Math.min(canvas.width - dims.w - 5, k.x));
 
         if (k.y + dims.h >= bonusGroundY) {
-            k.y = bonusGroundY - dims.h;
-            k.state = 'caught';
+            bonusTransitionKuzyState(k, 'caught', true);
             k.stateTimer = 0;
             k.caughtFrame = 0;
             k.caughtTimer = 0;
@@ -502,14 +580,8 @@ function updateBonusKuzy(dt) {
 
     if (k.state === 'caught') {
         k.caughtTimer += dt;
-        if (k.caughtFrame === 0 && k.caughtTimer >= 0.3) {
-            k.caughtFrame = 1;
-            k.caughtTimer = 0;
-            const newDims = getBonusKuzyDims(k);
-            k.y = bonusGroundY - newDims.h;
-        }
-        if (k.caughtFrame === 1 && k.caughtTimer >= 0.2) {
-            k.state = 'speak';
+        if (k.caughtTimer >= 0.3) {
+            bonusTransitionKuzyState(k, 'speak', true);
             k.speakTimer = 2.0;
         }
         return;
@@ -540,20 +612,64 @@ function updateBonusMode(dt) {
     }
 }
 
+function drawBonusRoundedRect(x, y, w, h, r) {
+    const rr = Math.max(0, Math.min(r, Math.min(w, h) * 0.5));
+    ctx.beginPath();
+    ctx.moveTo(x + rr, y);
+    ctx.lineTo(x + w - rr, y);
+    ctx.quadraticCurveTo(x + w, y, x + w, y + rr);
+    ctx.lineTo(x + w, y + h - rr);
+    ctx.quadraticCurveTo(x + w, y + h, x + w - rr, y + h);
+    ctx.lineTo(x + rr, y + h);
+    ctx.quadraticCurveTo(x, y + h, x, y + h - rr);
+    ctx.lineTo(x, y + rr);
+    ctx.quadraticCurveTo(x, y, x + rr, y);
+    ctx.closePath();
+}
+
 function drawBonusTitle() {
     const topY = Math.max(28, canvas.height * 0.06);
+    const cx = canvas.width * 0.5;
+    const subtitle = 'Пошел на хуй с прохождением';
+    const title = '🍌 Bananas Heroes 🍺';
+    const subtitleSize = Math.max(20, Math.round(canvas.height * 0.045));
+    const titleSize = Math.max(28, Math.round(canvas.height * 0.065));
+    const lineGap = Math.max(30, canvas.height * 0.055);
+    const padX = 28;
+    const padY = 18;
+
     ctx.save();
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
 
-    ctx.font = `900 ${Math.max(20, Math.round(canvas.height * 0.045))}px Arial`;
+    ctx.font = `900 ${subtitleSize}px Arial`;
+    const w1 = ctx.measureText(subtitle).width;
+    ctx.font = `900 ${titleSize}px Arial`;
+    const w2 = ctx.measureText(title).width;
+    const textBlockH = subtitleSize + lineGap + titleSize;
+    const boxW = Math.min(canvas.width * 0.92, Math.max(w1, w2) + padX * 2);
+    const boxH = textBlockH + padY * 2;
+    const boxX = cx - boxW * 0.5;
+    const boxY = topY - subtitleSize * 0.5 - padY;
+    const subtitleY = boxY + padY + subtitleSize * 0.5;
+    const titleY = subtitleY + subtitleSize * 0.5 + lineGap + titleSize * 0.5;
+
+    drawBonusRoundedRect(boxX, boxY, boxW, boxH, 14);
+    ctx.fillStyle = 'rgba(12,18,30,0.72)';
+    ctx.fill();
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = 'rgba(255,255,255,0.28)';
+    ctx.stroke();
+
+    ctx.font = `900 ${subtitleSize}px Arial`;
     ctx.fillStyle = '#ffffff';
     ctx.shadowColor = 'rgba(0,0,0,0.75)';
     ctx.shadowBlur = 8;
-    ctx.fillText('Пошел на хуй с прохождением', canvas.width * 0.5, topY);
+    ctx.fillText(subtitle, cx, subtitleY);
 
-    const titleY = topY + Math.max(30, canvas.height * 0.055);
-    const grad = ctx.createLinearGradient(0, titleY - 30, 0, titleY + 10);
+    const t = performance.now() * 0.0016;
+    const shift = Math.sin(t * 1.7) * 0.08;
+    const grad = ctx.createLinearGradient(0, titleY - 34 + shift * 28, 0, titleY + 14 + shift * 28);
     grad.addColorStop(0, '#fff4c2');
     grad.addColorStop(0.18, '#ffec80');
     grad.addColorStop(0.38, '#ffd700');
@@ -561,10 +677,10 @@ function drawBonusTitle() {
     grad.addColorStop(0.78, '#ff6a00');
     grad.addColorStop(1, '#ff4500');
     ctx.fillStyle = grad;
-    ctx.shadowColor = 'rgba(255, 120, 0, 0.65)';
-    ctx.shadowBlur = 14;
-    ctx.font = `900 ${Math.max(28, Math.round(canvas.height * 0.065))}px Arial`;
-    ctx.fillText('🍌 Bananas Heroes 🍺', canvas.width * 0.5, titleY);
+    ctx.shadowColor = `rgba(255, ${Math.round(95 + 60 * Math.abs(Math.sin(t)))}, 0, 0.72)`;
+    ctx.shadowBlur = 10 + 6 * Math.abs(Math.sin(t * 1.2));
+    ctx.font = `900 ${titleSize}px Arial`;
+    ctx.fillText(title, cx, titleY);
 
     ctx.restore();
 }
@@ -608,13 +724,17 @@ function drawBonusPrapor() {
     ctx.restore();
 
     if (img && img.complete && img.naturalWidth > 0) {
+        const frameW = Math.max(1, Math.round(img.width * (p.spriteScale || 1)));
+        const frameH = Math.max(1, Math.round(img.height * (p.spriteScale || 1)));
+        const drawX = Math.round(p.x + (p.w - frameW) * 0.5);
+        const drawY = Math.round(p.y + (p.h - frameH)); // выравниваем по "ногам"
         ctx.save();
         if (p.dir > 0) {
-            ctx.translate(p.x + p.w, p.y);
+            ctx.translate(drawX + frameW, drawY);
             ctx.scale(-1, 1);
-            ctx.drawImage(img, 0, 0, p.w, p.h);
+            ctx.drawImage(img, 0, 0, frameW, frameH);
         } else {
-            ctx.drawImage(img, p.x, p.y, p.w, p.h);
+            ctx.drawImage(img, drawX, drawY, frameW, frameH);
         }
         ctx.restore();
     } else {
@@ -690,9 +810,20 @@ function drawBonusMode() {
     }
 
     drawBonusBottles();
-    drawBonusPrapor();
-    drawBonusKuzy();
-    drawBonusMaxNpc();
+    const praporOnPlatform = !!(bonusPrapor && bonusPrapor.onGround && bonusPrapor.surface === 'platform');
+    // Правила слоёв:
+    // 1) Кузя всегда на переднем плане.
+    // 2) Дрон на платформе — позади Кузи и Макса.
+    // 3) Дрон на земле — впереди Макса, но позади Кузи.
+    if (praporOnPlatform) {
+        drawBonusPrapor();
+        drawBonusMaxNpc();
+        drawBonusKuzy();
+    } else {
+        drawBonusMaxNpc();
+        drawBonusPrapor();
+        drawBonusKuzy();
+    }
     drawBonusTitle();
 
     if (bonusPrapor && bonusPraporSpeech && bonusPraporSpeech.activeText && bonusPraporSpeech.activeTimer > 0) {
@@ -733,3 +864,42 @@ function drawBonusMode() {
         window.BHBulletPerf.drawOverlay(ctx, 0);
     }
 }
+
+function applyBonusScaleTuning() {
+    if (gameMode === 'bonus') {
+        onBonusResize(canvas.width, canvas.height);
+        if (typeof draw === 'function') draw();
+    }
+}
+
+window.BonusLevelScaleTool = {
+    get() {
+        return {
+            global: BONUS_SCALE_TUNING.global,
+            kuzy: BONUS_SCALE_TUNING.kuzy,
+            prapor: BONUS_SCALE_TUNING.prapor,
+            max: BONUS_SCALE_TUNING.max
+        };
+    },
+    set(patch) {
+        if (!patch || typeof patch !== 'object') return this.get();
+        const nextGlobal = Number(patch.global);
+        const nextKuzy = Number(patch.kuzy);
+        const nextPrapor = Number(patch.prapor);
+        const nextMax = Number(patch.max);
+        if (Number.isFinite(nextGlobal) && nextGlobal > 0) BONUS_SCALE_TUNING.global = nextGlobal;
+        if (Number.isFinite(nextKuzy) && nextKuzy > 0) BONUS_SCALE_TUNING.kuzy = nextKuzy;
+        if (Number.isFinite(nextPrapor) && nextPrapor > 0) BONUS_SCALE_TUNING.prapor = nextPrapor;
+        if (Number.isFinite(nextMax) && nextMax > 0) BONUS_SCALE_TUNING.max = nextMax;
+        applyBonusScaleTuning();
+        return this.get();
+    },
+    reset() {
+        BONUS_SCALE_TUNING.global = 2.0;
+        BONUS_SCALE_TUNING.kuzy = 1.0;
+        BONUS_SCALE_TUNING.prapor = 1.0;
+        BONUS_SCALE_TUNING.max = 1.0;
+        applyBonusScaleTuning();
+        return this.get();
+    }
+};

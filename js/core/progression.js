@@ -297,6 +297,9 @@ function refreshModeButtonsByProgress() {
     buttons.forEach(btn => {
         const mode = btn.dataset.mode || '';
         const unlocked = isModeUnlockedByProgress(mode);
+        const inCampaignChain = CAMPAIGN_LEVEL_ORDER.indexOf(mode) >= 0;
+        const completed = inCampaignChain && isLevelCompleted(mode);
+        btn.classList.toggle('mode-completed', completed);
         btn.disabled = !unlocked;
         if (!unlocked) {
             btn.classList.remove('selected');

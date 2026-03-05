@@ -316,6 +316,40 @@
             box-shadow: 0 0 15px rgba(255,152,0,0.6);
         }
 
+        /* Пройденные уровни кампании: золотая анимированная рамка */
+        #modes .mode.mode-completed {
+            border-color: #ffd54f;
+            box-shadow:
+                0 0 0 1px rgba(255, 236, 128, 0.65) inset,
+                0 0 10px rgba(255, 213, 79, 0.55);
+            animation: campaignGoldPulse 1.6s ease-in-out infinite;
+        }
+
+        #modes .mode.mode-completed.selected {
+            border-color: #ffd54f;
+            box-shadow:
+                0 0 0 1px rgba(255, 236, 128, 0.75) inset,
+                0 0 14px rgba(255, 213, 79, 0.72);
+        }
+
+        @keyframes campaignGoldPulse {
+            0% {
+                box-shadow:
+                    0 0 0 1px rgba(255, 236, 128, 0.55) inset,
+                    0 0 8px rgba(255, 213, 79, 0.45);
+            }
+            50% {
+                box-shadow:
+                    0 0 0 1px rgba(255, 249, 196, 0.9) inset,
+                    0 0 16px rgba(255, 213, 79, 0.9);
+            }
+            100% {
+                box-shadow:
+                    0 0 0 1px rgba(255, 236, 128, 0.55) inset,
+                    0 0 8px rgba(255, 213, 79, 0.45);
+            }
+        }
+
         #game {
             display: none;
             position: relative;
