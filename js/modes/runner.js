@@ -1541,13 +1541,14 @@ function drawRunnerBoss() {
     }
     const _shadowDist   = Math.max(0, shadowSurfaceY - (drawY + runnerBoss.h));
     const _shadowScale  = Math.max(0.12, 1 - _shadowDist / (canvas.height * 0.55));
+    const _bossFootOffset = getRunnerFootOffset(runnerBoss);
     ctx.save();
     ctx.globalAlpha = 0.22 * _shadowScale;
     ctx.fillStyle = '#000';
     ctx.beginPath();
     ctx.ellipse(
         drawX + runnerBoss.w * 0.5,
-        shadowSurfaceY + 3,
+        shadowSurfaceY + _bossFootOffset + 3,
         runnerBoss.w * 0.34 * _shadowScale,
         Math.max(3, runnerBoss.h * 0.07 * _shadowScale),
         0, 0, Math.PI * 2
@@ -1557,12 +1558,18 @@ function drawRunnerBoss() {
 
     ctx.save();
     if (img && img.complete && img.naturalWidth > 0) {
+        // Масштабируем по высоте хитбокса, сохраняя пропорции спрайта (как в бонусном уровне).
+        const scale = runnerBoss.h / Math.max(1, img.height);
+        const frameW = Math.max(1, Math.round(img.width * scale));
+        const frameH = Math.max(1, Math.round(img.height * scale));
+        const fDrawX = Math.round(drawX + (runnerBoss.w - frameW) * 0.5);
+        const fDrawY = Math.round(drawY + (runnerBoss.h - frameH)); // выравниваем по "ногам"
         if (runnerBoss.facingDir === 'right') {
-            ctx.translate(drawX + runnerBoss.w, drawY);
+            ctx.translate(fDrawX + frameW, fDrawY);
             ctx.scale(-1, 1);
-            ctx.drawImage(img, 0, 0, runnerBoss.w, runnerBoss.h);
+            ctx.drawImage(img, 0, 0, frameW, frameH);
         } else {
-            ctx.drawImage(img, drawX, drawY, runnerBoss.w, runnerBoss.h);
+            ctx.drawImage(img, fDrawX, fDrawY, frameW, frameH);
         }
     } else {
         ctx.font = `${Math.round(runnerBoss.h)}px serif`;

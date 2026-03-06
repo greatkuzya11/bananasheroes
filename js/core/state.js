@@ -317,7 +317,7 @@ function initRunWorldByMode(mode) {
         setRunBackground('img/avs-bg.png');
         playerBulletDir = 'up';
         initLovlyuLevel();
-        player.y = canvas.height - player.h - 20;
+        player.y = canvas.height - player.h - Math.max(8, Math.round(canvas.height * 0.033));
         return;
     }
 
@@ -325,7 +325,7 @@ function initRunWorldByMode(mode) {
         setRunBackground('img/avs-bg.png');
         playerBulletDir = 'up';
         initLovlyuLevel();
-        player.y = canvas.height - player.h - 20;
+        player.y = canvas.height - player.h - Math.max(8, Math.round(canvas.height * 0.033));
         return;
     }
 
@@ -351,7 +351,7 @@ function initRunWorldByMode(mode) {
         platformInactivityTimer = 0;
         if (homePlatform) {
             player.x = homePlatform.x + (homePlatform.w - player.w) / 2;
-            player.y = homePlatform.y - player.h;
+            player.y = homePlatform.y - player.h + homePlatform.h * 0.28;
             player.onPlatform = true;
             platformPlayerLastX = player.x;
         } else {
@@ -370,7 +370,7 @@ function initRunWorldByMode(mode) {
         playerBulletDir = 'right';
         initLibraryLevel();
         player.x = canvas.width / 2 - player.w / 2;
-        player.y = canvas.height - player.h - 20;
+        player.y = canvas.height - player.h - Math.max(8, Math.round(canvas.height * 0.033));
         return;
     }
 
@@ -409,7 +409,7 @@ function beginGameRun(mode, startLoop) {
     paused = false;
     last = performance.now();
     if (startLoop && typeof loop === 'function') {
-        requestAnimationFrame(loop);
+        animFrameId = requestAnimationFrame(loop);
     }
 }
 

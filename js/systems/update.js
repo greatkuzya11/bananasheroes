@@ -153,7 +153,7 @@ function update(dt) {
         // Сдвигаемся по горизонтали к целевому центру
         bukinTablet.cx += (bukinTablet.targetCx - bukinTablet.cx) * 0.12;
         // Останавливаем падение на уровне, рассчитанном по самой нижней точке, которой может достичь игрок
-        const playerMaxBottom = canvas.height - 20; // минимальная нижняя граница игрока (позиция при старте)
+        const playerMaxBottom = canvas.height - Math.max(8, Math.round(canvas.height * 0.033)); // минимальная нижняя граница игрока (позиция при старте)
         const landCy = playerMaxBottom - 10 - curH / 2; // центр Y так, чтобы низ был примерно на 10px выше нижней границы игрока
         if (bukinTablet.cy >= landCy) {
             bukinTablet.cy = landCy;

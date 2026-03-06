@@ -427,9 +427,11 @@ class BossNosok {
      * @returns {HTMLImageElement|null}
      */
     getCurrentImage() {
-        if (nosokSpritesReady < 8 || nosokImgs.length < 8) return null;
+        if (nosokImgs.length < 8) return null;
+        const allLoaded = nosokSpritesReady >= 8 || nosokImgs.every(img => img.complete && img.naturalWidth > 0);
+        if (!allLoaded) return null;
         const img = nosokImgs[this.frame % nosokImgs.length];
-        if (!img || !img.complete) return null;
+        if (!img || !img.complete || img.naturalWidth === 0) return null;
         return img;
     }
 

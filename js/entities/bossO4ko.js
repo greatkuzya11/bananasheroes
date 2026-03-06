@@ -971,9 +971,11 @@ class BossO4ko {
      * Отрисовывает босса, телеграфы и волну.
      */
     draw() {
-        if (o4koSpritesReady < 6 || o4koImgs.length < 6) return;
+        if (o4koImgs.length < 6) return;
+        const allLoaded = o4koSpritesReady >= 6 || o4koImgs.every(img => img.complete && img.naturalWidth > 0);
+        if (!allLoaded) return;
         const img = o4koImgs[this.frame % o4koImgs.length];
-        if (!img || !img.complete) return;
+        if (!img || !img.complete || img.naturalWidth === 0) return;
         const facingLeft = this.facingDir === 'left';
 
         // Рисуем волну удара о землю.

@@ -617,11 +617,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 nosokBall.x *= sx;
                 nosokBall.y *= sy;
                 nosokBall.x = Math.max(nosokBall.r, Math.min(canvas.width - nosokBall.r, nosokBall.x));
-                nosokBall.y = Math.max(nosokBall.r, Math.min(canvas.height - 20 - nosokBall.r, nosokBall.y));
+                const groundPad = Math.max(8, Math.round(canvas.height * 0.033));
+                nosokBall.y = Math.max(nosokBall.r, Math.min(canvas.height - groundPad - nosokBall.r, nosokBall.y));
             }
             if (player) {
                 player.x = Math.max(10, Math.min(canvas.width - player.w - 10, player.x));
-                player.y = Math.min(player.y, canvas.height - player.h - 20);
+                const groundPad = Math.max(8, Math.round(canvas.height * 0.033));
+                player.y = Math.min(player.y, canvas.height - player.h - groundPad);
             }
         }
         if (gameMode === 'runner' && typeof onRunnerResize === 'function') {

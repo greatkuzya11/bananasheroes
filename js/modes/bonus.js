@@ -225,7 +225,7 @@ function updateBonusSpeechCycle(cycle, dt) {
 }
 
 function buildBonusBottlesAndPlatform() {
-    const baseH = Math.max(72, Math.round(canvas.height * 0.11)) * 2;
+    const baseH = Math.round(canvas.height * 0.11) * 2;
     const centerY = canvas.height * 0.51;
     const layout = [];
     for (let i = 0; i < 3; i++) {
@@ -286,7 +286,7 @@ function initBonusPrapor() {
         w: targetW,
         h: finalH,
         spriteScale,
-        footOffset: Math.max(16, Math.round(canvas.height * 0.028)),
+        footOffset: Math.round(finalH * 0.03), // 8% высоты спрайта — пропорционально на любом экране
         speed: canvas.width * 0.24,
         dir: (Math.random() < 0.5 ? -1 : 1),
         vx: 0,
@@ -313,7 +313,7 @@ function initBonusMaxNpc() {
         w = Math.max(24, Math.round(baseH * (bonusMaxStandImg.width / bonusMaxStandImg.height)));
     }
     const centerX = canvas.width * (2 / 3 + 1 / 6); // середина правой трети
-    const y = canvas.height * 0.8 - baseH;          // 20% от низа
+    const y = bonusGroundY - baseH;                  // ставим ноги на bonusGroundY
     bonusMaxNpc = {
         x: centerX - w * 0.5,
         y,

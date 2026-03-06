@@ -13,7 +13,7 @@ class Player {
         this.w = canvas.height * 0.2;
         this.h = this.w;
         this.x = canvas.width / 2 - this.w / 2;
-        this.y = canvas.height - this.h - 20;
+        this.y = canvas.height - this.h - Math.max(8, Math.round(canvas.height * 0.033));
         this.speed = PLAYER_SPEED;
         this.lastShot = 0;
         this.frame = 0;
@@ -274,7 +274,9 @@ class Player {
             // Проверяем каждую платформу; p — объект платформы
             platforms.forEach(p => {
                 // Проверка по вертикали - стоим ли на платформе по высоте
-                if (this.y + this.h >= p.y + 25 && this.y + this.h <= p.y + 35) {
+                // Отступ пропорционален высоте платформы, а не фиксирован в пикселях
+                const surfaceDepth = p.h * 0.28;
+                if (this.y + this.h >= p.y + surfaceDepth - 5 && this.y + this.h <= p.y + surfaceDepth + 10) {
                     // Проверяем, находится ли ЦЕНТР игрока над платформой
                     const playerCenterX = this.x + this.w / 2;
                     const platformLeftEdge = p.x;
@@ -304,7 +306,7 @@ class Player {
                 // Игрок стоит на платформе
                 if (!this.isJumping) {
                     // Только корректируем позицию если не прыгаем
-                    this.y = currentPlatform.y - this.h + 30;
+                    this.y = currentPlatform.y - this.h + currentPlatform.h * 0.28;
                     this.vy = 0;
                     this.jumpBaseY = this.y; // Обновляем базовую позицию для следующего прыжка
                 }
@@ -324,13 +326,14 @@ class Player {
                 const platformRightEdge = p.x + p.w;
                 
                 // Игрок падает сверху на платформу (центр должен быть над платформой)
+                const landDepth = p.h * 0.28;
                 if (this.vy >= 0 && 
                     playerCenterX >= platformLeftEdge && 
                     playerCenterX <= platformRightEdge &&
                     this.y + this.h >= p.y && 
-                    this.y + this.h <= p.y + 40) {
+                    this.y + this.h <= p.y + landDepth + 12) {
                     const wasJumping = this.isJumping;
-                    this.y = p.y - this.h + 30;
+                    this.y = p.y - this.h + landDepth;
                     this.vy = 0;
                     this.isJumping = false;
                     this.jumpTimer = 0;
@@ -353,7 +356,7 @@ class Player {
                     // Телепорт на homePlatform в центр
                     if (homePlatform) {
                         this.x = homePlatform.x + (homePlatform.w - this.w) / 2;
-                        this.y = homePlatform.y - this.h;
+                        this.y = homePlatform.y - this.h + homePlatform.h * 0.28;
                     } else {
                     // Запасной вариант, если нет homePlatform
                         this.x = canvas.width / 2 - this.w / 2;
