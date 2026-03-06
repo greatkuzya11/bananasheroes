@@ -17,8 +17,10 @@ function getIntroBackgroundForMode(mode) {
         '67': 'img/forest2.png',
         o4ko: 'img/bg-avs.png',
         nosok: 'img/bn-bg.png',
+        stepan: 'img/bn-bg.png',
         platforms: 'img/pl-bg.png',
         lovlyu: 'img/avs-bg.png',
+        poimal: 'img/avs-bg.png',
         runner: 'img/ud-bg.png',
         bonus: 'img/bg-avs.png',
         library: 'img/lb2-bg.png'
@@ -286,8 +288,8 @@ function showLevelComplete() {
         player.triggerLevelComplete();
     }
 
-    // Показываем оверлей, игра может продолжаться; урон отключен после смерти босса.
-    // Для режима "Носок" рекорд — минимальное время, для остальных — максимальные очки.
+    // Показываем оверлей; после победы по боссу урон игроку уже не применяется.
+    // В режиме "Носок" рекорд считается по минимальному времени, в остальных — по очкам.
     const isNosokVictory = gameMode === 'nosok';
     let isNew = false;
     if (isNosokVictory) {
@@ -311,7 +313,7 @@ function showLevelComplete() {
         refreshModeButtonsByProgress();
     }
 
-    // Если уже есть — удалим старое
+    // Если оверлей уже существует, удаляем его перед созданием нового.
     const existing = document.getElementById('level-complete-overlay');
     if (existing) existing.remove();
 
@@ -353,8 +355,10 @@ function showLevelComplete() {
         'mode67': 'Поздравляю, вы победили врага 67!',
         o4ko: 'Поздравляю, вы победили Очко!',
         nosok: `Победа! 10/10 голов за ${formatNosokTime(Math.max(1, nosokFinalTimeMs || Math.round(nosokElapsedTime * 1000)))}`,
+        stepan: 'Рекордный матч: забивай голы без ограничений!',
         platforms: 'Поздравляем, уровень "Опять Телепузик" пройден!',
         lovlyu: 'Поздравляем, уровень "Ловлю" пройден!',
+        poimal: 'Рекордный режим "Поймал"!',
         runner: 'Поздравляю, ты научил Дрона курить!',
         library: 'Поздравляем, уровень "Библиотека" пройден!'
     };
@@ -443,6 +447,18 @@ function showLevelComplete() {
         if (survivalText) {
             await showTransientInfoNotice(survivalText, 2400);
         }
+        const poimalText = (typeof consumePendingPoimalNotice === 'function')
+            ? consumePendingPoimalNotice()
+            : '';
+        if (poimalText) {
+            await showTransientInfoNotice(poimalText, 2400);
+        }
+        const stepanText = (typeof consumePendingStepanNotice === 'function')
+            ? consumePendingStepanNotice()
+            : '';
+        if (stepanText) {
+            await showTransientInfoNotice(stepanText, 2400);
+        }
         const completedText = (typeof consumePendingGameCompletedNotice === 'function')
             ? consumePendingGameCompletedNotice()
             : '';
@@ -490,6 +506,18 @@ function showLevelComplete() {
                 : '';
             if (survivalText) {
                 await showTransientInfoNotice(survivalText, 2400);
+            }
+            const poimalText = (typeof consumePendingPoimalNotice === 'function')
+                ? consumePendingPoimalNotice()
+                : '';
+            if (poimalText) {
+                await showTransientInfoNotice(poimalText, 2400);
+            }
+            const stepanText = (typeof consumePendingStepanNotice === 'function')
+                ? consumePendingStepanNotice()
+                : '';
+            if (stepanText) {
+                await showTransientInfoNotice(stepanText, 2400);
             }
             if (typeof startModeWithIntro === 'function') {
                 await startModeWithIntro(nextMode, { source: 'next' });
@@ -545,9 +573,18 @@ function showLevelCompleteMessage() {
     }
 
     const isNosokMode = gameMode === 'nosok';
+    const isStepanMode = gameMode === 'stepan';
     let key = '';
     let isNew = false;
-    if (!isNosokMode) {
+    if (isStepanMode) {
+        key = 'bh_bestScore_' + (selectedChar || 'kuzy') + '_stepan';
+        const goalsScore = Math.max(0, Math.floor(nosokGoals || 0));
+        const best = parseInt(localStorage.getItem(key) || '0', 10) || 0;
+        if (goalsScore > best) {
+            localStorage.setItem(key, String(goalsScore));
+            isNew = true;
+        }
+    } else if (!isNosokMode) {
         key = 'bh_bestScore_' + (selectedChar || 'kuzy') + '_' + (gameMode || 'normal');
         const best = parseInt(localStorage.getItem(key) || '0', 10) || 0;
         if (score > best) {
@@ -682,17 +719,17 @@ function updateBestScoresDisplay() {
         { id: '67', name: 'Телепузик' },
         { id: 'o4ko', name: 'Очко' },
         { id: 'nosok', name: 'Носок' },
+        { id: 'stepan', name: 'Степан' },
         { id: 'platforms', name: 'Опять Телепузик' },
         { id: 'lovlyu', name: 'Ловлю' },
+        { id: 'poimal', name: 'Поймал' },
         { id: 'runner', name: 'Бегун' },
         { id: 'library', name: 'Библиотека' }
     ];
-    
+
     let html = '<div style="display:flex; flex-direction:column; gap:8px;">';
-    // Проходим по списку персонажей; c — объект персонажа
     charsList.forEach(c => {
         html += `<div style="color:#fff; font-size:14px;"><b>${c.name}:</b> `;
-        // Формируем строку рекордов по режимам; m — объект режима
         const scores = modes.map(m => {
             if (m.id === 'nosok') {
                 const bestTime = parseInt(localStorage.getItem('bh_bestTime_' + c.id + '_nosok') || '0', 10) || 0;
@@ -710,9 +747,7 @@ function updateBestScoresDisplay() {
         refreshModeButtonsByProgress();
     }
 }
-/**
- * Показывает экран Game Over и останавливает игру.
- */
+
 function showGameOver() {
     if (gameOverShown) return;
     gameOverShown = true;
@@ -730,9 +765,18 @@ function showGameOver() {
     }
 
     const isNosokMode = gameMode === 'nosok';
+    const isStepanMode = gameMode === 'stepan';
     let key = '';
     let isNew = false;
-    if (!isNosokMode) {
+    if (isStepanMode) {
+        key = 'bh_bestScore_' + (selectedChar || 'kuzy') + '_stepan';
+        const goalsScore = Math.max(0, Math.floor(nosokGoals || 0));
+        const best = parseInt(localStorage.getItem(key) || '0', 10) || 0;
+        if (goalsScore > best) {
+            localStorage.setItem(key, String(goalsScore));
+            isNew = true;
+        }
+    } else if (!isNosokMode) {
         key = 'bh_bestScore_' + (selectedChar || 'kuzy') + '_' + (gameMode || 'normal');
         const best = parseInt(localStorage.getItem(key) || '0', 10) || 0;
         if (score > best) {
@@ -771,22 +815,41 @@ function showGameOver() {
 
     const scoreLine = document.createElement('div');
     if (isNosokMode) {
-        scoreLine.innerText = `Голы: ${nosokGoals}/${nosokTargetGoals}   Время: ${formatNosokTime(Math.round(nosokElapsedTime * 1000))}`;
+        scoreLine.innerText = `Голы: ${nosokGoals || 0}/10   Время: ${formatNosokTime(Math.round((nosokElapsedTime || 0) * 1000))}`;
+    } else if (isStepanMode) {
+        scoreLine.innerText = `Голы: ${Math.max(0, Math.floor(nosokGoals || 0))}`;
     } else {
-        scoreLine.innerText = `Очки: ${score}`;
+        scoreLine.innerText = `Счёт: ${score}`;
     }
     Object.assign(scoreLine.style, { fontSize: '20px', marginBottom: '6px' });
 
     const bestLine = document.createElement('div');
     const displayName = (charNames && charNames[selectedChar]) ? charNames[selectedChar] : selectedChar;
-    const modeNames = { 'normal': 'Сирень и Букин', 'survival': 'Выживание', '67': 'Телепузик', 'mode67': 'Режим 67', 'o4ko': 'Очко', 'nosok': 'Носок', 'platforms': 'Опять Телепузик', 'lovlyu': 'Ловлю', 'runner': 'Бегун', 'library': 'Библиотека', 'bonus': 'Бонусный уровень' };
+    const modeNames = {
+        normal: 'Сирень и Букин',
+        survival: 'Выживание',
+        '67': 'Телепузик',
+        mode67: 'Режим 67',
+        o4ko: 'Очко',
+        nosok: 'Носок',
+        stepan: 'Степан',
+        platforms: 'Опять Телепузик',
+        lovlyu: 'Ловлю',
+        poimal: 'Поймал',
+        runner: 'Бегун',
+        library: 'Библиотека',
+        bonus: 'Бонусный уровень'
+    };
     const modeName = modeNames[gameMode] || gameMode;
     if (isNosokMode) {
         const bestTime = parseInt(localStorage.getItem('bh_bestTime_' + (selectedChar || 'kuzy') + '_nosok') || '0', 10) || 0;
-        bestLine.innerText = `Лучшее время (${displayName}, ${modeName}): ${bestTime > 0 ? formatNosokTime(bestTime) : '—'}`;
+        bestLine.innerText = `Лучший рекорд (${displayName}, ${modeName}): ${bestTime > 0 ? formatNosokTime(bestTime) : '—'}`;
+    } else if (isStepanMode) {
+        const bestGoals = parseInt(localStorage.getItem('bh_bestScore_' + (selectedChar || 'kuzy') + '_stepan') || '0', 10) || 0;
+        bestLine.innerText = `Лучший рекорд по голам (${displayName}, ${modeName}): ${bestGoals}` + (isNew ? ' — новый личный рекорд!' : '');
     } else {
         const bestVal = parseInt(localStorage.getItem(key) || '0', 10) || 0;
-        bestLine.innerText = `Рекорд (${displayName}, ${modeName}): ${bestVal}` + (isNew ? ' — Новый рекорд!' : '');
+        bestLine.innerText = `Лучший рекорд (${displayName}, ${modeName}): ${bestVal}` + (isNew ? ' — новый личный рекорд!' : '');
     }
     Object.assign(bestLine.style, { fontSize: '16px', marginBottom: '18px', color: isNew ? '#ffd54f' : '#ddd' });
 
@@ -797,7 +860,6 @@ function showGameOver() {
     btnRetry.innerText = 'Повторить';
     btnRetry.dataset.overlayBtnIdx = '0';
     Object.assign(btnRetry.style, { padding: '10px 16px', fontSize: '16px', cursor: 'pointer' });
-    // Обработчик клика по кнопке "Повторить"
     btnRetry.onclick = () => {
         if (window.BHAudio) window.BHAudio.play('ui_click');
         overlay.remove();
@@ -814,7 +876,6 @@ function showGameOver() {
     btnMain.innerText = 'Главный экран';
     btnMain.dataset.overlayBtnIdx = '1';
     Object.assign(btnMain.style, { padding: '10px 16px', fontSize: '16px', cursor: 'pointer' });
-    // Обработчик клика по кнопке "Главный экран"
     btnMain.onclick = () => {
         if (window.BHAudio) window.BHAudio.play('ui_click');
         if (typeof window.clearGameInputs === 'function') {
@@ -847,14 +908,9 @@ function showGameOver() {
     box.appendChild(buttons);
     overlay.appendChild(box);
     document.body.appendChild(overlay);
-    // Автофокус на первой кнопке (Повторить) для клавиатурной навигации
     btnRetry.classList.add('menu-kb-focus');
 }
 
-/**
- * Проигрывает короткий звуковой сигнал завершения игры.
- * @param {boolean} isNew - true, если установлен новый рекорд.
- */
 function playGameOverSound(isNew) {
     try {
         const ctx = new (window.AudioContext || window.webkitAudioContext)();
@@ -890,4 +946,5 @@ function playGameOverSound(isNew) {
         console.warn('Audio not available', e);
     }
 }
+
 

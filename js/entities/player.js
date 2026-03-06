@@ -61,8 +61,9 @@ class Player {
      * @param {number} dt - прошедшее время кадра в секундах.
      */
     update(dt) {
-        const nosokMoveMul = (gameMode === 'nosok') ? 1.5 : 1;
-        const nosokJumpMul = (gameMode === 'nosok') ? 1.5 : 1;
+        const isNosokLikeMode = (gameMode === 'nosok' || gameMode === 'stepan');
+        const nosokMoveMul = isNosokLikeMode ? 1.5 : 1;
+        const nosokJumpMul = isNosokLikeMode ? 1.5 : 1;
         const adaptiveCombat = (typeof isMobileAdaptiveCombatMode === 'function') && isMobileAdaptiveCombatMode(gameMode);
         const adaptiveScale = adaptiveCombat && (typeof getMobileLandscapeAdaptiveScale === 'function')
             ? getMobileLandscapeAdaptiveScale()

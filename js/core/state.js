@@ -300,7 +300,28 @@ function initRunWorldByMode(mode) {
         return;
     }
 
+    if (startMode === 'stepan') {
+        setRunBackground('img/bn-bg.png');
+        const adaptiveScale = ((typeof isMobileAdaptiveCombatMode === 'function')
+            && isMobileAdaptiveCombatMode(startMode)
+            && (typeof getMobileLandscapeAdaptiveScale === 'function'))
+            ? getMobileLandscapeAdaptiveScale(startMode)
+            : 1;
+        player.x = Math.max(8, Math.round(20 * adaptiveScale));
+        playerBulletDir = 'right';
+        initNosokLevel();
+        return;
+    }
+
     if (startMode === 'lovlyu') {
+        setRunBackground('img/avs-bg.png');
+        playerBulletDir = 'up';
+        initLovlyuLevel();
+        player.y = canvas.height - player.h - 20;
+        return;
+    }
+
+    if (startMode === 'poimal') {
         setRunBackground('img/avs-bg.png');
         playerBulletDir = 'up';
         initLovlyuLevel();

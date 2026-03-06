@@ -22,6 +22,9 @@ let lovlyuBatchDelay = 0;      // задержка между персонажа
 let lovlyuBatchTimer = 0;      // таймер между персонажами в пачке
 let lovlyuGroundY = 0;         // уровень земли
 let lovlyuVictoryShown = false;
+let poimalPhaseCycleActive = false;
+let poimalPhaseTimer = 0;
+let poimalCurrentPhase = 3;
 
 // Бонус "Магнит"
 let lovlyuMagnets = [];            // падающие бонусы-магниты
@@ -44,9 +47,10 @@ let lovlyuLightningDuration = 13;    // длительность эффекта 
  * @returns {{active:boolean,scale:number,frameMul:number,speedMul:number}}
  */
 function getLovlyuAdaptiveRuntime(dt) {
+    const modeKey = (gameMode === 'poimal') ? 'poimal' : 'lovlyu';
     const ma = window.BHMobileAdaptive;
     if (ma && typeof ma.runtime === 'function') {
-        return ma.runtime(dt, 'lovlyu');
+        return ma.runtime(dt, modeKey);
     }
     return { active: false, scale: 1, frameMul: 1, speedMul: 1 };
 }
@@ -58,9 +62,10 @@ function getLovlyuAdaptiveRuntime(dt) {
  * @returns {{w:number,h:number}}
  */
 function getLovlyuScaledSize(w, h) {
+    const modeKey = (gameMode === 'poimal') ? 'poimal' : 'lovlyu';
     const ma = window.BHMobileAdaptive;
     if (ma && typeof ma.size === 'function') {
-        return ma.size(w, h, 'lovlyu', 24, 24);
+        return ma.size(w, h, modeKey, 24, 24);
     }
     return { w, h };
 }
@@ -70,9 +75,10 @@ function getLovlyuScaledSize(w, h) {
  * @returns {{enemyFireRate:number,enemyProjectileSpeed:number,enemyMoveSpeed:number,dropFallSpeed:number,bossMoveSpeed:number,homing:number,targetFallSpeed:number}}
  */
 function getLovlyuMobileBalance() {
+    const modeKey = (gameMode === 'poimal') ? 'poimal' : 'lovlyu';
     const ma = window.BHMobileAdaptive;
     if (ma && typeof ma.getBalance === 'function') {
-        return ma.getBalance('lovlyu');
+        return ma.getBalance(modeKey);
     }
     return {
         enemyFireRate: 1,
@@ -100,6 +106,9 @@ function resetLovlyuLevelState() {
     lovlyuBatchTimer = 0;
     lovlyuGroundY = 0;
     lovlyuVictoryShown = false;
+    poimalPhaseCycleActive = false;
+    poimalPhaseTimer = 0;
+    poimalCurrentPhase = 3;
 
     lovlyuMagnets = [];
     lovlyuMagnetActive = false;
@@ -119,8 +128,12 @@ function resetLovlyuLevelState() {
 function initLovlyuLevel() {
     resetLovlyuLevelState();
     const ma = window.BHMobileAdaptive;
-    const groundPad = (ma && typeof ma.px === 'function') ? ma.px(20, 'lovlyu', 10, true) : 20;
+    const modeKey = (gameMode === 'poimal') ? 'poimal' : 'lovlyu';
+    const groundPad = (ma && typeof ma.px === 'function') ? ma.px(20, modeKey, 10, true) : 20;
     lovlyuGroundY = canvas.height - groundPad; // земля с адаптивным отступом от низа
+    if (gameMode === 'poimal') {
+        lovlyuTotalSpawns = Number.MAX_SAFE_INTEGER;
+    }
 }
 
 /**
@@ -128,6 +141,11 @@ function initLovlyuLevel() {
  * @returns {number} 1-4
  */
 function getLovlyuPhase() {
+    if (gameMode === 'poimal') {
+        if (lovlyuSpawnedCount < 15) return 1;
+        if (lovlyuSpawnedCount < 30) return 2;
+        return poimalCurrentPhase;
+    }
     const ratio = lovlyuSpawnedCount / lovlyuTotalSpawns;
     if (ratio < 0.30) return 1;
     if (ratio < 0.60) return 2;
@@ -141,6 +159,11 @@ function getLovlyuPhase() {
  */
 function getLovlyuPhaseParams() {
     const phase = getLovlyuPhase();
+    if (gameMode === 'poimal') {
+        if (phase <= 1) return { batchMin: 1, batchMax: 1, delayMin: 0, delayMax: 0, pauseMin: 2.5, pauseMax: 3.5 };
+        if (phase === 2) return { batchMin: 2, batchMax: 3, delayMin: 0.9, delayMax: 1.7, pauseMin: 1.8, pauseMax: 2.6 };
+        return { batchMin: 4, batchMax: 5, delayMin: 0.65, delayMax: 1.35, pauseMin: 1.1, pauseMax: 1.9 };
+    }
     switch (phase) {
         case 1: return { batchMin: 1, batchMax: 1, delayMin: 0, delayMax: 0, pauseMin: 2.5, pauseMax: 3.5 };
         case 2: return { batchMin: 2, batchMax: 3, delayMin: 1.0, delayMax: 2.0, pauseMin: 2.0, pauseMax: 3.0 };
@@ -301,6 +324,24 @@ function updateLovlyuMode(dt) {
         }
     });
 
+    // Логика зацикленных фаз для режима "Поймал" (после 30 спавнов): 3 -> 2 -> 3 каждые 10 секунд.
+    if (gameMode === 'poimal' && lovlyuSpawnedCount >= 30) {
+        if (!poimalPhaseCycleActive) {
+            poimalPhaseCycleActive = true;
+            poimalPhaseTimer = 0;
+            poimalCurrentPhase = 3;
+        } else {
+            poimalPhaseTimer += dt;
+            if (poimalPhaseTimer >= 10) {
+                poimalPhaseTimer = 0;
+                poimalCurrentPhase = (poimalCurrentPhase === 3) ? 2 : 3;
+            }
+        }
+    }
+
+    // В режиме "Поймал" ускоряем выпадение бонусов только внутри зацикленных фаз 2<->3.
+    const poimalBonusDropMul = (gameMode === 'poimal' && poimalPhaseCycleActive) ? 2 : 1;
+
     // ==== Бонус "Магнит" ====
     // Обновляем падающие магниты
     lovlyuMagnets.forEach(m => {
@@ -328,8 +369,8 @@ function updateLovlyuMode(dt) {
     }
 
     // Спавн магнита: 3% каждую секунду
-    if (!lovlyuVictoryShown) lovlyuMagnetDropTimer += dt;
-    if (!lovlyuVictoryShown && lovlyuMagnetDropTimer >= 1.0) {
+    if (!lovlyuVictoryShown) lovlyuMagnetDropTimer += dt * poimalBonusDropMul;
+    while (!lovlyuVictoryShown && lovlyuMagnetDropTimer >= 1.0) {
         lovlyuMagnetDropTimer -= 1.0;
         if (Math.random() < 0.03) {
             const ms = getLovlyuScaledSize(40, 40);
@@ -371,8 +412,8 @@ function updateLovlyuMode(dt) {
     }
 
     // Спавн молнии: 4% каждую секунду
-    if (!lovlyuVictoryShown) lovlyuLightningDropTimer += dt;
-    if (!lovlyuVictoryShown && lovlyuLightningDropTimer >= 1.0) {
+    if (!lovlyuVictoryShown) lovlyuLightningDropTimer += dt * poimalBonusDropMul;
+    while (!lovlyuVictoryShown && lovlyuLightningDropTimer >= 1.0) {
         lovlyuLightningDropTimer -= 1.0;
         if (Math.random() < 0.04) {
             const ls = getLovlyuScaledSize(40, 40);
@@ -386,8 +427,8 @@ function updateLovlyuMode(dt) {
     }
 
     // Бонусное сердце: 5% каждую секунду (не после завершения уровня)
-    if (!lovlyuVictoryShown) lovlyuHeartDropTimer += dt;
-    if (!lovlyuVictoryShown && lovlyuHeartDropTimer >= 1.0) {
+    if (!lovlyuVictoryShown) lovlyuHeartDropTimer += dt * poimalBonusDropMul;
+    while (!lovlyuVictoryShown && lovlyuHeartDropTimer >= 1.0) {
         lovlyuHeartDropTimer -= 1.0;
         if (Math.random() < 0.05) {
             const hs = getLovlyuScaledSize(40, 40);
@@ -664,7 +705,8 @@ function updateLovlyuMode(dt) {
     }
 
     // Проверяем условие победы: все появления прошли и все персонажи обработаны
-    if (lovlyuSpawnedCount >= lovlyuTotalSpawns && lovlyuChars.length === 0 &&
+    if (gameMode !== 'poimal' &&
+        lovlyuSpawnedCount >= lovlyuTotalSpawns && lovlyuChars.length === 0 &&
         lovlyuBatchRemaining <= 0 && !lovlyuVictoryShown && lives > 0) {
         lovlyuVictoryShown = true;
         showLevelComplete();
@@ -683,7 +725,8 @@ function updateLovlyuMode(dt) {
         const phase = getLovlyuPhase();
         const magnetInfo = lovlyuMagnetActive ? `   🧲 ${Math.ceil(lovlyuMagnetTimer)}с` : '';
         const lightningInfo = lovlyuLightningActive ? `   ⚡ ${Math.ceil(lovlyuLightningTimer)}с` : '';
-        let hudHtml = `${playerName} | Жизни: ${cachedLivesStr}<br>Очки: ${score}   Комбо: ${combo}   Поймано: ${caught}/${lovlyuTotalSpawns}   Фаза: ${phase}${magnetInfo}${lightningInfo}`;
+        const caughtText = (gameMode === 'poimal') ? `${caught}` : `${caught}/${lovlyuTotalSpawns}`;
+        let hudHtml = `${playerName} | Жизни: ${cachedLivesStr}<br>Очки: ${score}   Комбо: ${combo}   Поймано: ${caughtText}   Фаза: ${phase}${magnetInfo}${lightningInfo}`;
         if (hudHtml !== lastHudHtml) {
             hudEl.innerHTML = hudHtml;
             lastHudHtml = hudHtml;
@@ -695,7 +738,7 @@ function updateLovlyuMode(dt) {
  * Отрисовывает уровень "Ловлю".
  */
 function drawLovlyuMode() {
-    // Фон
+    // Р В¤Р С•Р Р…
     if (bgReady) {
         ctx.drawImage(bgImg, 0, 0, canvas.width, canvas.height);
     } else {
@@ -872,7 +915,7 @@ function showLovlyuLevelComplete() {
 
     const msg = document.createElement('div');
     const caught = Math.floor(score / 10);
-    msg.innerText = `Поздравляем, уровень "Ловлю" пройден!\nПоймано: ${caught}/${lovlyuTotalSpawns}` + (isNew ? ' — Новый рекорд!' : '');
+    msg.innerText = `Поздравляем, уровень "Ловлю" пройден!\nПоймано: ${caughtText}` + (isNew ? ' — Новый рекорд!' : '');
     Object.assign(msg.style, { fontSize: '20px', marginBottom: '18px', color: '#222', opacity: '0', transform: 'translateY(12px)', whiteSpace: 'pre-line' });
 
     const styleId = 'lovlyu-level-complete-style';

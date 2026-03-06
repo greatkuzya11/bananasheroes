@@ -76,8 +76,10 @@ function isMobileAdaptiveCombatMode(mode) {
         || mode === 'mode67'
         || mode === 'o4ko'
         || mode === 'nosok'
+        || mode === 'stepan'
         || mode === 'platforms'
         || mode === 'lovlyu'
+        || mode === 'poimal'
         || mode === 'runner'
         || mode === 'bonus'
         || mode === 'library';

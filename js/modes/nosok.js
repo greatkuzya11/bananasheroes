@@ -17,14 +17,23 @@ function formatNosokTime(ms) {
 }
 
 /**
+ * Возвращает true, если активен дополнительный режим "Степан".
+ * @returns {boolean}
+ */
+function isStepanMode() {
+    return gameMode === 'stepan';
+}
+
+/**
  * Возвращает runtime-параметры мобильного адаптива для уровня "Носок".
  * @param {number} dt - время кадра.
  * @returns {{active:boolean,scale:number,frameMul:number,speedMul:number}}
  */
 function getNosokAdaptiveRuntime(dt) {
+    const modeKey = isStepanMode() ? 'stepan' : 'nosok';
     const ma = window.BHMobileAdaptive;
     if (ma && typeof ma.runtime === 'function') {
-        return ma.runtime(dt, 'nosok');
+        return ma.runtime(dt, modeKey);
     }
     return { active: false, scale: 1, frameMul: 1, speedMul: 1 };
 }
@@ -38,9 +47,10 @@ function getNosokAdaptiveRuntime(dt) {
  * @returns {{w:number,h:number}}
  */
 function getNosokScaledSize(w, h, minW, minH) {
+    const modeKey = isStepanMode() ? 'stepan' : 'nosok';
     const ma = window.BHMobileAdaptive;
     if (ma && typeof ma.size === 'function') {
-        return ma.size(w, h, 'nosok', minW, minH);
+        return ma.size(w, h, modeKey, minW, minH);
     }
     return { w, h };
 }
@@ -50,9 +60,10 @@ function getNosokScaledSize(w, h, minW, minH) {
  * @returns {number}
  */
 function getNosokGroundInset() {
+    const modeKey = isStepanMode() ? 'stepan' : 'nosok';
     const ma = window.BHMobileAdaptive;
     if (ma && typeof ma.px === 'function') {
-        return ma.px(20, 'nosok', 10, true);
+        return ma.px(20, modeKey, 10, true);
     }
     return 20;
 }
@@ -62,9 +73,10 @@ function getNosokGroundInset() {
  * @returns {{enemyFireRate:number,enemyProjectileSpeed:number,enemyMoveSpeed:number,dropFallSpeed:number,bossMoveSpeed:number,homing:number,targetFallSpeed:number}}
  */
 function getNosokMobileBalance() {
+    const modeKey = isStepanMode() ? 'stepan' : 'nosok';
     const ma = window.BHMobileAdaptive;
     if (ma && typeof ma.getBalance === 'function') {
-        return ma.getBalance('nosok');
+        return ma.getBalance(modeKey);
     }
     return {
         enemyFireRate: 1,
@@ -180,6 +192,13 @@ function initNosokLevel() {
     setupNosokGoal();
     spawnNosokBall(false);
     bossNosok = new BossNosok();
+    // В "Степане" матч бесконечный: без лимита голов и без таймера.
+    if (isStepanMode()) {
+        nosokTargetGoals = Number.MAX_SAFE_INTEGER;
+        nosokElapsedTime = 0;
+        nosokFinalTimeMs = 0;
+        hearts.length = 0;
+    }
     nosokElapsedTime = 0;
     nosokFinalTimeMs = 0;
 }
@@ -225,14 +244,22 @@ function spawnNosokGoalConfetti(count) {
  * @param {'beer'|'heart'|'ice'|'dynamite'|'random'} type - тип бонуса.
  */
 function spawnNosokDrop(type = 'random') {
+    const stepanMode = isStepanMode();
     let actual = type;
     if (actual === 'random') {
-        actual = (Math.random() < 0.70) ? 'beer' : 'heart';
+        actual = stepanMode
+            ? 'beer'
+            : ((Math.random() < 0.70) ? 'beer' : 'heart');
+    }
+    if (stepanMode && actual === 'heart') {
+        // В режиме "Степан" сердца не выпадают.
+        return;
     }
 
     const ma = window.BHMobileAdaptive;
-    const scale = (ma && typeof ma.getScale === 'function' && typeof ma.isActive === 'function' && ma.isActive('nosok'))
-        ? ma.getScale('nosok')
+    const modeKey = isStepanMode() ? 'stepan' : 'nosok';
+    const scale = (ma && typeof ma.getScale === 'function' && typeof ma.isActive === 'function' && ma.isActive(modeKey))
+        ? ma.getScale(modeKey)
         : 1;
     const edgeInset = Math.max(8, Math.round(12 * scale));
     const laneInset = edgeInset * 2;
@@ -1041,23 +1068,28 @@ function resolveNosokPlayerBossOverlap() {
  * @param {number} dt - время кадра.
  */
 function updateNosokDrops(dt) {
+    const stepanMode = isStepanMode();
     const adaptive = getNosokAdaptiveRuntime(dt);
     const balance = getNosokMobileBalance();
     bottles.forEach(b => {
         b.y += 2 * balance.dropFallSpeed * adaptive.frameMul * adaptive.speedMul;
         b.x += Math.sin((b.y + (b.waveSeed || 0)) / 20) * 1.5 * adaptive.frameMul * adaptive.speedMul;
     });
-    hearts.forEach(h => {
-        h.y += 2 * balance.dropFallSpeed * adaptive.frameMul * adaptive.speedMul;
-        h.x += Math.sin((h.y + (h.waveSeed || 0)) / 20) * 1.5 * adaptive.frameMul * adaptive.speedMul;
-    });
+    if (stepanMode) {
+        hearts = [];
+    } else {
+        hearts.forEach(h => {
+            h.y += 2 * balance.dropFallSpeed * adaptive.frameMul * adaptive.speedMul;
+            h.x += Math.sin((h.y + (h.waveSeed || 0)) / 20) * 1.5 * adaptive.frameMul * adaptive.speedMul;
+        });
+    }
     nosokSpecialBonuses.forEach(p => {
         p.y += p.vy * balance.dropFallSpeed * adaptive.frameMul * adaptive.speedMul;
         p.x += Math.sin((p.y + p.driftSeed) / 22) * 1.3 * adaptive.frameMul * adaptive.speedMul;
     });
 
     bottles = bottles.filter(b => b.y < canvas.height + 40);
-    hearts = hearts.filter(h => h.y < canvas.height + 40);
+    hearts = stepanMode ? [] : hearts.filter(h => h.y < canvas.height + 40);
     nosokSpecialBonuses = nosokSpecialBonuses.filter(p => p.y < canvas.height + 60);
 
     for (let i = bottles.length - 1; i >= 0; i--) {
@@ -1069,13 +1101,15 @@ function updateNosokDrops(dt) {
             }
         }
     }
-    for (let i = hearts.length - 1; i >= 0; i--) {
-        if (rect(hearts[i], player)) {
-            if (lives < PLAYER_LIVES) lives++;
-            else bonusShots += 5;
-            hearts.splice(i, 1);
-            if (window.BHAudio) {
-                window.BHAudio.play('pickup_heart', { volumeMul: 0.95 });
+    if (!stepanMode) {
+        for (let i = hearts.length - 1; i >= 0; i--) {
+            if (rect(hearts[i], player)) {
+                if (lives < PLAYER_LIVES) lives++;
+                else bonusShots += 5;
+                hearts.splice(i, 1);
+                if (window.BHAudio) {
+                    window.BHAudio.play('pickup_heart', { volumeMul: 0.95 });
+                }
             }
         }
     }
@@ -1152,12 +1186,17 @@ function updateNosokHud() {
         cachedLivesStr = "❤️".repeat(lives);
         lastHudLives = lives;
     }
+    const isStepan = isStepanMode();
     const timerStr = formatNosokTime(Math.round(nosokElapsedTime * 1000));
     const bonusClass = (bonusMode && bonusShots > 0) ? 'hud-bonus active' : 'hud-bonus';
     const bonusHtml = `<span class="${bonusClass}"><span>Бонус:</span><span class="hud-bonus-value">${Math.max(0, bonusShots)}</span></span>`;
     let hudHtml = '';
-    const shownGoals = Math.min(nosokTargetGoals, nosokGoals);
-    hudHtml = `${playerName} | Жизни: ${cachedLivesStr}<br>Голы: ${shownGoals}/${nosokTargetGoals}   Время: ${timerStr}   ${bonusHtml}   Пули: ${dirIcon} ${modeIndicator}`;
+    const shownGoals = isStepan
+        ? Math.max(0, Math.floor(nosokGoals))
+        : Math.min(nosokTargetGoals, nosokGoals);
+    hudHtml = isStepan
+        ? `${playerName} | Жизни: ${cachedLivesStr}<br>Голы: ${shownGoals}   ${bonusHtml}   Пули: ${dirIcon} ${modeIndicator}`
+        : `${playerName} | Жизни: ${cachedLivesStr}<br>Голы: ${shownGoals}/${nosokTargetGoals}   Время: ${timerStr}   ${bonusHtml}   Пули: ${dirIcon} ${modeIndicator}`;
     if (hudHtml !== lastHudHtml) {
         hudEl.innerHTML = hudHtml;
         lastHudHtml = hudHtml;
@@ -1174,7 +1213,8 @@ function updateNosokMode(dt) {
     }
 
     if (invuln > 0) invuln -= dt;
-    if (nosokGoals < nosokTargetGoals) {
+    const stepanMode = isStepanMode();
+    if (!stepanMode && nosokGoals < nosokTargetGoals) {
         nosokElapsedTime += dt;
     }
 
@@ -1190,6 +1230,11 @@ function updateNosokMode(dt) {
     updateNosokDrops(dt);
     resolveNosokPlayerBossOverlap();
     updateNosokEffects(dt);
+    if (stepanMode) {
+        // Рекорд режима "Степан" = количество голов.
+        score = Math.max(0, Math.floor(nosokGoals));
+    }
+
     updateNosokHud();
 }
 

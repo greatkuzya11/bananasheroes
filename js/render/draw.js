@@ -114,8 +114,8 @@ function drawSpeechBalloonAdaptive(sb, mode) {
 
 window.drawSpeechBalloonAdaptive = drawSpeechBalloonAdaptive;
 function draw() {
-    // Отдельная отрисовка уровня "Ловлю".
-    if (gameMode === 'lovlyu') {
+    // Отдельная отрисовка уровней "Ловлю"/"Поймал".
+    if (gameMode === 'lovlyu' || gameMode === 'poimal') {
         drawLovlyuMode();
         return;
     }
@@ -140,57 +140,7 @@ function draw() {
         ctx.fillRect(0, 0, canvas.width, canvas.height);
     }
 
-    if (gameMode === 'nosok' && nosokGoalSensor && nosokCrossbar) {
-        // Ворота уровня "Носок": стойка + верхняя перекладина (форма "Г").
-        const netX = nosokGoalSensor.x + nosokGoalSensor.w;
-        const netY = nosokCrossbar.y + nosokCrossbar.h;
-        const netW = Math.max(0, canvas.width - netX);
-        const netH = Math.max(0, (canvas.height - 20) - netY);
-        if (netW > 0 && netH > 0) {
-            ctx.save();
-            if (goalNetReady && goalNetImg.complete) {
-                const pattern = ctx.createPattern(goalNetImg, 'repeat');
-                if (pattern) {
-                    ctx.fillStyle = pattern;
-                    ctx.fillRect(netX, netY, netW, netH);
-                } else {
-                    ctx.globalAlpha = 0.28;
-                    ctx.fillStyle = '#d9e2ec';
-                    ctx.fillRect(netX, netY, netW, netH);
-                }
-            } else {
-                // Временный фолбек до появления PNG-сетки.
-                ctx.globalAlpha = 0.22;
-                ctx.strokeStyle = '#d9e2ec';
-                ctx.lineWidth = 1;
-                const step = Math.max(10, Math.round(canvas.width * 0.012));
-                for (let x = netX; x <= netX + netW; x += step) {
-                    ctx.beginPath();
-                    ctx.moveTo(x, netY);
-                    ctx.lineTo(x, netY + netH);
-                    ctx.stroke();
-                }
-                for (let y = netY; y <= netY + netH; y += step) {
-                    ctx.beginPath();
-                    ctx.moveTo(netX, y);
-                    ctx.lineTo(netX + netW, y);
-                    ctx.stroke();
-                }
-            }
-            ctx.restore();
-        }
-        nosokGoalSensor.draw();
-        nosokCrossbar.draw();
-        if (nosokGoalFlashTimer > 0) {
-            const flash = 0.18 + 0.2 * Math.sin(performance.now() * 0.03);
-            ctx.save();
-            ctx.globalAlpha = Math.max(0, flash);
-            ctx.fillStyle = '#eaff9d';
-            ctx.fillRect(nosokGoalSensor.x, nosokGoalSensor.y, nosokGoalSensor.w, nosokGoalSensor.h);
-            ctx.fillRect(nosokCrossbar.x, nosokCrossbar.y, nosokCrossbar.w, nosokCrossbar.h);
-            ctx.restore();
-        }
-    }
+    // Ворота "Носок": сетка, штанги, перекладина рисуются позже (после игрока и мяча)
 
     // Рисуем платформы в режиме платформ
     if (gameMode === 'platforms') {
@@ -655,8 +605,8 @@ function draw() {
         drawStyledBossHpBar('Босс: Сосиска', boss.hp, boss.maxHp || 11, 24);
     }
 
-    // Рисуем футбольный мяч режима "Носок".
-    if (gameMode === 'nosok' && nosokBall) {
+    // Рисуем футбольный мяч режима "Носок" (между игроком и штангами — мяч внутри ворот).
+    if ((gameMode === 'nosok' || gameMode === 'stepan') && nosokBall) {
         ctx.save();
         ctx.translate(nosokBall.x, nosokBall.y);
         ctx.rotate(nosokBall.angle || 0);
@@ -675,8 +625,62 @@ function draw() {
         ctx.restore();
     }
 
+    // Сетка, штанги и перекладина ворот поверх игрока и мяча — перекрывают оба объекта.
+    if ((gameMode === 'nosok' || gameMode === 'stepan') && nosokGoalSensor && nosokCrossbar) {
+        // Сетка
+        const netX = nosokGoalSensor.x + nosokGoalSensor.w;
+        const netY = nosokCrossbar.y + nosokCrossbar.h;
+        const netW = Math.max(0, canvas.width - netX);
+        const netH = Math.max(0, (canvas.height - 20) - netY);
+        if (netW > 0 && netH > 0) {
+            ctx.save();
+            if (goalNetReady && goalNetImg.complete) {
+                const pattern = ctx.createPattern(goalNetImg, 'repeat');
+                if (pattern) {
+                    ctx.fillStyle = pattern;
+                    ctx.fillRect(netX, netY, netW, netH);
+                } else {
+                    ctx.globalAlpha = 0.28;
+                    ctx.fillStyle = '#d9e2ec';
+                    ctx.fillRect(netX, netY, netW, netH);
+                }
+            } else {
+                // Временный фолбек до появления PNG-сетки.
+                ctx.globalAlpha = 0.22;
+                ctx.strokeStyle = '#d9e2ec';
+                ctx.lineWidth = 1;
+                const step = Math.max(10, Math.round(canvas.width * 0.012));
+                for (let x = netX; x <= netX + netW; x += step) {
+                    ctx.beginPath();
+                    ctx.moveTo(x, netY);
+                    ctx.lineTo(x, netY + netH);
+                    ctx.stroke();
+                }
+                for (let y = netY; y <= netY + netH; y += step) {
+                    ctx.beginPath();
+                    ctx.moveTo(netX, y);
+                    ctx.lineTo(netX + netW, y);
+                    ctx.stroke();
+                }
+            }
+            ctx.restore();
+        }
+        // Штанги и перекладина
+        nosokGoalSensor.draw();
+        nosokCrossbar.draw();
+        if (nosokGoalFlashTimer > 0) {
+            const flash = 0.18 + 0.2 * Math.sin(performance.now() * 0.03);
+            ctx.save();
+            ctx.globalAlpha = Math.max(0, flash);
+            ctx.fillStyle = '#eaff9d';
+            ctx.fillRect(nosokGoalSensor.x, nosokGoalSensor.y, nosokGoalSensor.w, nosokGoalSensor.h);
+            ctx.fillRect(nosokCrossbar.x, nosokCrossbar.y, nosokCrossbar.w, nosokCrossbar.h);
+            ctx.restore();
+        }
+    }
+
     // Сигнализация гола: конфетти сыпется сверху ~2 секунды.
-    if (gameMode === 'nosok' && Array.isArray(nosokGoalConfetti) && nosokGoalConfetti.length > 0) {
+    if ((gameMode === 'nosok' || gameMode === 'stepan') && Array.isArray(nosokGoalConfetti) && nosokGoalConfetti.length > 0) {
         nosokGoalConfetti.forEach(c => {
             const k = 1 - (c.timer / Math.max(0.001, c.life));
             ctx.save();
@@ -694,7 +698,7 @@ function draw() {
     }
 
     // Пульсирующая надпись "ГОЛ" на время конфетти-сигнала.
-    if (gameMode === 'nosok' && (nosokGoalConfettiTimer > 0 || (Array.isArray(nosokGoalConfetti) && nosokGoalConfetti.length > 0))) {
+    if ((gameMode === 'nosok' || gameMode === 'stepan') && (nosokGoalConfettiTimer > 0 || (Array.isArray(nosokGoalConfetti) && nosokGoalConfetti.length > 0))) {
         const now = performance.now() * 0.001;
         const total = 2.0;
         const k = Math.max(0, Math.min(1, nosokGoalConfettiTimer / total));
@@ -775,7 +779,7 @@ function draw() {
     speechBalloons.forEach(sb => {
         drawSpeechBalloonAdaptive(sb, gameMode);
     });
-    if (gameMode === 'nosok') {
+    if (gameMode === 'nosok' || gameMode === 'stepan') {
         // Верхнее табло режима "Носок": голы и таймер.
         const timerStr = formatNosokTime(Math.round(nosokElapsedTime * 1000));
         const panelW = Math.max(250, canvas.width * 0.32);
@@ -792,8 +796,14 @@ function draw() {
         ctx.font = 'bold 17px Arial';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        const shownGoals = Math.min(nosokTargetGoals, nosokGoals);
-        ctx.fillText(`Голы: ${shownGoals}/${nosokTargetGoals}   Время: ${timerStr}`, panelX + panelW / 2, panelY + panelH / 2);
+        const isStepan = gameMode === 'stepan';
+        const shownGoals = isStepan
+            ? Math.max(0, Math.floor(nosokGoals))
+            : Math.min(nosokTargetGoals, nosokGoals);
+        const panelText = isStepan
+            ? `Голы: ${shownGoals}`
+            : `Голы: ${shownGoals}/${nosokTargetGoals}   Время: ${timerStr}`;
+        ctx.fillText(panelText, panelX + panelW / 2, panelY + panelH / 2);
         ctx.restore();
     }
 

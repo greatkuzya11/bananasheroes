@@ -33,13 +33,15 @@ const FINAL_CAMPAIGN_LEVEL = 'library';
  * Метаданные уровней для меню и стартовой таблички.
  */
 const CAMPAIGN_LEVEL_META = Object.freeze({
-    normal:    { title: 'Сирень и Букин', desc: 'Замочи эту кучи сирени дойди до Букина, ведь ты же Банан!.' },
+    normal:    { title: 'Сирень и Букин', desc: 'Замочи эту кучи сирени дойди до Букина, ведь ты же Банан!' },
     survival:  { title: 'Выживание', desc: 'Бесконечная сирень, без Букина, сирень, фу!!' },
-    '67':      { title: 'Телепузик', desc: 'Каждый Банан в своей жизни обязан замочить телепузика!.' },
-    o4ko:      { title: 'Очко', desc: 'Просто злое очко и кидается говном, говорят такое правдв было. С балалайкой и магнитофоном, хз зачем они ей, её проблемы.' },
+    '67':      { title: 'Телепузик', desc: 'Каждый Банан в своей жизни обязан замочить телепузика!' },
+    o4ko:      { title: 'Очко', desc: 'Просто злое очко и кидается говном, говорят такое правда было. С балалайкой и магнитофоном, хз зачем они ей, её проблемы.' },
     nosok:     { title: 'Носок', desc: 'Просто сделай из него кусок говна!.' },
+    stepan:    { title: 'Степан', desc: 'Бесконечный футбол с Носком: голы без лимита, тухлая рыба тоже.' },
     platforms: { title: 'Опять Телепузик', desc: 'Телепузик никак не уймется, опять надо замочить.' },
     lovlyu:    { title: 'Ловлю', desc: 'Все стандартно - Кузя кричит: "Лови", Банан кричит: "Ловлю"' },
+    poimal:    { title: 'Поймал', desc: 'Падающие Кузи без конца: зарабатывай очки и держи темп фаз 2/3.' },
     runner:    { title: 'Бегун', desc: 'Дрон должен научится курить. Даже если не научится, хоть ногу подвернет.' },
     library:   { title: 'Библиотека', desc: 'Я хз зачем, но унитаз захотел почитать. Помоги ему - он поможет тебе.' },
     bonus:     { title: 'Бонусный уровень', desc: 'Финальная секретная сцена после прохождения игры.' },
@@ -50,6 +52,10 @@ const PROGRESS_KEYS = Object.freeze({
     unlockedCampaignIndex: 'bh_campaign_unlocked_index_v1',
     survivalUnlocked: 'bh_survival_unlocked_v1',
     survivalNoticeShown: 'bh_survival_unlocked_notice_shown_v1',
+    poimalUnlocked: 'bh_poimal_unlocked_v1',
+    poimalNoticeShown: 'bh_poimal_unlocked_notice_shown_v1',
+    stepanUnlocked: 'bh_stepan_unlocked_v1',
+    stepanNoticeShown: 'bh_stepan_unlocked_notice_shown_v1',
     gameCompletedOnce: 'bh_game_completed_once_v1',
     mode67Unlocked: 'bh_mode67_unlocked_v1',
     mode67NoticeShown: 'bh_mode67_notice_shown_v1',
@@ -74,6 +80,8 @@ let campaignSession = {
  */
 let pendingProgressNotices = {
     survivalUnlock: false,
+    poimalUnlock: false,
+    stepanUnlock: false,
     gameCompleted: false,
     mode67Unlock: false
 };
@@ -207,6 +215,36 @@ function setSurvivalUnlocked() {
 }
 
 /**
+ * Возвращает true, если режим "Поймал" открыт.
+ * @returns {boolean}
+ */
+function isPoimalUnlocked() {
+    return readBoolLS(PROGRESS_KEYS.poimalUnlocked, false);
+}
+
+/**
+ * Помечает режим "Поймал" как открытый.
+ */
+function setPoimalUnlocked() {
+    writeLS(PROGRESS_KEYS.poimalUnlocked, '1');
+}
+
+/**
+ * Возвращает true, если режим "Степан" открыт.
+ * @returns {boolean}
+ */
+function isStepanUnlocked() {
+    return readBoolLS(PROGRESS_KEYS.stepanUnlocked, false);
+}
+
+/**
+ * Помечает режим "Степан" как открытый.
+ */
+function setStepanUnlocked() {
+    writeLS(PROGRESS_KEYS.stepanUnlocked, '1');
+}
+
+/**
  * Возвращает true, если режим относится к основной кампании.
  * @param {string} mode - идентификатор режима.
  * @returns {boolean}
@@ -280,6 +318,8 @@ function setMode67Unlocked() {
  */
 function isModeUnlockedByProgress(mode) {
     if (mode === 'survival') return isSurvivalUnlocked();
+    if (mode === 'poimal') return isPoimalUnlocked();
+    if (mode === 'stepan') return isStepanUnlocked();
     if (mode === 'mode67') return isMode67Unlocked();
     if (mode === 'bonus') return isBonusUnlocked();
     if (mode === FINAL_CAMPAIGN_LEVEL) return areAllRunLevelsCompleted();
@@ -400,6 +440,30 @@ function unlockByCompletedMode(mode) {
             pendingProgressNotices.survivalUnlock = true;
         }
     }
+
+    if (mode === 'lovlyu') {
+        const wasUnlocked = isPoimalUnlocked();
+        if (!wasUnlocked) {
+            setPoimalUnlocked();
+        } else if (!readBoolLS(PROGRESS_KEYS.poimalUnlocked, false)) {
+            setPoimalUnlocked();
+        }
+        if (!readBoolLS(PROGRESS_KEYS.poimalNoticeShown, false)) {
+            pendingProgressNotices.poimalUnlock = true;
+        }
+    }
+
+    if (mode === 'nosok') {
+        const wasUnlocked = isStepanUnlocked();
+        if (!wasUnlocked) {
+            setStepanUnlocked();
+        } else if (!readBoolLS(PROGRESS_KEYS.stepanUnlocked, false)) {
+            setStepanUnlocked();
+        }
+        if (!readBoolLS(PROGRESS_KEYS.stepanNoticeShown, false)) {
+            pendingProgressNotices.stepanUnlock = true;
+        }
+    }
 }
 
 /**
@@ -464,6 +528,28 @@ function consumePendingSurvivalNotice() {
 }
 
 /**
+ * Возвращает и сбрасывает уведомление об открытии режима "Поймал".
+ * @returns {string}
+ */
+function consumePendingPoimalNotice() {
+    if (!pendingProgressNotices.poimalUnlock) return '';
+    pendingProgressNotices.poimalUnlock = false;
+    writeLS(PROGRESS_KEYS.poimalNoticeShown, '1');
+    return 'Открыт новый режим: Поймал!';
+}
+
+/**
+ * Возвращает и сбрасывает уведомление об открытии режима "Степан".
+ * @returns {string}
+ */
+function consumePendingStepanNotice() {
+    if (!pendingProgressNotices.stepanUnlock) return '';
+    pendingProgressNotices.stepanUnlock = false;
+    writeLS(PROGRESS_KEYS.stepanNoticeShown, '1');
+    return 'Открыт новый режим: Степан!';
+}
+
+/**
  * Возвращает и сбрасывает уведомление о полном прохождении игры (если есть).
  * @returns {string}
  */
@@ -491,12 +577,18 @@ function resetCampaignProgressState() {
     setUnlockedCampaignIndex(CAMPAIGN_RUN_LEVELS.length - 1);
     writeLS(PROGRESS_KEYS.survivalUnlocked, '0');
     writeLS(PROGRESS_KEYS.survivalNoticeShown, '0');
+    writeLS(PROGRESS_KEYS.poimalUnlocked, '0');
+    writeLS(PROGRESS_KEYS.poimalNoticeShown, '0');
+    writeLS(PROGRESS_KEYS.stepanUnlocked, '0');
+    writeLS(PROGRESS_KEYS.stepanNoticeShown, '0');
     writeLS(PROGRESS_KEYS.gameCompletedOnce, '0');
     for (let i = 0; i < CAMPAIGN_LEVEL_ORDER.length; i++) {
         writeLS(getLevelCompletedKey(CAMPAIGN_LEVEL_ORDER[i]), '0');
     }
     writeLS(PROGRESS_KEYS.completionFlagsMigrated, '1');
     pendingProgressNotices.survivalUnlock = false;
+    pendingProgressNotices.poimalUnlock = false;
+    pendingProgressNotices.stepanUnlock = false;
     pendingProgressNotices.gameCompleted = false;
     pendingProgressNotices.mode67Unlock = false;
     writeLS(PROGRESS_KEYS.mode67Unlocked, '0');
@@ -530,5 +622,7 @@ window.isMode67Unlocked = isMode67Unlocked;
 window.isBonusUnlocked = isBonusUnlocked;
 window.consumePendingMode67Notice = consumePendingMode67Notice;
 window.consumePendingSurvivalNotice = consumePendingSurvivalNotice;
+window.consumePendingPoimalNotice = consumePendingPoimalNotice;
+window.consumePendingStepanNotice = consumePendingStepanNotice;
 window.consumePendingGameCompletedNotice = consumePendingGameCompletedNotice;
 window.resetCampaignProgressState = resetCampaignProgressState;

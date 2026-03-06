@@ -602,7 +602,7 @@ document.addEventListener('DOMContentLoaded', () => {
         canvas.width = window.innerWidth;
         canvas.height = window.innerHeight;
         // Поддержка корректного позиционирования объектов в режиме "Носок" после ресайза.
-        if (gameMode === 'nosok') {
+        if (gameMode === 'nosok' || gameMode === 'stepan') {
             if (typeof setupNosokGoal === 'function') {
                 setupNosokGoal();
             }

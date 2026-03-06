@@ -17,8 +17,10 @@ class BHMobileAdaptive {
             'mode67',
             'o4ko',
             'nosok',
+            'stepan',
             'platforms',
             'lovlyu',
+            'poimal',
             'runner',
             'bonus',
             'library'
@@ -183,8 +185,10 @@ class BHMobileAdaptive {
             mode67:   { enemyFireRate: 0.88, enemyProjectileSpeed: 0.90, enemyMoveSpeed: 0.95, dropFallSpeed: 0.95 },
             o4ko:     { enemyFireRate: 0.90, enemyProjectileSpeed: 0.90, enemyMoveSpeed: 0.96, dropFallSpeed: 0.94, homing: 0.95 },
             nosok:    { enemyFireRate: 0.85, enemyProjectileSpeed: 0.90, enemyMoveSpeed: 0.95, dropFallSpeed: 0.95, bossMoveSpeed: 0.95, homing: 0.90 },
+            stepan:   { enemyFireRate: 0.85, enemyProjectileSpeed: 0.90, enemyMoveSpeed: 0.95, dropFallSpeed: 0.95, bossMoveSpeed: 0.95, homing: 0.90 },
             platforms:{ enemyFireRate: 0.90, enemyProjectileSpeed: 0.92, enemyMoveSpeed: 0.96, dropFallSpeed: 0.95 },
             lovlyu:   { dropFallSpeed: 0.95, targetFallSpeed: 0.92 },
+            poimal:   { dropFallSpeed: 0.95, targetFallSpeed: 0.92 },
             runner:   { dropFallSpeed: 0.95, bossMoveSpeed: 0.96 },
             bonus:    { enemyMoveSpeed: 0.96, bossMoveSpeed: 0.96 },
             library:  { enemyFireRate: 0.82, enemyProjectileSpeed: 0.90, enemyMoveSpeed: 0.95, dropFallSpeed: 0.95, homing: 0.92 }

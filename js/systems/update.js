@@ -61,14 +61,14 @@ function startO4koVictorySequence() {
  * @param {number} dt - прошедшее время кадра в секундах.
  */
 function update(dt) {
-    // Отдельный игровой цикл уровня "Носок".
-    if (gameMode === 'nosok') {
+    // Отдельный игровой цикл уровней "Носок"/"Степан".
+    if (gameMode === 'nosok' || gameMode === 'stepan') {
         updateNosokMode(dt);
         return;
     }
 
-    // Отдельный игровой цикл уровня "Ловлю".
-    if (gameMode === 'lovlyu') {
+    // Отдельный игровой цикл уровней "Ловлю"/"Поймал".
+    if (gameMode === 'lovlyu' || gameMode === 'poimal') {
         updateLovlyuMode(dt);
         return;
     }
