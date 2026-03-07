@@ -447,11 +447,40 @@ class Player {
     }
 
     /**
+     * Возвращает активный набор bananSprites для текущего типа игрока.
+     * @returns {Record<string, CanvasImageSource[]>}
+     */
+    _getActiveBananAnims() {
+        if (typeof getBananAnimsByPlayerType === 'function') {
+            const anims = getBananAnimsByPlayerType(this.type);
+            if (anims) return anims;
+        }
+        return maxAnims;
+    }
+
+    /**
+     * Проверяет готовность источника изображения для drawImage.
+     * Поддерживает как Image, так и canvas.
+     * @param {CanvasImageSource} img
+     * @returns {boolean}
+     */
+    _isSpriteSourceReady(img) {
+        if (!img) return false;
+        if (typeof img.complete === 'boolean') {
+            const w = (typeof img.naturalWidth === 'number' && img.naturalWidth > 0) ? img.naturalWidth : (img.width || 0);
+            const h = (typeof img.naturalHeight === 'number' && img.naturalHeight > 0) ? img.naturalHeight : (img.height || 0);
+            return !!img.complete && w > 0 && h > 0;
+        }
+        return (img.width || 0) > 0 && (img.height || 0) > 0;
+    }
+
+    /**
      * Обновляет покадровую анимацию PNG для персонажа Макс.
      * @param {number} dt - время кадра
      * @param {boolean} movingHoriz - игрок движется по горизонтали
      */
     _updateMaxAnim(dt, movingHoriz) {
+        const activeMaxAnims = this._getActiveBananAnims();
         if (this.mLcActive) {
             // Пинг-понг анимация levelComplete: 10fps, 5 циклов
             const fps = 10;
@@ -460,7 +489,7 @@ class Player {
             if (this.mTimer >= 1 / fps) {
                 this.mTimer -= 1 / fps;
                 this.mFrame += this.mLcDir;
-                const len = maxAnims.levelComplete.length;
+                const len = activeMaxAnims.levelComplete.length;
                 if (this.mFrame >= len) {
                     this.mFrame = len - 2;
                     this.mLcDir = -1;
@@ -508,7 +537,7 @@ class Player {
         this.mTimer += dt;
         if (this.mTimer >= 1 / fps) {
             this.mTimer -= 1 / fps;
-            const frames = maxAnims[this.mAnim];
+            const frames = activeMaxAnims[this.mAnim];
             const count = frames ? frames.length : 1;
             if (!movingHoriz && this.mAnim === 'walk') {
                 // Idle — стоим на первом кадре
@@ -539,15 +568,15 @@ class Player {
             const frames = kuzyAnims[this.kAnim];
             if (!frames || !frames.length) return null;
             const img = frames[Math.min(this.kFrame, frames.length - 1)];
-            if (!img || !img.complete || !img.naturalWidth) return null;
+            if (!this._isSpriteSourceReady(img)) return null;
             return { img, direct: true, sx: 0, sy: 0, sw: 0, sh: 0 };
         }
         // Макс: используем текущий кадр PNG анимации
         if (this.spriteSystem === 'max') {
-            const frames = maxAnims[this.mAnim];
+            const frames = this._getActiveBananAnims()[this.mAnim];
             if (!frames || !frames.length) return null;
             const img = frames[Math.min(this.mFrame, frames.length - 1)];
-            if (!img || !img.complete || !img.naturalWidth) return null;
+            if (!this._isSpriteSourceReady(img)) return null;
             return { img, direct: true, sx: 0, sy: 0, sw: 0, sh: 0 };
         }
         const isFalling = (gameMode === 'platforms') && !this.onPlatform && !this.isJumping;
@@ -624,9 +653,12 @@ class Player {
      */
     getCollisionMask() {
         const info = this.getCollisionSpriteInfo();
-        if (!info || !info.img || !info.img.complete) return null;
+        if (!info || !this._isSpriteSourceReady(info.img)) return null;
         const flip = (this.facingDir === 'left') ? 'L' : 'R';
-        const key = `${info.img.src}|${info.direct ? 'D' : `${info.sx}:${info.sy}:${info.sw}:${info.sh}`}|${flip}|${Math.round(this.w)}|${Math.round(this.h)}`;
+        const imgKey = (typeof info.img.src === 'string' && info.img.src)
+            ? info.img.src
+            : `mem:${this.type}:${this.spriteSystem}:${this.kAnim}:${this.kFrame}:${this.mAnim}:${this.mFrame}:${info.img.width || 0}x${info.img.height || 0}`;
+        const key = `${imgKey}|${info.direct ? 'D' : `${info.sx}:${info.sy}:${info.sw}:${info.sh}`}|${flip}|${Math.round(this.w)}|${Math.round(this.h)}`;
         if (this.maskCache.has(key)) return this.maskCache.get(key);
 
         const c = document.createElement('canvas');
@@ -683,7 +715,7 @@ class Player {
             const frames = kuzyAnims[this.kAnim];
             if (!frames || !frames.length) return;
             const img = frames[Math.min(this.kFrame, frames.length - 1)];
-            if (!img || !img.complete || !img.naturalWidth) return;
+            if (!this._isSpriteSourceReady(img)) return;
             // Спрайты PNG Sequences имеют прозрачное поле снизу (~11% высоты).
             // Сдвигаем отрисовку вниз, чтобы ноги совпадали с землёй/платформой.
             const PAD_BOTTOM = 99 / 900;
@@ -701,10 +733,10 @@ class Player {
         }
         // Макс: отрисовка через PNG анимации
         if (this.spriteSystem === 'max') {
-            const frames = maxAnims[this.mAnim];
+            const frames = this._getActiveBananAnims()[this.mAnim];
             if (!frames || !frames.length) return;
             const img = frames[Math.min(this.mFrame, frames.length - 1)];
-            if (!img || !img.complete || !img.naturalWidth) return;
+            if (!this._isSpriteSourceReady(img)) return;
             ctx.save();
             if (this.facingDir === 'left') {
                 ctx.translate(this.x + this.w, this.y);

@@ -85,6 +85,196 @@ const maxAnims = {
     levelComplete: [39,40,41,42,43,44].map(n => { const i = new Image(); i.src = `img/bananSprites/levelComplete/${n}.png`; return i; }),
 };
 
+// Кэш перекрашенных вариантов банан-спрайта:
+// dron -> синий акцент, max -> черный акцент.
+const bananAnimsVariantCache = {
+    dron: null,
+    max: null
+};
+
+/**
+ * Проверяет, готов ли растровый источник для drawImage.
+ * @param {CanvasImageSource} img
+ * @returns {boolean}
+ */
+function isRasterSourceReady(img) {
+    if (!img) return false;
+    if (typeof img.complete === 'boolean') {
+        const w = (typeof img.naturalWidth === 'number' && img.naturalWidth > 0) ? img.naturalWidth : (img.width || 0);
+        const h = (typeof img.naturalHeight === 'number' && img.naturalHeight > 0) ? img.naturalHeight : (img.height || 0);
+        return !!img.complete && w > 0 && h > 0;
+    }
+    return (img.width || 0) > 0 && (img.height || 0) > 0;
+}
+
+/**
+ * Проверяет, загружены ли базовые кадры bananSprites.
+ * @returns {boolean}
+ */
+function areBaseBananAnimsReady() {
+    const animLists = Object.values(maxAnims);
+    for (let i = 0; i < animLists.length; i++) {
+        const frames = animLists[i];
+        for (let j = 0; j < frames.length; j++) {
+            if (!isRasterSourceReady(frames[j])) return false;
+        }
+    }
+    return true;
+}
+
+/**
+ * Конвертирует RGB в HSV.
+ * @param {number} r
+ * @param {number} g
+ * @param {number} b
+ * @returns {{h:number,s:number,v:number}}
+ */
+function rgbToHsv(r, g, b) {
+    const rn = r / 255;
+    const gn = g / 255;
+    const bn = b / 255;
+    const max = Math.max(rn, gn, bn);
+    const min = Math.min(rn, gn, bn);
+    const d = max - min;
+
+    let h = 0;
+    if (d !== 0) {
+        if (max === rn) h = 60 * (((gn - bn) / d) % 6);
+        else if (max === gn) h = 60 * (((bn - rn) / d) + 2);
+        else h = 60 * (((rn - gn) / d) + 4);
+    }
+    if (h < 0) h += 360;
+    const s = max === 0 ? 0 : d / max;
+    const v = max;
+    return { h, s, v };
+}
+
+/**
+ * Конвертирует HSV в RGB.
+ * @param {number} h - 0..360
+ * @param {number} s - 0..1
+ * @param {number} v - 0..1
+ * @returns {{r:number,g:number,b:number}}
+ */
+function hsvToRgb(h, s, v) {
+    const c = v * s;
+    const hp = h / 60;
+    const x = c * (1 - Math.abs((hp % 2) - 1));
+    let rp = 0, gp = 0, bp = 0;
+
+    if (hp >= 0 && hp < 1) { rp = c; gp = x; bp = 0; }
+    else if (hp < 2) { rp = x; gp = c; bp = 0; }
+    else if (hp < 3) { rp = 0; gp = c; bp = x; }
+    else if (hp < 4) { rp = 0; gp = x; bp = c; }
+    else if (hp < 5) { rp = x; gp = 0; bp = c; }
+    else { rp = c; gp = 0; bp = x; }
+
+    const m = v - c;
+    return {
+        r: Math.round((rp + m) * 255),
+        g: Math.round((gp + m) * 255),
+        b: Math.round((bp + m) * 255)
+    };
+}
+
+/**
+ * Определяет, относится ли пиксель к красному акценту (включая бордовый/оранжево-красный).
+ * @param {number} r
+ * @param {number} g
+ * @param {number} b
+ * @returns {boolean}
+ */
+function isRedAccentColor(r, g, b) {
+    const hsv = rgbToHsv(r, g, b);
+    const hueInRange = (hsv.h >= 330 || hsv.h <= 30);
+    return hueInRange && hsv.s >= 0.18 && hsv.v >= 0.10;
+}
+
+/**
+ * Перекрашивает красные акценты кадра.
+ * @param {HTMLImageElement} source
+ * @param {'blue'|'black'} mode
+ * @returns {HTMLCanvasElement}
+ */
+function recolorBananFrame(source, mode) {
+    const w = source.naturalWidth || source.width;
+    const h = source.naturalHeight || source.height;
+    const c = document.createElement('canvas');
+    c.width = Math.max(1, w);
+    c.height = Math.max(1, h);
+    const cctx = c.getContext('2d', { willReadFrequently: true });
+    cctx.clearRect(0, 0, c.width, c.height);
+    cctx.drawImage(source, 0, 0, c.width, c.height);
+
+    const imgData = cctx.getImageData(0, 0, c.width, c.height);
+    const d = imgData.data;
+
+    for (let i = 0; i < d.length; i += 4) {
+        const a = d[i + 3];
+        if (a < 8) continue;
+
+        const r = d[i];
+        const g = d[i + 1];
+        const b = d[i + 2];
+        if (!isRedAccentColor(r, g, b)) continue;
+
+        if (mode === 'blue') {
+            const hsv = rgbToHsv(r, g, b);
+            // Сохраняем светотень исходного пикселя, меняем только тон/насыщенность.
+            const out = hsvToRgb(212, Math.min(1, Math.max(0.45, hsv.s * 0.92 + 0.12)), hsv.v);
+            d[i] = out.r;
+            d[i + 1] = out.g;
+            d[i + 2] = out.b;
+        } else {
+            // Черный вариант: переводим в темные нейтральные оттенки с сохранением объема.
+            const lum = (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
+            const shade = Math.max(8, Math.min(110, Math.round(8 + lum * 102)));
+            d[i] = shade;
+            d[i + 1] = shade;
+            d[i + 2] = shade;
+        }
+    }
+
+    cctx.putImageData(imgData, 0, 0);
+    return c;
+}
+
+/**
+ * Собирает перекрашенный набор кадров bananSprites.
+ * @param {'dron'|'max'} playerType
+ * @returns {Record<string, CanvasImageSource[]>}
+ */
+function buildBananVariantAnims(playerType) {
+    const mode = (playerType === 'dron') ? 'blue' : 'black';
+    const out = {};
+    const animEntries = Object.entries(maxAnims);
+    for (let i = 0; i < animEntries.length; i++) {
+        const entry = animEntries[i];
+        const animName = entry[0];
+        const frames = entry[1];
+        out[animName] = frames.map(frame => recolorBananFrame(frame, mode));
+    }
+    return out;
+}
+
+/**
+ * Возвращает набор bananSprites с учетом выбранного персонажа.
+ * kuzy  -> оригинальные (красные) кадры,
+ * dron  -> красные акценты перекрашены в синие,
+ * max   -> красные акценты перекрашены в черные.
+ * @param {'kuzy'|'dron'|'max'|string} playerType
+ * @returns {Record<string, CanvasImageSource[]>}
+ */
+function getBananAnimsByPlayerType(playerType) {
+    if (playerType === 'kuzy') return maxAnims;
+    if (playerType !== 'dron' && playerType !== 'max') return maxAnims;
+    if (!areBaseBananAnimsReady()) return maxAnims;
+    if (!bananAnimsVariantCache[playerType]) {
+        bananAnimsVariantCache[playerType] = buildBananVariantAnims(playerType);
+    }
+    return bananAnimsVariantCache[playerType] || maxAnims;
+}
+
 // Спрайт врага 67
 const enemy67Img = new Image();
 let enemy67SpriteReady = false;
@@ -244,4 +434,3 @@ const iceCubeImg = createIceCubeTexture();
 // используем тот же PNG, что и у пули-бомбы врага 67 (🧨).
 const dynamiteImg = new Image();
 dynamiteImg.src = "img/emoji/1f9e8.png";
-
