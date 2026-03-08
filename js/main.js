@@ -24,6 +24,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const touchControlsEl = document.getElementById('touch-controls');
     const mobileHintEl = document.getElementById('mobile-controls-hint');
     const MOBILE_HINT_SEEN_KEY = 'bh_mobile_controls_hint_seen_v2';
+    const TUTORIAL_DONE_KEY = 'bh_tutorial_done_v1';
     // Живая проверка — не кешируем, чтобы DevTools-эмуляция мобильного работала корректно
     const isTouchDevice = () => !!(window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
     const inputSourceState = {
@@ -39,6 +40,104 @@ document.addEventListener('DOMContentLoaded', () => {
             window.BHAudio.play(id, opts);
         }
     };
+
+    /**
+     * Возвращает true, если обучение уже пройдено.
+     * @returns {boolean}
+     */
+    function isTutorialDone() {
+        try {
+            return localStorage.getItem(TUTORIAL_DONE_KEY) === '1';
+        } catch (err) {
+            return false;
+        }
+    }
+
+    /**
+     * Показывает подсказку о необходимости пройти обучение.
+     */
+    function showTutorialHint() {
+        const existing = document.getElementById('tutorial-lock-overlay');
+        if (existing) existing.remove();
+
+        const overlay = document.createElement('div');
+        overlay.id = 'tutorial-lock-overlay';
+        Object.assign(overlay.style, {
+            position: 'fixed',
+            inset: '0',
+            zIndex: '3200',
+            background: 'rgba(0,0,0,0.78)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '12px',
+            boxSizing: 'border-box'
+        });
+
+        const box = document.createElement('div');
+        Object.assign(box.style, {
+            width: 'min(620px, 96vw)',
+            background: 'rgba(12,18,30,0.96)',
+            border: '2px solid rgba(255,255,255,0.30)',
+            borderRadius: '12px',
+            padding: '18px 16px',
+            color: '#fff',
+            textAlign: 'center',
+            boxShadow: '0 14px 34px rgba(0,0,0,0.45)'
+        });
+
+        const title = document.createElement('div');
+        title.textContent = '📖 Сначала пройди обучение';
+        Object.assign(title.style, {
+            fontSize: '26px',
+            fontWeight: '900',
+            marginBottom: '10px'
+        });
+
+        const text = document.createElement('div');
+        text.textContent = 'Сначала пройди обучение. Нажми кнопку «📖 Обучение» внизу меню.';
+        Object.assign(text.style, {
+            fontSize: '18px',
+            lineHeight: '1.4',
+            opacity: '0.95'
+        });
+
+        const closeBtn = document.createElement('button');
+        closeBtn.type = 'button';
+        closeBtn.textContent = 'Закрыть';
+        Object.assign(closeBtn.style, {
+            marginTop: '14px',
+            padding: '10px 16px',
+            borderRadius: '10px',
+            border: '2px solid rgba(255,255,255,0.35)',
+            background: '#ffd54f',
+            color: '#000',
+            fontWeight: '800',
+            cursor: 'pointer'
+        });
+        closeBtn.onclick = () => overlay.remove();
+
+        box.appendChild(title);
+        box.appendChild(text);
+        box.appendChild(closeBtn);
+        overlay.appendChild(box);
+        overlay.addEventListener('click', (ev) => {
+            if (ev.target === overlay) overlay.remove();
+        });
+        document.body.appendChild(overlay);
+    }
+
+    /**
+     * Проверяет, можно ли запускать выбранный режим (с учетом обязательного туториала).
+     * @param {string} mode - идентификатор режима.
+     * @returns {boolean}
+     */
+    function canLaunchMode(mode) {
+        if (mode === 'tutorial') return true;
+        if (isTutorialDone()) return true;
+        showTutorialHint();
+        return false;
+    }
 
     /**
      * Синхронизирует общее состояние конкретной клавиши по источникам ввода.
@@ -632,6 +731,9 @@ document.addEventListener('DOMContentLoaded', () => {
         if (gameMode === 'bonus' && typeof onBonusResize === 'function') {
             onBonusResize(prevW, prevH);
         }
+        if (gameMode === 'tutorial' && typeof onTutorialResize === 'function') {
+            onTutorialResize(prevW, prevH);
+        }
     }
 
     const TOUCH_SCALE_KEY = 'bh_touch_scale_v1';
@@ -1178,6 +1280,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (typeof refreshModeButtonsByProgress === 'function') refreshModeButtonsByProgress();
 
     const modeButtons = document.querySelectorAll('.mode');
+    const tutorialBtn = document.getElementById('btnTutorial');
     const audioToggleBtn = document.getElementById('audio-toggle-btn');
     const resetProgressBtn = document.getElementById('reset-progress-btn');
     const bonusLevelBtn = document.getElementById('bonus-level-btn');
@@ -1221,6 +1324,29 @@ document.addEventListener('DOMContentLoaded', () => {
                 audioPlay('ui_error');
                 return;
             }
+            if (!canLaunchMode(targetMode)) {
+                audioPlay('ui_error');
+                return;
+            }
+            if (typeof startModeWithIntro === 'function') {
+                await startModeWithIntro(targetMode, { source: 'menu' });
+            } else {
+                document.getElementById('menu').style.display = 'none';
+                document.getElementById('game').style.display = 'block';
+                gameMode = targetMode;
+                beginGameRun(gameMode, true);
+                setTouchControlsVisible(true);
+                setPauseGameBtnVisible(true);
+            }
+        };
+    }
+    if (tutorialBtn) {
+        tutorialBtn.onclick = async () => {
+            audioPlay('ui_click');
+            clearInputSource('keyboard');
+            clearTouchInputs();
+            paused = false;
+            const targetMode = 'tutorial';
             if (typeof startModeWithIntro === 'function') {
                 await startModeWithIntro(targetMode, { source: 'menu' });
             } else {
@@ -1250,6 +1376,10 @@ document.addEventListener('DOMContentLoaded', () => {
             paused = false;
             const targetMode = m.dataset.mode || 'normal';
             if (typeof isModeUnlockedByProgress === 'function' && !isModeUnlockedByProgress(targetMode)) {
+                audioPlay('ui_error');
+                return;
+            }
+            if (!canLaunchMode(targetMode)) {
                 audioPlay('ui_error');
                 return;
             }
@@ -1287,7 +1417,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // снимая его со всех остальных — чтобы не было двух одновременных фокусов.
     document.addEventListener('mouseover', e => {
         const el = e.target.closest(
-            '.char, .mode, #help-btn, #audio-toggle-btn, #bonus-level-btn, #reset-progress-btn, #help-back-btn, ' +
+            '.char, .mode, #help-btn, #audio-toggle-btn, #bonus-level-btn, #reset-progress-btn, #btnTutorial, #help-back-btn, ' +
             'button[data-pause-idx], button[data-overlay-btn-idx]'
         );
         if (!el || el.disabled) return;
@@ -1428,9 +1558,10 @@ document.addEventListener('DOMContentLoaded', () => {
         const audioBtnEl = document.getElementById('audio-toggle-btn');
         const bonusBtnEl = document.getElementById('bonus-level-btn');
         const resetBtnEl = document.getElementById('reset-progress-btn');
+        const tutorialBtnEl = document.getElementById('btnTutorial');
         // Снимаем подсветку со всех элементов меню
         [...cEls, ...mEls].forEach(el => el.classList.remove('menu-kb-focus'));
-        [helpBtnEl, audioBtnEl, bonusBtnEl, resetBtnEl].forEach(el => el && el.classList.remove('menu-kb-focus'));
+        [helpBtnEl, audioBtnEl, bonusBtnEl, resetBtnEl, tutorialBtnEl].forEach(el => el && el.classList.remove('menu-kb-focus'));
         if (section === 'char') {
             if (cEls[idx]) cEls[idx].classList.add('menu-kb-focus');
         } else if (section === 'mode') {
@@ -1445,6 +1576,8 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         } else if (section === 'reset') {
             if (resetBtnEl) resetBtnEl.classList.add('menu-kb-focus');
+        } else if (section === 'tutorial') {
+            if (tutorialBtnEl) tutorialBtnEl.classList.add('menu-kb-focus');
         }
     }
 
@@ -1582,6 +1715,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const audioBtnEl = document.getElementById('audio-toggle-btn');
         const bonusBtnEl = document.getElementById('bonus-level-btn');
         const resetBtnEl = document.getElementById('reset-progress-btn');
+        const tutorialBtnEl = document.getElementById('btnTutorial');
         const modesContainer = document.getElementById('modes');
         const modesVisible = modesContainer && modesContainer.style.display !== 'none';
 
@@ -1593,7 +1727,9 @@ document.addEventListener('DOMContentLoaded', () => {
         const fAudio = audioBtnEl && audioBtnEl.classList.contains('menu-kb-focus');
         const fBonus = bonusBtnEl && bonusBtnEl.classList.contains('menu-kb-focus');
         const fReset = resetBtnEl && resetBtnEl.classList.contains('menu-kb-focus');
-        if (fReset)      { section = 'reset'; idx = 0; }
+        const fTutorial = tutorialBtnEl && tutorialBtnEl.classList.contains('menu-kb-focus');
+        if (fTutorial)   { section = 'tutorial'; idx = 0; }
+        else if (fReset) { section = 'reset'; idx = 0; }
         else if (fBonus) { section = 'bonus'; idx = 0; }
         else if (fAudio) { section = 'audio'; idx = 0; }
         else if (fHelp)  { section = 'help';  idx = 0; }
@@ -1628,7 +1764,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (modesContainer && modesContainer.style.display !== 'none') menuNavFocus('mode', 0);
             } else if (section === 'mode') {
                 if (idx < mEls.length - 1) menuNavFocus('mode', idx + 1);
-                else menuNavFocus('help', 0);
+                else menuNavFocus('tutorial', 0);
+            } else if (section === 'tutorial') {
+                menuNavFocus('help', 0);
             } else if (section === 'help') {
                 menuNavFocus('audio', 0);
             } else if (section === 'audio') {
@@ -1647,8 +1785,10 @@ document.addEventListener('DOMContentLoaded', () => {
             if (section === 'mode') {
                 if (idx === 0) menuNavFocus('char', fChar >= 0 ? fChar : 0);
                 else menuNavFocus('mode', idx - 1);
-            } else if (section === 'help') {
+            } else if (section === 'tutorial') {
                 menuNavFocus('mode', mEls.length - 1);
+            } else if (section === 'help') {
+                menuNavFocus('tutorial', 0);
             } else if (section === 'audio') {
                 menuNavFocus('help', 0);
             } else if (section === 'bonus') {
@@ -1675,6 +1815,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 bonusBtnEl?.click();
             } else if (section === 'reset') {
                 resetBtnEl?.click();
+            } else if (section === 'tutorial') {
+                tutorialBtnEl?.click();
             }
             e.preventDefault();
         }

@@ -82,6 +82,7 @@ function isMobileAdaptiveCombatMode(mode) {
         || mode === 'poimal'
         || mode === 'runner'
         || mode === 'bonus'
-        || mode === 'library';
+        || mode === 'library'
+        || mode === 'tutorial';
 }
 

@@ -14,6 +14,12 @@
             overflow: hidden;
         }
 
+        :root {
+            --menu-util-edge: 20px;
+            --menu-util-btn-h: 52px;
+            --menu-util-btn-gap: calc(var(--menu-util-btn-h) / 5);
+        }
+
         #menu {
             text-align: center;
             margin: 0;
@@ -41,10 +47,21 @@
         }
         .menu-inner { position: relative; z-index: 2; }
 
+        #scores-toggle-btn,
+        #help-btn,
+        #audio-toggle-btn,
+        #reset-progress-btn,
+        #bonus-level-btn {
+            min-height: var(--menu-util-btn-h);
+            box-sizing: border-box;
+            display: inline-flex;
+            align-items: center;
+        }
+
         #reset-progress-btn {
             position: fixed;
             right: 20px;
-            bottom: 76px;
+            bottom: calc(var(--menu-util-edge) + var(--menu-util-btn-h) + var(--menu-util-btn-gap));
             z-index: 3;
             cursor: pointer;
             font-size: 18px;
@@ -68,7 +85,7 @@
         #bonus-level-btn {
             position: fixed;
             right: 20px;
-            bottom: 132px;
+            bottom: calc(var(--menu-util-edge) + (var(--menu-util-btn-h) + var(--menu-util-btn-gap)) * 2);
             z-index: 3;
             cursor: pointer;
             font-size: 18px;
@@ -93,7 +110,7 @@
         #audio-toggle-btn {
             position: fixed;
             right: 20px;
-            bottom: 20px;
+            bottom: var(--menu-util-edge);
             z-index: 3;
             cursor: pointer;
             font-size: 18px;
@@ -114,6 +131,34 @@
 
         #audio-toggle-btn:active {
             transform: scale(0.95);
+        }
+
+        #tutorial-btn-wrap {
+            position: fixed;
+            left: 50%;
+            bottom: 20px;
+            transform: translateX(-50%);
+            z-index: 3;
+            pointer-events: auto;
+        }
+        #btnTutorial {
+            cursor: pointer;
+            font-size: 18px;
+            padding: 12px 18px;
+            border-radius: 10px;
+            border: 3px solid rgba(255,255,255,0.38);
+            background: linear-gradient(180deg, #4a7c4e 0%, #2f5f35 100%);
+            color: #fff;
+            font-weight: 800;
+            transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+        }
+        #btnTutorial:hover {
+            transform: scale(1.05);
+            box-shadow: 0 4px 10px rgba(0,0,0,0.35);
+            border-color: rgba(255,255,255,0.62);
+        }
+        #btnTutorial:active {
+            transform: scale(0.96);
         }
 
         #menu h1 {
@@ -210,7 +255,8 @@
         #help-btn.menu-kb-focus,
         #audio-toggle-btn.menu-kb-focus,
         #reset-progress-btn.menu-kb-focus,
-        #bonus-level-btn.menu-kb-focus {
+        #bonus-level-btn.menu-kb-focus,
+        #btnTutorial.menu-kb-focus {
             outline: 3px solid #fff;
             transform: scale(1.08);
             box-shadow: 0 0 22px rgba(255,255,255,0.8);
@@ -611,7 +657,7 @@
                 --m-btn-pv:  min(1.8vw, 1.5svh);
                 --m-btn-ph:  min(2.8vw, 2svh);
                 --m-btn-h:   min(8vw,   6svh);
-                --m-btn-gap: min(3vw, 2.5svh);
+                --m-btn-gap: max(calc(var(--m-btn-h) / 5), min(3vw, 2.5svh));
             }
             /* ---- FULLSCREEN BUTTON (mobile only, shown by JS) ---- */
             #fullscreen-btn {
@@ -693,37 +739,21 @@
 
             /* CSS vars are now on :root (see top of this media query) */
 
-            /* === Utility row: fixed grid container === */
+            /* === Utility buttons in mobile: same corner layout as desktop === */
             #menu-util-row {
-                position: fixed !important;
-                bottom: calc(var(--m-edge) + env(safe-area-inset-bottom)) !important;
-                left: var(--m-edge) !important;
-                right: var(--m-edge) !important;
-                display: grid !important;
-                grid-template-columns: auto auto !important;
-                grid-template-rows: auto auto auto !important;
-                grid-template-areas:
-                    "scores bonus"
-                    "help   reset"
-                    ".      audio" !important;
-                justify-content: space-between !important;
-                row-gap: 5px !important;
-                column-gap: 10px !important;
+                position: static !important;
+                display: block !important;
                 z-index: 10 !important;
-                pointer-events: none !important;
             }
-            /* Shared: reset individual fixed positioning, enable pointer events */
+            /* Shared mobile sizing */
             #scores-toggle-btn,
             #help-btn,
             #audio-toggle-btn,
             #reset-progress-btn,
             #bonus-level-btn {
-                position: static !important;
-                bottom: unset !important;
-                left: unset !important;
-                right: unset !important;
+                position: fixed !important;
                 pointer-events: auto !important;
-                max-width: calc(50vw - var(--m-edge) - 5px) !important;
+                max-width: calc(50vw - var(--m-edge)) !important;
                 overflow: hidden !important;
                 text-overflow: ellipsis !important;
                 white-space: nowrap !important;
@@ -731,32 +761,60 @@
                 font-size: var(--m-btn-fs) !important;
                 padding: var(--m-btn-pv) var(--m-btn-ph) !important;
                 min-width: unset !important;
+                min-height: var(--m-btn-h) !important;
+                height: var(--m-btn-h) !important;
+                display: inline-flex !important;
+                align-items: center !important;
                 border-radius: 8px !important;
             }
-            /* Grid placement */
             #scores-toggle-btn {
-                grid-area: scores !important;
-                display: block !important;
+                display: inline-flex !important;
                 background: #4fc3f7;
                 color: #000;
                 border: 3px solid transparent;
+                left: var(--m-edge) !important;
+                right: auto !important;
+                bottom: calc(var(--m-edge) + var(--m-btn-h) + var(--m-btn-gap) + env(safe-area-inset-bottom)) !important;
             }
             #scores-toggle-btn:active { transform: scale(0.95); background: #0288d1; color: #fff; }
-            #help-btn    { grid-area: help  !important; }
+            #help-btn {
+                left: var(--m-edge) !important;
+                right: auto !important;
+                bottom: calc(var(--m-edge) + env(safe-area-inset-bottom)) !important;
+            }
             #bonus-level-btn {
-                grid-area: bonus !important;
+                right: var(--m-edge) !important;
+                left: auto !important;
+                bottom: calc(var(--m-edge) + var(--m-btn-h) * 2 + var(--m-btn-gap) * 2 + env(safe-area-inset-bottom)) !important;
                 justify-self: end !important;
                 align-items: center !important;
                 justify-content: center !important;
             }
-            /* Right-column buttons align to the right edge */
             #reset-progress-btn {
-                grid-area: reset !important;
+                right: var(--m-edge) !important;
+                left: auto !important;
+                bottom: calc(var(--m-edge) + var(--m-btn-h) + var(--m-btn-gap) + env(safe-area-inset-bottom)) !important;
                 justify-self: end !important;
             }
             #audio-toggle-btn {
-                grid-area: audio !important;
+                right: var(--m-edge) !important;
+                left: auto !important;
+                bottom: calc(var(--m-edge) + env(safe-area-inset-bottom)) !important;
                 justify-self: end !important;
+            }
+            #tutorial-btn-wrap {
+                position: fixed !important;
+                left: 50% !important;
+                transform: translateX(-50%) !important;
+                bottom: calc(var(--m-edge) + env(safe-area-inset-bottom)) !important;
+                z-index: 11 !important;
+                pointer-events: auto !important;
+            }
+            #btnTutorial {
+                font-size: var(--m-btn-fs) !important;
+                padding: var(--m-btn-pv) calc(var(--m-btn-ph) * 1.5) !important;
+                min-height: var(--m-btn-h) !important;
+                border-radius: 8px !important;
             }
             /* Menu content must not hide behind fixed buttons */
             .menu-inner {
@@ -850,7 +908,7 @@
             .char { font-size: min(3vw, 5svh); padding: 1svh 1.5vw; }
             #modes.active { gap: 0.5svh; grid-template-columns: repeat(4, 1fr); margin-top: 0.5svh; }
             #modes button { min-height: 5.5svh; font-size: min(2.2vw, 4svh); padding: 0.8svh 1vw; }
-            #menu { --m-btn-fs: min(2.5vw, 4svh); --m-btn-pv: min(1vw, 1.2svh); --m-btn-ph: min(1.5vw, 1.5svh); --m-btn-h: min(6vw, 7svh); --m-btn-gap: min(1vw, 1svh); --m-edge: min(1.5vw, 1.5svh); }
+            #menu { --m-btn-fs: min(2.5vw, 4svh); --m-btn-pv: min(1vw, 1.2svh); --m-btn-ph: min(1.5vw, 1.5svh); --m-btn-h: min(6vw, 7svh); --m-btn-gap: max(calc(var(--m-btn-h) / 5), min(1vw, 1svh)); --m-edge: min(1.5vw, 1.5svh); }
         }
 
         /* На очень узких экранах (<360px) уменьшаем кнопки чтобы pad и actions не пересекались */
@@ -870,7 +928,7 @@
         #help-btn {
             position: fixed;
             left: 20px;
-            bottom: 20px;
+            bottom: var(--menu-util-edge);
             z-index: 3;
             cursor: pointer;
             font-size: 18px;
@@ -1184,6 +1242,10 @@
         /* ==== SCORES TOGGLE BTN (mobile only) ==== */
         #scores-toggle-btn {
             display: none;
+            position: fixed;
+            left: 20px;
+            bottom: calc(var(--menu-util-edge) + var(--menu-util-btn-h) + var(--menu-util-btn-gap));
+            z-index: 3;
         }
 
         /* ==== MENU UTIL ROW (mobile layout wrapper for fixed btns) ==== */
@@ -1296,6 +1358,9 @@
         <button id="audio-toggle-btn" type="button" title="Включить/выключить все звуки">🔊 Звук: ВКЛ</button>
         <button id="bonus-level-btn" type="button" title="Бонусный уровень">🎁 Bonus</button>
         <button id="reset-progress-btn" type="button" title="Сбросить открытые уровни">Сбросить прогресс</button>
+    </div>
+    <div id="tutorial-btn-wrap">
+        <button id="btnTutorial" type="button">📖 Обучение</button>
     </div>
 </div>
 
@@ -1533,6 +1598,7 @@
 <script src="js/modes/runner.js"></script>
 <script src="js/modes/bonus.js"></script>
 <script src="js/modes/library.js"></script>
+<script src="js/modes/tutorial.js"></script>
 <script src="js/systems/bullets.js"></script>
 <script src="js/systems/spawn.js"></script>
 <script src="js/systems/update.js"></script>

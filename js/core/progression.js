@@ -44,6 +44,7 @@ const CAMPAIGN_LEVEL_META = Object.freeze({
     poimal:    { title: 'Поймал', desc: 'Падающие Кузи без конца: зарабатывай очки и держи темп фаз 2/3.' },
     runner:    { title: 'Бегун', desc: 'Дрон должен научится курить. Даже если не научится, хоть ногу подвернет.' },
     library:   { title: 'Библиотека', desc: 'Я хз зачем, но унитаз захотел почитать. Помоги ему - он поможет тебе.' },
+    tutorial:  { title: 'Обучение', desc: 'Быстрый интро-уровень: движение, стрельба, бонусы, смена персонажа и мини-босс.' },
     bonus:     { title: 'Бонусный уровень', desc: 'Финальная секретная сцена после прохождения игры.' },
     mode67:   { title: 'Режим 67', desc: 'Сразись с оригинальным врагом 67  он снова вернулся!' }
 });
@@ -59,6 +60,7 @@ const PROGRESS_KEYS = Object.freeze({
     gameCompletedOnce: 'bh_game_completed_once_v1',
     mode67Unlocked: 'bh_mode67_unlocked_v1',
     mode67NoticeShown: 'bh_mode67_notice_shown_v1',
+    tutorialDone: 'bh_tutorial_done_v1',
     levelCompletedPrefix: 'bh_level_completed_v1_',
     completionFlagsMigrated: 'bh_completion_flags_migrated_v1'
 });
@@ -593,6 +595,8 @@ function resetCampaignProgressState() {
     pendingProgressNotices.mode67Unlock = false;
     writeLS(PROGRESS_KEYS.mode67Unlocked, '0');
     writeLS(PROGRESS_KEYS.mode67NoticeShown, '0');
+    // Полный сброс прогресса: обучение снова считается не пройденным.
+    writeLS(PROGRESS_KEYS.tutorialDone, '0');
     resetCampaignSessionForMenu();
 }
 

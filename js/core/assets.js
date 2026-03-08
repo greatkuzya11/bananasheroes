@@ -41,7 +41,11 @@ let jumpSpriteReady = false;
 kuzyJumpImg.onload = () => { jumpSpriteReady = true; };
 kuzyJumpImg.src = "img/kuzy_jump.png";
 
-// PNG Sequences анимации для персонажа Кузя
+// PNG Sequences анимации "legacy"-набора.
+// ВАЖНО: это НЕ каноничные "персонажные наборы" выбора Кузя/Макс/Дрон.
+// Каноничные наборы персонажей для текущей игры — bananSprites (см. maxAnims + recolor-варианты).
+// Этот набор оставлен только для старых режимов/совместимости и не должен использоваться
+// как "привязанный к персонажу" при разработке новых режимов.
 const kuzyAnimDefs = {
     idle:      { folder: 'Idle',                prefix: '0_Bloody_Alchemist_Idle',                count: 18 },
     walk:      { folder: 'Walking',             prefix: '0_Bloody_Alchemist_Walking',             count: 24 },

@@ -710,7 +710,8 @@ class Player {
      * Отрисовывает игрока на холсте canvas с учетом состояния.
      */
     draw() {
-        // Кузя: отрисовка через PNG Sequences кадры
+        // spriteSystem === 'kuzy' = legacy PNG Sequences набор (историческая совместимость).
+        // Для каноничного выбора персонажных наборов используем bananSprites (spriteSystem === 'max' + recolor по type).
         if (this.spriteSystem === 'kuzy') {
             const frames = kuzyAnims[this.kAnim];
             if (!frames || !frames.length) return;

@@ -132,6 +132,12 @@ function draw() {
         return;
     }
 
+    // Отдельная отрисовка обучающего уровня.
+    if (gameMode === 'tutorial') {
+        drawTutorialMode();
+        return;
+    }
+
     // Рисуем адаптивный фон
     if (bgReady) {
         ctx.drawImage(bgImg, 0, 0, canvas.width, canvas.height);

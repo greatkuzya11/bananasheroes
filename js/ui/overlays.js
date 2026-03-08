@@ -23,6 +23,7 @@ function getIntroBackgroundForMode(mode) {
         poimal: 'img/avs-bg.png',
         runner: 'img/ud-bg.png',
         bonus: 'img/bg-avs.png',
+        tutorial: 'img/bg-avs2.png',
         library: 'img/lb2-bg.png'
     };
     return bgByMode[mode] || 'img/forest.png';
@@ -266,6 +267,129 @@ function startModeWithIntro(mode, options = {}) {
     });
 }
 window.startModeWithIntro = startModeWithIntro;
+
+/**
+ * Специальный экран завершения для режима "Обучение".
+ * Без рекордов и без кнопки "Следующий уровень".
+ */
+function showTutorialCompleteOverlay() {
+    if (typeof window.clearGameInputs === 'function') {
+        window.clearGameInputs();
+    }
+    if (typeof clearScheduledEnemySpawns === 'function') clearScheduledEnemySpawns();
+    if (typeof window.setGameTouchControlsVisible === 'function') {
+        window.setGameTouchControlsVisible(false);
+    }
+    if (window.BHAudio) {
+        window.BHAudio.playLevelWin();
+        window.BHAudio.setPaused(true);
+    }
+    paused = true;
+    levelCompleteShown = true;
+
+    const existing = document.getElementById('level-complete-overlay');
+    if (existing) existing.remove();
+
+    const overlay = document.createElement('div');
+    overlay.id = 'level-complete-overlay';
+    Object.assign(overlay.style, {
+        position: 'fixed',
+        left: '0',
+        top: '0',
+        width: '100%',
+        height: '100%',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        pointerEvents: 'auto',
+        background: 'rgba(0,0,0,0.20)'
+    });
+
+    const box = document.createElement('div');
+    Object.assign(box.style, {
+        background: 'rgba(255,255,255,0.95)',
+        borderRadius: '12px',
+        padding: '24px',
+        boxShadow: '0 8px 24px rgba(0,0,0,0.3)',
+        textAlign: 'center',
+        minWidth: '420px'
+    });
+
+    const title = document.createElement('div');
+    title.innerText = '📖 Обучение пройдено';
+    Object.assign(title.style, {
+        fontSize: '26px',
+        fontWeight: '800',
+        color: '#1b5e20',
+        marginBottom: '12px'
+    });
+
+    const msg = document.createElement('div');
+    msg.innerText = 'Теперь открыта вся кампания. Можешь запускать основные уровни. Но лучше сначала зайди в раздел HELP и почитай еще.';
+    Object.assign(msg.style, {
+        fontSize: '19px',
+        marginBottom: '18px',
+        color: '#222'
+    });
+
+    const buttons = document.createElement('div');
+    Object.assign(buttons.style, { display: 'flex', gap: '12px', justifyContent: 'center' });
+
+    const btnRetry = document.createElement('button');
+    btnRetry.innerText = 'Повторить обучение';
+    btnRetry.dataset.overlayBtnIdx = '0';
+    Object.assign(btnRetry.style, { padding: '8px 14px', fontSize: '16px', cursor: 'pointer' });
+    btnRetry.onclick = async () => {
+        if (window.BHAudio) window.BHAudio.play('ui_click');
+        overlay.remove();
+        paused = false;
+        if (typeof startModeWithIntro === 'function') {
+            await startModeWithIntro('tutorial', { source: 'retry' });
+        } else {
+            beginGameRun('tutorial', true);
+        }
+    };
+
+    const btnMain = document.createElement('button');
+    btnMain.innerText = 'Главный экран';
+    btnMain.dataset.overlayBtnIdx = '1';
+    Object.assign(btnMain.style, { padding: '8px 14px', fontSize: '16px', cursor: 'pointer' });
+    btnMain.onclick = () => {
+        if (window.BHAudio) window.BHAudio.play('ui_click');
+        if (typeof window.clearGameInputs === 'function') {
+            window.clearGameInputs();
+        }
+        if (typeof clearScheduledEnemySpawns === 'function') clearScheduledEnemySpawns();
+        if (typeof resetGameStateForMenu === 'function') resetGameStateForMenu();
+        document.getElementById('game').style.display = 'none';
+        document.getElementById('menu').style.display = 'block';
+        overlay.remove();
+        paused = false;
+        if (typeof window.setGameTouchControlsVisible === 'function') {
+            window.setGameTouchControlsVisible(false);
+        }
+        if (window.BHAudio) {
+            window.BHAudio.setMenuActive(true);
+            window.BHAudio.setPaused(false);
+        }
+        if (typeof refreshModeButtonsByProgress === 'function') {
+            refreshModeButtonsByProgress();
+        }
+        if (typeof window.menuNavFocus === 'function') {
+            window.menuNavFocus('char', 0);
+        }
+    };
+
+    buttons.appendChild(btnRetry);
+    buttons.appendChild(btnMain);
+    box.appendChild(title);
+    box.appendChild(msg);
+    box.appendChild(buttons);
+    overlay.appendChild(box);
+    document.body.appendChild(overlay);
+    btnRetry.classList.add('menu-kb-focus');
+}
+window.showTutorialCompleteOverlay = showTutorialCompleteOverlay;
 
 function showLevelComplete() {
     if (typeof window.clearGameInputs === 'function') {
@@ -946,5 +1070,6 @@ function playGameOverSound(isNew) {
         console.warn('Audio not available', e);
     }
 }
+
 
 

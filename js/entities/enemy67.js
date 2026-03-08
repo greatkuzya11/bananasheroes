@@ -47,8 +47,9 @@ class Enemy67 {
      * @param {number} playerX - начальная X позиция игрока (для ориентира).
      * @param {number} playerY - начальная Y позиция игрока (для ориентира).
      * @param {boolean} platformMode - true для режима платформ.
+     * @param {{forceBaseSheet?:boolean}} options - доп. флаги поведения.
      */
-    constructor(playerX, playerY, platformMode = false) {
+    constructor(playerX, playerY, platformMode = false, options = null) {
         const adaptiveCombat = (typeof isMobileAdaptiveCombatMode === 'function')
             && isMobileAdaptiveCombatMode(gameMode);
         const adaptiveScale = adaptiveCombat
@@ -100,6 +101,7 @@ class Enemy67 {
         this.moveSpeed = platformMode ? 0 : 50 * adaptiveScale * this.mobileBalance.enemyMoveSpeed; // не движется в режиме платформ
         this.sizeIncreaseTimer = 0; // таймер для увеличения размера каждую секунду
         this.platformMode = platformMode; // флаг режима платформ
+        this.forceBaseSheet = !!(options && options.forceBaseSheet);
     }
     /**
      * Обновляет анимацию, позицию и стрельбу врага.
@@ -205,6 +207,10 @@ class Enemy67 {
      * @returns {{type:'sheet', img: HTMLImageElement}|{type:'tpFrames', frames: HTMLImageElement[]}|null}
      */
     getRenderProfile() {
+        if (this.forceBaseSheet && enemy67SpriteReady && enemy67Img && enemy67Img.complete) {
+            return { type: 'sheet', img: enemy67Img };
+        }
+
         const perf = window.BHBulletPerf;
         const renderMode = (perf && typeof perf.enemy67RenderMode === 'function')
             ? perf.enemy67RenderMode()

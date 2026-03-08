@@ -85,6 +85,12 @@ function update(dt) {
         return;
     }
 
+    // Отдельный игровой цикл обучающего уровня.
+    if (gameMode === 'tutorial') {
+        updateTutorialMode(dt);
+        return;
+    }
+
     if (invuln > 0) invuln -= dt;
     // Таймер визуального эффекта смены фазы
     if (normalPhaseEffectTimer > 0) normalPhaseEffectTimer = Math.max(0, normalPhaseEffectTimer - dt);

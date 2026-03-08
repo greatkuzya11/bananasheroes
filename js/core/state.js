@@ -196,6 +196,7 @@ function resetGameRuntimeCore() {
     if (typeof resetRunnerLevelState === 'function') resetRunnerLevelState();
     if (typeof resetLovlyuLevelState === 'function') resetLovlyuLevelState();
     if (typeof resetBonusLevelState === 'function') resetBonusLevelState();
+    if (typeof resetTutorialLevelState === 'function') resetTutorialLevelState();
 }
 
 /**
@@ -371,6 +372,13 @@ function initRunWorldByMode(mode) {
         initLibraryLevel();
         player.x = canvas.width / 2 - player.w / 2;
         player.y = canvas.height - player.h - Math.max(8, Math.round(canvas.height * 0.033));
+        return;
+    }
+
+    if (startMode === 'tutorial') {
+        setRunBackground('img/bg-avs2.png');
+        playerBulletDir = 'right';
+        if (typeof initTutorialLevel === 'function') initTutorialLevel();
         return;
     }
 

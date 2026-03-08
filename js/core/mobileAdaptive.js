@@ -23,7 +23,8 @@ class BHMobileAdaptive {
             'poimal',
             'runner',
             'bonus',
-            'library'
+            'library',
+            'tutorial'
         ]);
     }
 
@@ -191,7 +192,8 @@ class BHMobileAdaptive {
             poimal:   { dropFallSpeed: 0.95, targetFallSpeed: 0.92 },
             runner:   { dropFallSpeed: 0.95, bossMoveSpeed: 0.96 },
             bonus:    { enemyMoveSpeed: 0.96, bossMoveSpeed: 0.96 },
-            library:  { enemyFireRate: 0.82, enemyProjectileSpeed: 0.90, enemyMoveSpeed: 0.95, dropFallSpeed: 0.95, homing: 0.92 }
+            library:  { enemyFireRate: 0.82, enemyProjectileSpeed: 0.90, enemyMoveSpeed: 0.95, dropFallSpeed: 0.95, homing: 0.92 },
+            tutorial: { enemyFireRate: 0.92, enemyProjectileSpeed: 0.92, enemyMoveSpeed: 0.95, dropFallSpeed: 0.95, homing: 0.95 }
         };
         return { ...base, ...(profiles[mode] || {}) };
     }
