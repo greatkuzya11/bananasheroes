@@ -6,12 +6,70 @@
 function loop(ts) {
     if (!running) return;
     if (!paused) {
+        pollGamepad();
         const dt = (ts - last) / 1000;
         last = ts;
         update(dt);
     }
     draw();
     animFrameId = requestAnimationFrame(loop);
+}
+
+/**
+ * Опрашивает подключённые геймпады и транслирует их состояние в систему ввода.
+ * Вызывается каждый кадр до update(). Использует window._bhGpSrc —
+ * прокси-объект, устанавливаемый в DOMContentLoaded после инициализации ввода.
+ */
+function pollGamepad() {
+    if (!navigator.getGamepads || !window._bhGpSrc) return;
+    const gamepads = navigator.getGamepads();
+
+    // Найти первый подключённый геймпад
+    let gp = null;
+    for (let i = 0; i < gamepads.length; i++) {
+        if (gamepads[i] && gamepads[i].connected) { gp = gamepads[i]; break; }
+    }
+
+    // Нет ни одного геймпада — отпускаем все удерживаемые кнопки
+    if (!gp) {
+        const toRelease = [];
+        window._bhGpSrc.forEach(k => toRelease.push(k));
+        toRelease.forEach(k => window._bhGpSrc.releaseKey(k));
+        return;
+    }
+
+    const DEAD = 0.25;
+    const want = new Set();
+
+    // Левый стик X
+    const ax0 = gp.axes[0] || 0;
+    if (ax0 < -DEAD)  want.add('ArrowLeft');
+    if (ax0 >  DEAD)  want.add('ArrowRight');
+
+    // Левый стик Y — прыжок при отклонении вверх
+    const ax1 = gp.axes[1] || 0;
+    if (ax1 < -DEAD)  want.add('ArrowUp');
+
+    // D-pad (стандартный маппинг: кнопки 12-15)
+    if (gp.buttons[12]?.pressed)  want.add('ArrowUp');
+    if (gp.buttons[13]?.pressed)  want.add('ArrowDown');
+    if (gp.buttons[14]?.pressed)  want.add('ArrowLeft');
+    if (gp.buttons[15]?.pressed)  want.add('ArrowRight');
+
+    // Лицевые кнопки
+    if (gp.buttons[0]?.pressed)   want.add('ArrowUp');  // A → прыжок
+    if (gp.buttons[1]?.pressed)   want.add('Shift');    // B → бонусный режим
+    if (gp.buttons[2]?.pressed)   want.add(' ');        // X → огонь
+    if (gp.buttons[3]?.pressed)   want.add('Control');  // Y → alt-выстрел
+    if (gp.buttons[4]?.pressed)   want.add('ArrowDown');// LB → прицел вниз
+    if (gp.buttons[5]?.pressed)   want.add('ArrowDown');// RB → прицел вниз
+    if (gp.buttons[9]?.pressed)   want.add('Escape');   // Start → пауза
+
+    // Синхронизируем: отпускаем исчезнувшие, нажимаем новые
+    const toRelease = [];
+    window._bhGpSrc.forEach(k => { if (!want.has(k)) toRelease.push(k); });
+    toRelease.forEach(k => window._bhGpSrc.releaseKey(k));
+    want.forEach(k => { if (!window._bhGpSrc.has(k)) window._bhGpSrc.pressKey(k); });
 }
 
 /**
@@ -29,7 +87,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const isTouchDevice = () => !!(window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
     const inputSourceState = {
         keyboard: new Set(),
-        touch: new Set()
+        touch: new Set(),
+        gamepad: new Set()
     };
     const touchPointers = new Map();
     const touchKeyHoldCount = new Map();
@@ -144,7 +203,9 @@ document.addEventListener('DOMContentLoaded', () => {
      * @param {string} key - код клавиши.
      */
     function refreshKeyState(key) {
-        keys[key] = inputSourceState.keyboard.has(key) || inputSourceState.touch.has(key);
+        keys[key] = inputSourceState.keyboard.has(key)
+                 || inputSourceState.touch.has(key)
+                 || inputSourceState.gamepad.has(key);
     }
 
     /**
@@ -491,11 +552,13 @@ document.addEventListener('DOMContentLoaded', () => {
         touchControlsEl.addEventListener('contextmenu', e => e.preventDefault());
         window.addEventListener('blur', () => {
             clearInputSource('keyboard');
+            clearInputSource('gamepad');
             clearTouchInputs();
         });
         document.addEventListener('visibilitychange', () => {
             if (document.hidden) {
                 clearInputSource('keyboard');
+                clearInputSource('gamepad');
                 clearTouchInputs();
             }
         });
@@ -664,6 +727,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Экспортируем сервисные функции ввода для оверлеев и экранов завершения.
     window.clearGameInputs = () => {
         clearInputSource('keyboard');
+        clearInputSource('gamepad');
         clearTouchInputs();
     };
     // ResizeObserver: держим CSS-переменную --hud-h актуальной,
@@ -1040,6 +1104,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (pauseOverlay) pauseOverlay.remove();
             paused = false;
             clearInputSource('keyboard');
+            clearInputSource('gamepad');
             clearTouchInputs();
             beginGameRun(gameMode, true);
             setTouchControlsVisible(true);
@@ -1087,6 +1152,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (pauseOverlay) pauseOverlay.remove();
             paused = false;
             clearInputSource('keyboard');
+            clearInputSource('gamepad');
             clearTouchInputs();
             if (typeof clearScheduledEnemySpawns === 'function') clearScheduledEnemySpawns();
             if (typeof resetGameStateForMenu === 'function') resetGameStateForMenu();
@@ -1223,6 +1289,8 @@ document.addEventListener('DOMContentLoaded', () => {
             pauseOverlay.remove();
         }
         paused = false;
+        clearInputSource('keyboard');
+        clearInputSource('gamepad');
         disableTouchBlockDragging();
         if (window.BHAudio) {
             window.BHAudio.setPaused(false);
@@ -1240,12 +1308,144 @@ document.addEventListener('DOMContentLoaded', () => {
     initTouchControls();
     setTouchControlsVisible(false);
 
+    // ==== GAMEPAD ====
+    // Прокси-объект для удобной работы с источником 'gamepad' из pollGamepad()
+    window._bhGpSrc = {
+        has:  (k) => inputSourceState.gamepad.has(k),
+        pressKey:   (k) => pressInputKey(k, 'gamepad'),
+        releaseKey: (k) => releaseInputKey(k, 'gamepad'),
+        forEach: (cb) => inputSourceState.gamepad.forEach(cb)
+    };
+
+    window.addEventListener('gamepadconnected', (e) => {
+        // Коротко уведомляем игрока (только если игра не запущена или на паузе)
+        if (!running || paused) return;
+        if (typeof showTransientInfoNotice === 'function') {
+            showTransientInfoNotice('🎮 Геймпад подключён: ' + (e.gamepad.id.slice(0, 32) || 'контроллер'), 2000);
+        }
+    });
+    window.addEventListener('gamepaddisconnected', () => {
+        clearInputSource('gamepad');
+    });
+
+    // ==== GAMEPAD МЕНЮ-НАВИГАЦИЯ ====
+    // Отдельный RAF-цикл для UI-навигации геймпадом (меню, пауза, оверлеи).
+    // Edge-triggered: одно нажатие = одно событие, удержание даёт повтор.
+    // Активен только вне активного геймплея (running && !paused).
+    (function startMenuGamepadNav() {
+        // Маппинг: btn-индекс → key (как у клавиатуры)
+        const NAV_MAP = [
+            [12, 'ArrowUp'],
+            [13, 'ArrowDown'],
+            [14, 'ArrowLeft'],
+            [15, 'ArrowRight'],
+            [0,  'Enter'],    // A → подтвердить
+            [1,  'Escape'],   // B → назад
+            [3,  'Enter'],    // Y → подтвердить (альт)
+            [9,  'Escape'],   // Start → пауза/назад
+        ];
+        const AXIS_DEAD      = 0.55; // высокий порог чтобы стик не срабатывал случайно
+        const REPEAT_DELAY   = 350;  // мс до начала повтора
+        const REPEAT_INTERVAL = 160; // мс между повторами
+
+        const prevBtns = {};
+        let axisX = 0, axisY = 0;
+        const activeRepeats = {};
+
+        function fireNav(key) {
+            const evt = new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true });
+            evt._bhMenuNav = true; // маркер: игровой обработчик ввода должен игнорировать это событие
+            document.dispatchEvent(evt);
+        }
+
+        function beginRepeat(key) {
+            if (activeRepeats[key]) return;
+            fireNav(key);
+            const t = setTimeout(() => {
+                if (!activeRepeats[key]) return;
+                const iv = setInterval(() => {
+                    if (!activeRepeats[key]) { clearInterval(iv); return; }
+                    fireNav(key);
+                }, REPEAT_INTERVAL);
+                if (activeRepeats[key]) activeRepeats[key].iv = iv;
+            }, REPEAT_DELAY);
+            activeRepeats[key] = { t };
+        }
+
+        function endRepeat(key) {
+            const s = activeRepeats[key];
+            if (!s) return;
+            clearTimeout(s.t);
+            if (s.iv) clearInterval(s.iv);
+            delete activeRepeats[key];
+        }
+
+        function stopAll() {
+            Object.keys(activeRepeats).forEach(endRepeat);
+            axisX = 0; axisY = 0;
+            Object.keys(prevBtns).forEach(k => { prevBtns[k] = false; });
+        }
+
+        function poll() {
+            requestAnimationFrame(poll);
+            // Не мешаем геймплею: во время активной игры (не на паузе и без оверлея результата) выходим
+            const inActivePlay = typeof running !== 'undefined' && typeof paused !== 'undefined'
+                && running && !paused
+                && !levelCompleteShown && !gameOverShown;
+            if (inActivePlay) {
+                stopAll();
+                return;
+            }
+
+            if (!navigator.getGamepads) return;
+            const gamepads = navigator.getGamepads();
+            let gp = null;
+            for (let i = 0; i < gamepads.length; i++) {
+                if (gamepads[i]?.connected) { gp = gamepads[i]; break; }
+            }
+            if (!gp) { stopAll(); return; }
+
+            // Кнопки
+            NAV_MAP.forEach(([btnIdx, key]) => {
+                const pressed = !!gp.buttons[btnIdx]?.pressed;
+                if (pressed && !prevBtns[btnIdx]) beginRepeat(key);
+                else if (!pressed && prevBtns[btnIdx]) endRepeat(key);
+                prevBtns[btnIdx] = pressed;
+            });
+
+            // Левый аналоговый стик
+            const rawX = gp.axes[0] || 0;
+            const rawY = gp.axes[1] || 0;
+            const nx = rawX < -AXIS_DEAD ? -1 : rawX > AXIS_DEAD ? 1 : 0;
+            const ny = rawY < -AXIS_DEAD ? -1 : rawY > AXIS_DEAD ? 1 : 0;
+
+            if (nx !== axisX) {
+                if (axisX === -1) endRepeat('ArrowLeft');
+                if (axisX ===  1) endRepeat('ArrowRight');
+                if (nx  === -1) beginRepeat('ArrowLeft');
+                if (nx  ===  1) beginRepeat('ArrowRight');
+                axisX = nx;
+            }
+            if (ny !== axisY) {
+                if (axisY === -1) endRepeat('ArrowUp');
+                if (axisY ===  1) endRepeat('ArrowDown');
+                if (ny  === -1) beginRepeat('ArrowUp');
+                if (ny  ===  1) beginRepeat('ArrowDown');
+                axisY = ny;
+            }
+        }
+
+        requestAnimationFrame(poll);
+    })();
+
     // ==== ОБРАБОТКА ВВОДА ====
     document.addEventListener('keydown', e => {
+        if (e._bhMenuNav) return; // синтетическое событие меню-навигации — игнорируем
         if (controlKeys.has(e.key)) e.preventDefault();
         pressInputKey(e.key, 'keyboard');
     });
     document.addEventListener('keyup', e => {
+        if (e._bhMenuNav) return;
         if (controlKeys.has(e.key)) e.preventDefault();
         releaseInputKey(e.key, 'keyboard');
     });
@@ -1344,6 +1544,7 @@ document.addEventListener('DOMContentLoaded', () => {
         tutorialBtn.onclick = async () => {
             audioPlay('ui_click');
             clearInputSource('keyboard');
+            clearInputSource('gamepad');
             clearTouchInputs();
             paused = false;
             const targetMode = 'tutorial';
@@ -1372,6 +1573,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             audioPlay('ui_click');
             clearInputSource('keyboard');
+            clearInputSource('gamepad');
             clearTouchInputs();
             paused = false;
             const targetMode = m.dataset.mode || 'normal';
@@ -1551,6 +1753,12 @@ document.addEventListener('DOMContentLoaded', () => {
     // включая showPause() -> btnMain.onclick, который вызывает menuNavFocus('char', 0).
     // Состояние хранится в DOM (класс menu-kb-focus), что исключает проблемы с TDZ.
 
+    // Grace-period: при появлении нового оверлея результата блокируем Enter/Space
+    // чтобы зажатая клавиша стрельбы не кликала кнопку сразу.
+    let _lastResultOverlayEl = null;
+    let _overlayInputGraceUntil = 0;
+    const OVERLAY_INPUT_GRACE_MS = 850;
+
     function menuNavFocus(section, idx) {
         const cEls = Array.from(document.querySelectorAll('.char'));
         const mEls = Array.from(document.querySelectorAll('.mode'));
@@ -1591,6 +1799,15 @@ document.addEventListener('DOMContentLoaded', () => {
         // ==== ТАБЛИЧКИ завершения уровня / game over ====
         const resultOverlay = levelCompleteOverlay || gameOverOverlay;
         if (resultOverlay) {
+            // Новый оверлей — выставляем grace-period и сбрасываем все зажатые клавиши
+            if (resultOverlay !== _lastResultOverlayEl) {
+                _lastResultOverlayEl = resultOverlay;
+                _overlayInputGraceUntil = Date.now() + OVERLAY_INPUT_GRACE_MS;
+                clearInputSource('keyboard');
+                clearInputSource('gamepad');
+                clearTouchInputs();
+            }
+
             const btns = Array.from(resultOverlay.querySelectorAll('button[data-overlay-btn-idx]'))
                 .filter(b => !b.disabled);
             if (!btns.length) return;
@@ -1606,6 +1823,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 btns[(curIdx - 1 + btns.length) % btns.length].classList.add('menu-kb-focus');
                 e.preventDefault();
             } else if (e.key === 'Enter' || e.key === ' ') {
+                // Блокируем в течение grace-period — игрок мог зажать огонь в конце уровня
+                if (Date.now() < _overlayInputGraceUntil) { e.preventDefault(); return; }
                 btns[curIdx]?.click();
                 e.preventDefault();
             }
