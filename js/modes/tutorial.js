@@ -69,6 +69,9 @@ let _tCachedLivesStr = '';
 const _tLilacColors = ["#b57edc", "#c084fc", "#a855f7", "#e1bee7", "#ede7f6"];
 const _tLeafEmojis = ["🍃", "🍂", "🍁", "🌿", "🌱"];
 
+/** Возвращает true если игра запущена на тач-устройстве (мобиле/планшете). */
+const _tIsMobile = () => !!(window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
+
 /**
  * Возвращает runtime-параметры мобильного адаптива для уровня "Обучение".
  * @param {number} dt - время кадра.
@@ -577,7 +580,7 @@ function _tSpawnPhase2SubWave() {
     const yJitter = tutorialPx(8, 5);
 
     if (_tSubPhase === 0) {
-        _tHint = 'Пробел — стрелять. Враги справа!';
+        _tHint = 'Пробел/FIRE — стрелять. Враги справа!';
         playerBulletDir = 'right';
         _tSpawnLilacWave([
             { x: Math.min(W - eW - edgePad, player.x + W * 0.30), y: baseY },
@@ -587,7 +590,9 @@ function _tSpawnPhase2SubWave() {
     }
 
     if (_tSubPhase === 1) {
-        _tHint = 'Враги слева! Нажми ↓, чтобы сменить направление, потом стреляй.';
+        _tHint = _tIsMobile()
+            ? 'Враги слева! Нажми DIR, чтобы сменить направление, потом стреляй.'
+            : 'Враги слева! Нажми ↓, чтобы сменить направление, потом стреляй.';
         _tSpawnLilacWave([
             { x: Math.max(edgePad, player.x - W * 0.24), y: baseY },
             { x: Math.max(edgePad, player.x - W * 0.30), y: baseY - yJitter }
@@ -595,7 +600,9 @@ function _tSpawnPhase2SubWave() {
         return;
     }
 
-    _tHint = 'Враги сверху! Смени направление стрельбы вверх и стреляй вверх.';
+    _tHint = _tIsMobile()
+        ? 'Враги сверху! Нажми DIR, чтобы переключить стрельбу вверх, и стреляй.'
+        : 'Враги сверху! Смени направление стрельбы вверх и стреляй вверх.';
     const topY = _tGroundY - H * 0.56;
     _tSpawnLilacWave([
         { x: W * 0.52, y: topY },
@@ -764,7 +771,7 @@ function _tEnterPhase(phase) {
             '1) Жизни: потеряешь все — проиграешь.\n' +
             '2) Очки растут за убийства.\n' +
             '3) Комбо множит очки.\n\n' +
-            'Нажми Пробел, чтобы начать.',
+            'Нажми Пробел/FIRE, чтобы начать.',
             () => _tEnterPhase(TUTORIAL_PHASE.MOVE)
         );
         return;
@@ -774,11 +781,13 @@ function _tEnterPhase(phase) {
         _tSwitchToChar('kuzy');
         _tCurrentCharIdx = 0;
         playerBulletDir = 'right';
-        _tHint = '← → — ходить. ↑ — прыгнуть. У Кузи постепенный набор высоты в прыжке. Зажми прыжок — взлетишь выше!';
+        _tHint = _tIsMobile()
+            ? 'Джойстик — движение влево/вправо. Наклони вверх (или нажми UP) — прыжок. У Кузи постепенный набор высоты. Удерживай дольше — взлетишь выше!'
+            : '← → — ходить. ↑ — прыгнуть. У Кузи постепенный набор высоты в прыжке. Зажми прыжок — взлетишь выше!';
         _tArrow = { x: _tMarkerX, y: _tMarkerY, dir: 'down', label: 'Иди сюда' };
         return;
     }
-
+ 
     if (phase === TUTORIAL_PHASE.BASIC_SHOOT) {
         _tSwitchToChar('kuzy');
         _tCurrentCharIdx = 0;
@@ -787,17 +796,18 @@ function _tEnterPhase(phase) {
     }
 
     if (phase === TUTORIAL_PHASE.BONUS_SHOOT) {
-        _tHint = 'Подбери пиво — получишь бонусные выстрелы. Переключи их кнопкой Shift. У Кузи бонусные выстрелы - это фонтан!';
+        _tHint = _tIsMobile()
+            ? 'Подбери пиво — получишь бонусные выстрелы. Переключи их кнопкой BONUS. У Кузи бонусные выстрелы — это фонтан!'
+            : 'Подбери пиво — получишь бонусные выстрелы. Переключи их кнопкой Shift. У Кузи бонусные выстрелы - это фонтан!';
         _tSpawnTutorialBottle();
         return;
     }
 
     if (phase === TUTORIAL_PHASE.ALT_SHOOT) {
         _tSetWaitOverlay(
-            'Режим ALT-стрельбы.\n' +
-            'Стрелки двигают и меняют направление.\n' +
-            'В ALT: удерживай ↓ — стрельба вверх.\n\n' +
-            'Нажми Пробел.',
+            _tIsMobile()
+                ? 'Режим ALT-стрельбы.\nДжойстик — движение.\nВ ALT: удерживай DIR — стрельба вверх.\n\nНажми Пробел/FIRE.'
+                : 'Режим ALT-стрельбы.\nСтрелки двигают и меняют направление.\nВ ALT: удерживай ↓ — стрельба вверх.\n\nНажми Пробел/FIRE.',
             () => {
                 altShootMode = true;
                 _tFrozen = false;
@@ -830,10 +840,9 @@ function _tEnterPhase(phase) {
         _tSavedLives = lives;
         _tHint = 'Доберись до верхней платформы ★. Падение не тратит жизни.';
         _tSetWaitOverlay(
-            'Теперь платформенный сегмент.\n' +
-            'Прыгай по трем ступеням справа.\n' +
-            'Упадешь — вернешься без потери жизни.\n\n' +
-            'Нажми Пробел.',
+            _tIsMobile()
+                ? 'Теперь платформенный сегмент.\nПрыгай по трем ступеням справа.\nДля прыжка — наклони джойстик вверх или нажми UP.\nУпадешь — вернешься без потери жизни.\n\nНажми Пробел/FIRE.'
+                : 'Теперь платформенный сегмент.\nПрыгай по трем ступеням справа.\nУпадешь — вернешься без потери жизни.\n\nНажми Пробел/FIRE.',
             () => {
                 _tUsePlatformPhysics = true;
                 _tFrozen = false;
@@ -1410,7 +1419,7 @@ function _tUpdatePhase5(dt) {
                 'Это Макс!\n' +
                 'Его прыжок — одна высокая дуга, удержание не работает.\n' +
                 'Зато он стреляет быстрее, а бонус - это пулемет Максим! (💩).\n\n' +
-                'Нажми Пробел.',
+                'Нажми Пробел/FIRE.',
                 () => {
                     _tSubPhase = 1;
                     _tHint = 'Прыгни 2 раза, чтобы почувствовать разницу.';
@@ -1514,7 +1523,7 @@ function _tUpdatePhase8() {
                 'Это Дрон!\n' +
                 'Его пули — вихрь рыга (🌀).\n' +
                 'Зажми прыжок — он взлетает выше(Дрон умеет летать).\n\n' +
-                'Нажми Пробел.',
+                'Нажми Пробел/FIRE.',
                 () => {
                     _tSubPhase = 1;
                     _tUsePlatformPhysics = false;
@@ -1628,7 +1637,7 @@ function _tUpdatePhase10() {
         'Обучение пройдено!\n' +
         'Ты знаешь всё необходимое.\n' +
         'Теперь тебе открыта кампания.\n\n' +
-        'Нажми Пробел.',
+        'Нажми Пробел/FIRE.',
         () => {
             localStorage.setItem(TUTORIAL_MODE_KEY, '1');
             _tDone = true;
@@ -1935,7 +1944,7 @@ function _tDrawOverlay() {
     if (_tWaitKey) {
         ctx.font = `700 ${tutorialPx(18, 14)}px Arial`;
         ctx.fillStyle = '#ffd54f';
-        ctx.fillText('[Пробел — продолжить]', boxX + boxW * 0.5, boxY + boxH - tutorialPx(26, 18));
+        ctx.fillText('[Пробел/FIRE — продолжить]', boxX + boxW * 0.5, boxY + boxH - tutorialPx(26, 18));
     }
     ctx.restore();
 }
