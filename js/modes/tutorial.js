@@ -2178,15 +2178,14 @@ function drawTutorialMode() {
     // Текст фазы/подсказки (без мигания и с переносом строк внутри панели).
     if (_tHint) {
         ctx.save();
-        const panelW = Math.min(canvas.width * 0.86, 980);
-        const panelX = (canvas.width - panelW) * 0.5;
         const panelY = tutorialPx(84, 58);
         const basePanelH = tutorialPx(40, 30);
         const fontPx = tutorialPx(19, 14);
         const lineH = tutorialPx(21, 15);
         const padX = tutorialPx(14, 10);
         const padY = tutorialPx(8, 6);
-        const maxTextW = Math.max(40, panelW - padX * 2);
+        // Максимальная ширина текста — ограничитель для переноса строк.
+        const maxTextW = Math.max(40, Math.min(canvas.width * 0.86, 980) - padX * 2);
 
         ctx.font = `bold ${fontPx}px Arial`;
         const words = String(_tHint).split(/\s+/).filter(Boolean);
@@ -2220,6 +2219,15 @@ function drawTutorialMode() {
         }
         if (cur) lines.push(cur);
         if (!lines.length) lines.push('');
+
+        // Ширина рамки = реальная ширина самой длинной строки + отступы.
+        let maxLineW = 0;
+        for (let i = 0; i < lines.length; i++) {
+            const lw = ctx.measureText(lines[i]).width;
+            if (lw > maxLineW) maxLineW = lw;
+        }
+        const panelW = maxLineW + padX * 2;
+        const panelX = (canvas.width - panelW) * 0.5;
 
         const panelH = Math.max(basePanelH, padY * 2 + lines.length * lineH);
         ctx.fillStyle = 'rgba(8,14,26,0.76)';
