@@ -1454,6 +1454,8 @@ document.addEventListener('DOMContentLoaded', () => {
     // ==== ЛОГИКА МЕНЮ ====
     const chars = document.querySelectorAll('.char');
     modes = document.getElementById('modes');
+    const _charHintEl = document.getElementById('char-hint');
+    const _charDescs = { kuzy: 'постепенный набор высоты, фонтан-бонус', max: 'фиксированный прыжок, пулемёт-Максим', dron: 'парящий прыжок, пробивающий рыг' };
 
     /**
      * Назначает обработчик выбора персонажа.
@@ -1468,6 +1470,7 @@ document.addEventListener('DOMContentLoaded', () => {
             chars.forEach(ch => ch.classList.remove('selected'));
             // Выделяем выбранного
             c.classList.add('selected');
+            if (_charHintEl) _charHintEl.textContent = _charDescs[c.dataset.char] || '';
             
             selectedChar = c.dataset.char;
             modes.classList.add('active');
