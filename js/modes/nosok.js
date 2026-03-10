@@ -120,6 +120,8 @@ function resetNosokLevelState() {
     nosokDynamiteTimer = 0;
     nosokNextDynamiteTime = 16 + Math.random() * 5;
     nosokSpecialBonuses = [];
+    nosokRunAnyShotFired = false;
+    nosokRunPoopExplodedAfterWin = false;
     bossNosok = null;
 }
 
@@ -1132,6 +1134,12 @@ function updateNosokDrops(dt) {
             });
         } else if (p.type === 'dynamite' && bossNosok) {
             bossNosok.applyDynamiteBlast();
+            if (!stepanMode && nosokGoals >= nosokTargetGoals) {
+                nosokRunPoopExplodedAfterWin = true;
+                if (typeof BHAchievements !== 'undefined') {
+                    BHAchievements.grant('nosok_purifying_fire');
+                }
+            }
             if (window.BHAudio) {
                 window.BHAudio.play('pickup_dynamite', { volumeMul: 0.95, duck: 0.78 });
             }

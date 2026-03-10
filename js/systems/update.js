@@ -122,6 +122,15 @@ function update(dt) {
     // Обновляем врага 67 (если есть)
     if (enemy67) {
         enemy67.update(dt);
+        if (gameMode === '67' && enemy67.hp > 0) {
+            const maxEnemy67Size = Math.min(canvas.width, canvas.height) * 0.9;
+            if (enemy67.w >= maxEnemy67Size || enemy67.h >= maxEnemy67Size) {
+                mode67BossReachedMaxSize = true;
+            }
+        }
+        if (gameMode === 'mode67' && enemy67.hp > 0) {
+            mode67RunElapsedSec += dt;
+        }
     }
     // Обновляем босса "Очко" (если есть)
     if (bossO4ko) {
@@ -258,6 +267,15 @@ function update(dt) {
     // Оставляем пули в пределах расширенных границ экрана
     // Фильтруем пули игрока по границам; b — объект пули
     bullets = bullets.filter(b => b.x >= -100 && b.x <= canvas.width + 100 && b.y >= -100 && b.y <= canvas.height + 100);
+    if (gameMode === '67' && !mode67EnemyBulletLeftScreen) {
+        for (let i = 0; i < enemyBullets.length; i++) {
+            const eb = enemyBullets[i];
+            if (eb.x < 0 || eb.x > canvas.width || eb.y < 0 || eb.y > canvas.height) {
+                mode67EnemyBulletLeftScreen = true;
+                break;
+            }
+        }
+    }
     // Фильтруем пули врагов по границам экрана
     enemyBullets = enemyBullets.filter(b => b.y < canvas.height + 100 && b.x > -120 && b.x < canvas.width + 120);
     // Фильтруем бутылки по вертикали; b — объект бутылки
@@ -538,6 +556,9 @@ function update(dt) {
             const hr = b.hitRadius || (b.r * 2);
             // Простая проверка пересечения круга и прямоугольника (приближенно)
             if (b.x > eb.x - hr && b.x < eb.x + ew + hr && b.y > eb.y - hr && b.y < eb.y + eh + hr) {
+                if (gameMode === 'mode67') {
+                    mode67RunBulletRuleBroken = true;
+                }
                 // Меньший взрыв при столкновении пуль
                 const cx = (b.x + (eb.x + ew / 2)) / 2;
                 const cy = (b.y + (eb.y + eh / 2)) / 2;
@@ -696,6 +717,14 @@ function update(dt) {
                 bhPlaySfx('explosion_small', { volumeMul: 0.86 });
                 
                 if (enemy67.hp <= 0) {
+                    if (gameMode === '67') {
+                        const playerCenterX = player.x + player.w * 0.5;
+                        mode67FinalBlowFromRight = playerCenterX > enemy67Hitbox.cx;
+                        const maxEnemy67Size = Math.min(canvas.width, canvas.height) * 0.9;
+                        if (enemy67.w >= maxEnemy67Size || enemy67.h >= maxEnemy67Size) {
+                            mode67BossReachedMaxSize = true;
+                        }
+                    }
                     // Большой взрыв размером с врага
                     explosions.push({ 
                         x: enemy67Hitbox.cx, 
@@ -973,6 +1002,9 @@ function update(dt) {
     bottles.forEach((b, bi) => {
         if (rect(b, player)) {
             bonusShots += BONUS_SHOTS_PER_BOTTLE;
+            if (gameMode === 'normal') {
+                normalRunBeerCollected += 1;
+            }
             bottles.splice(bi, 1);
             bhPlaySfx('pickup_beer', { volumeMul: 0.95 });
         }
@@ -1008,6 +1040,12 @@ function update(dt) {
      */
     const applyPlayerDamage = () => {
         lives--;
+        if (gameMode === 'normal') {
+            normalRunDamageTaken += 1;
+        }
+        if (gameMode === 'mode67') {
+            mode67RunDamageTaken += 1;
+        }
         combo = 0;
         o4koHitStreak = 0;
         invuln = INVULN_TIME;
@@ -1051,6 +1089,9 @@ function update(dt) {
             const eb = enemyBullets[ei];
             if (bossDefeated) continue; // после победы пули не вредят
             if (playerHitTest(eb)) {
+                if (gameMode === 'mode67') {
+                    mode67RunBulletRuleBroken = true;
+                }
                 enemyBullets.splice(ei, 1);
                 applyPlayerDamage();
                 break;

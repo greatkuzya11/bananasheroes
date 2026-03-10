@@ -1495,6 +1495,294 @@ document.addEventListener('DOMContentLoaded', () => {
         audioToggleBtn.textContent = enabled ? '🔊 Звук: ВКЛ' : '🔇 Звук: ВЫКЛ';
         audioToggleBtn.title = enabled ? 'Выключить все звуки' : 'Включить все звуки';
     };
+
+    // --- Achievements prototype UI (minimal, harmless) ---
+    const achBtn = document.getElementById('ach-btn');
+    const achOverlay = document.getElementById('achievements-overlay');
+    const achGrid = document.getElementById('ach-grid');
+    const achSummary = document.getElementById('ach-summary');
+
+    function createTileFromMeta(id, meta, unlockedFlag) {
+        const tile = document.createElement('div');
+        tile.className = 'ach-tile' + (unlockedFlag ? ' unlocked' : ' locked');
+        tile.dataset.achId = id;
+        const iconWrap = document.createElement('div'); iconWrap.className = 'ach-icon';
+        // icon can be emoji or image path
+        if (meta && meta.icon && (meta.icon.endsWith('.png') || meta.icon.endsWith('.svg') || meta.icon.startsWith('img/'))) {
+            const img = document.createElement('img'); img.src = meta.icon; img.alt = meta.title || id; img.style.width = '100%'; img.style.height = '100%'; img.style.objectFit = 'cover';
+            iconWrap.appendChild(img);
+        } else {
+            iconWrap.textContent = (meta && meta.icon) ? meta.icon : (unlockedFlag ? '🏆' : (meta && meta.secret ? '🔒' : '☆'));
+        }
+        const body = document.createElement('div'); body.style.flex = '1';
+        const title = document.createElement('div'); title.className = 'ach-title'; title.textContent = (meta && meta.title) || id;
+        const desc = document.createElement('div'); desc.className = 'ach-desc'; desc.textContent = (meta && meta.desc) || '';
+        body.appendChild(title); body.appendChild(desc);
+        tile.appendChild(iconWrap); tile.appendChild(body);
+        if (unlockedFlag) tile.classList.add('unlocked');
+        return tile;
+    }
+
+    function formatTime(timestamp) {
+        if (!timestamp) return '';
+        const d = new Date(timestamp);
+        return d.toLocaleDateString('ru-RU', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+    }
+
+    function renderAchievementsPrototype() {
+        if (!achGrid || !window.BHAchievements) return;
+        achGrid.innerHTML = '';
+        const manifest = window.BHAchievements.manifest || {};
+        
+        const preview = [
+            { id: 'normal', icon: '🌳', title: 'Сирень и Букин' },
+            { id: '67', icon: '📺', title: 'Телепузик' },
+            { id: 'mode67', icon: '🤖', title: 'Режим 67' },
+            { id: 'o4ko', icon: '🎯', title: 'Очко' },
+            { id: 'nosok', icon: '🧦', title: 'Носок' },
+            { id: 'stepan', icon: '⚽', title: 'Степан' },
+            { id: 'platforms', icon: '🪵', title: 'Опять Телепузик' },
+            { id: 'lovlyu', icon: '🫴', title: 'Ловлю' },
+            { id: 'poimal', icon: '🧤', title: 'Поймал' },
+            { id: 'runner', icon: '🏃', title: 'Бегун' },
+            { id: 'library', icon: '📚', title: 'Библиотека' },
+            { id: 'bonus', icon: '🎁', title: 'Бонус' },
+            { id: 'tutorial', icon: '📖', title: 'Обучение' }
+        ];
+
+        let unlockedCount = 0, totalCount = 0;
+        const table = document.createElement('div'); table.className = 'ach-table';
+
+        // Render per-level achievements
+        preview.forEach(level => {
+            const levelBox = document.createElement('div'); levelBox.className = 'ach-level-box';
+            const row = document.createElement('div'); row.className = 'ach-level-row';
+            
+            // Left: level icon and name
+            const lvlCol = document.createElement('div'); lvlCol.className = 'ach-level-col';
+            const icon = document.createElement('div'); icon.className = 'ach-level-icon'; icon.textContent = level.icon;
+            const nameDiv = document.createElement('div'); nameDiv.className = 'ach-level-name'; nameDiv.textContent = level.title;
+            lvlCol.appendChild(icon); lvlCol.appendChild(nameDiv);
+            row.appendChild(lvlCol);
+
+            // Right: achievements for this level
+            const listRow = document.createElement('div'); listRow.className = 'ach-list-row';
+            
+            // Get achievements for this mode from manifest
+            const modeAchievements = Object.values(manifest).filter(a => a.mode === level.id);
+            
+            // Use real achievements if exist, otherwise generate fake ones
+            const achsToRender = modeAchievements.length > 0 ? modeAchievements : [
+                { id: level.id + '_ach1', icon: '⭐', title: `Достижение 1`, desc: `Фейковое ач. #1` },
+                { id: level.id + '_ach2', icon: '🔥', title: `Достижение 2`, desc: `Фейковое ач. #2` },
+                { id: level.id + '_ach3', icon: '🍌', title: `Достижение 3`, desc: `Фейковое ач. #3` }
+            ];
+
+            let levelUnlockedCount = 0;
+
+            achsToRender.forEach(ach => {
+                totalCount++;
+                const isUnlocked = window.BHAchievements.has(ach.id);
+                if (isUnlocked) {
+                    unlockedCount++;
+                    levelUnlockedCount++;
+                }
+                
+                const item = document.createElement('div');
+                item.className = 'ach-item' + (isUnlocked ? ' unlocked' : ' locked');
+                item.setAttribute('tabindex', '0');
+                item.setAttribute('data-ach-id', ach.id);
+                
+                // Tooltip
+                item.setAttribute('data-tooltip', ach.desc || '');
+                
+                // Emoji
+                const emoji = document.createElement('div');
+                emoji.className = 'ach-emoji';
+                emoji.textContent = ach.icon || '☆';
+                
+                // Text content
+                const txt = document.createElement('div');
+                txt.className = 'ach-item-text';
+                
+                const titleEl = document.createElement('div');
+                titleEl.className = 'ach-title';
+                titleEl.textContent = ach.title;
+                
+                const descEl = document.createElement('div');
+                descEl.className = 'ach-desc';
+                
+                // Show date for unlocked, or empty for locked
+                if (isUnlocked) {
+                    const timestamp = window.BHAchievements.getTimestamp(ach.id);
+                    descEl.textContent = formatTime(timestamp);
+                } else {
+                    descEl.textContent = '';
+                    descEl.style.fontSize = '10px';
+                    descEl.style.color = 'rgba(255,255,255,0.4)';
+                }
+                
+                txt.appendChild(titleEl);
+                txt.appendChild(descEl);
+                
+                item.appendChild(emoji);
+                item.appendChild(txt);
+                listRow.appendChild(item);
+            });
+            
+            row.appendChild(listRow);
+            levelBox.appendChild(row);
+            
+            // Add 'completed' class if all achievements are unlocked
+            if (levelUnlockedCount === achsToRender.length && achsToRender.length > 0) {
+                levelBox.classList.add('completed');
+            }
+            
+            table.appendChild(levelBox);
+        });
+
+        // Global achievements section
+        const gHeader = document.createElement('div'); gHeader.className = 'ach-section-header'; gHeader.textContent = '🌟 Общие достижения';
+        const gBox = document.createElement('div'); gBox.className = 'ach-level-box';
+        gBox.appendChild(gHeader);
+        const gRow = document.createElement('div'); gRow.className = 'ach-level-row';
+        const gListRow = document.createElement('div'); gListRow.className = 'ach-list-row';
+        
+        const global = [
+            { id: 'first_win', icon: '🏁', title: 'Первая победа', desc: 'Пройти хоть один уровень' },
+            { id: 'collector', icon: '🍌', title: 'Коллекционер', desc: 'Собрать 100 бананов' }
+        ];
+        
+        let globalUnlockedCount = 0;
+        
+        global.forEach(a => {
+            totalCount++;
+            const isUnlocked = window.BHAchievements.has(a.id);
+            if (isUnlocked) {
+                unlockedCount++;
+                globalUnlockedCount++;
+            }
+            
+            const item = document.createElement('div');
+            item.className = 'ach-item' + (isUnlocked ? ' unlocked' : ' locked');
+            item.setAttribute('tabindex', '0');
+            item.setAttribute('data-ach-id', a.id);
+            item.setAttribute('data-tooltip', a.desc || '');
+            
+            const emoji = document.createElement('div'); emoji.className = 'ach-emoji'; emoji.textContent = a.icon;
+            const txt = document.createElement('div'); txt.className = 'ach-item-text';
+            const titleEl = document.createElement('div'); titleEl.className = 'ach-title'; titleEl.textContent = a.title;
+            const descEl = document.createElement('div'); descEl.className = 'ach-desc';
+            
+            if (isUnlocked) {
+                const timestamp = window.BHAchievements.getTimestamp(a.id);
+                descEl.textContent = formatTime(timestamp);
+            } else {
+                descEl.textContent = '';
+                descEl.style.fontSize = '10px';
+                descEl.style.color = 'rgba(255,255,255,0.4)';
+            }
+            
+            txt.appendChild(titleEl); txt.appendChild(descEl);
+            item.appendChild(emoji); item.appendChild(txt);
+            gListRow.appendChild(item);
+        });
+        gRow.appendChild(gListRow);
+        gBox.appendChild(gRow);
+        
+        // Add 'completed' class if all global achievements are unlocked
+        if (globalUnlockedCount === global.length && global.length > 0) {
+            gBox.classList.add('completed');
+        }
+        
+        table.appendChild(gBox);
+
+        // Secret achievements section
+        const sHeader = document.createElement('div'); sHeader.className = 'ach-section-header'; sHeader.textContent = '🕵️‍♂️ Секретные достижения';
+        const sBox = document.createElement('div'); sBox.className = 'ach-level-box';
+        sBox.appendChild(sHeader);
+        const sRow = document.createElement('div'); sRow.className = 'ach-level-row';
+        const sListRow = document.createElement('div'); sListRow.className = 'ach-list-row';
+        
+        const secrets = [
+            { id: 'secret_banana', icon: '🥷', title: 'Секретный банан', desc: 'Найти скрытый банан' }
+        ];
+        
+        let secretUnlockedCount = 0;
+        
+        secrets.forEach(a => {
+            totalCount++;
+            const isUnlocked = window.BHAchievements.has(a.id);
+            if (isUnlocked) {
+                unlockedCount++;
+                secretUnlockedCount++;
+            }
+            
+            const item = document.createElement('div');
+            item.className = 'ach-item' + (isUnlocked ? ' unlocked' : ' locked');
+            item.setAttribute('tabindex', '0');
+            item.setAttribute('data-ach-id', a.id);
+            item.setAttribute('data-tooltip', a.desc || '');
+            
+            const emoji = document.createElement('div'); emoji.className = 'ach-emoji'; emoji.textContent = a.icon;
+            const txt = document.createElement('div'); txt.className = 'ach-item-text';
+            const titleEl = document.createElement('div'); titleEl.className = 'ach-title'; titleEl.textContent = a.title;
+            const descEl = document.createElement('div'); descEl.className = 'ach-desc';
+            
+            if (isUnlocked) {
+                const timestamp = window.BHAchievements.getTimestamp(a.id);
+                descEl.textContent = formatTime(timestamp);
+            } else {
+                descEl.textContent = '';
+                descEl.style.fontSize = '10px';
+                descEl.style.color = 'rgba(255,255,255,0.4)';
+            }
+            
+            txt.appendChild(titleEl); txt.appendChild(descEl);
+            item.appendChild(emoji); item.appendChild(txt);
+            sListRow.appendChild(item);
+        });
+        sRow.appendChild(sListRow);
+        sBox.appendChild(sRow);
+        
+        // Add 'completed' class if all secret achievements are unlocked
+        if (secretUnlockedCount === secrets.length && secrets.length > 0) {
+            sBox.classList.add('completed');
+        }
+        
+        table.appendChild(sBox);
+
+        achGrid.appendChild(table);
+        if (achSummary) achSummary.textContent = `Разблокировано: ${unlockedCount} / ${totalCount}`;
+
+        // Add dev controls
+        const devRowId = 'ach-dev-row';
+        if (!document.getElementById(devRowId)) {
+            const devRow = document.createElement('div'); devRow.id = devRowId; devRow.style.marginTop = '12px'; devRow.style.textAlign = 'center';
+            const grantBtn = document.createElement('button'); grantBtn.textContent = 'Grant normal_bukins_saved'; grantBtn.onclick = () => { if (window.BHAchievements) BHAchievements.grant('normal_bukins_saved'); };
+            const grant2Btn = document.createElement('button'); grant2Btn.textContent = 'Grant normal_fresh_air'; grant2Btn.style.marginLeft = '4px'; grant2Btn.onclick = () => { if (window.BHAchievements) BHAchievements.grant('normal_fresh_air'); };
+            const grant3Btn = document.createElement('button'); grant3Btn.textContent = 'Grant normal_no_bonus'; grant3Btn.style.marginLeft = '4px'; grant3Btn.onclick = () => { if (window.BHAchievements) BHAchievements.grant('normal_no_bonus'); };
+            const resetBtn = document.createElement('button'); resetBtn.textContent = 'Reset'; resetBtn.style.marginLeft = '8px'; resetBtn.onclick = () => { localStorage.removeItem('bh_achievements_v1'); location.reload(); };
+            devRow.appendChild(grantBtn); devRow.appendChild(grant2Btn); devRow.appendChild(grant3Btn); devRow.appendChild(resetBtn);
+            const innerHelp = achOverlay.querySelector('.help-inner');
+            if (innerHelp) innerHelp.appendChild(devRow);
+        }
+    }
+
+    if (achBtn && achOverlay) {
+        achBtn.addEventListener('click', () => { renderAchievementsPrototype(); achOverlay.style.display = 'block'; });
+        const closeBtn = achOverlay.querySelector('#ach-back-btn');
+        if (closeBtn) closeBtn.addEventListener('click', () => { achOverlay.style.display = 'none'; });
+    }
+    // Update tiles when an achievement is granted
+    if (typeof window !== 'undefined') {
+        window.addEventListener('achievement:granted', (e) => {
+            const id = e?.detail?.id;
+            if (!id) return;
+            // update summary and tile
+            try { renderAchievementsPrototype(); } catch (err) { }
+        });
+    }
     updateAudioToggleButtonLabel();
     if (audioToggleBtn) {
         audioToggleBtn.onclick = () => {
@@ -1622,7 +1910,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // снимая его со всех остальных — чтобы не было двух одновременных фокусов.
     document.addEventListener('mouseover', e => {
         const el = e.target.closest(
-            '.char, .mode, #help-btn, #audio-toggle-btn, #bonus-level-btn, #reset-progress-btn, #btnTutorial, #help-back-btn, ' +
+            '.char, .mode, #ach-btn, #help-btn, #audio-toggle-btn, #bonus-level-btn, #reset-progress-btn, #btnTutorial, #help-back-btn, ' +
             'button[data-pause-idx], button[data-overlay-btn-idx]'
         );
         if (!el || el.disabled) return;
@@ -1766,19 +2054,22 @@ document.addEventListener('DOMContentLoaded', () => {
         const cEls = Array.from(document.querySelectorAll('.char'));
         const mEls = Array.from(document.querySelectorAll('.mode'));
         const helpBtnEl = document.getElementById('help-btn');
+        const achBtnEl = document.getElementById('ach-btn');
         const audioBtnEl = document.getElementById('audio-toggle-btn');
         const bonusBtnEl = document.getElementById('bonus-level-btn');
         const resetBtnEl = document.getElementById('reset-progress-btn');
         const tutorialBtnEl = document.getElementById('btnTutorial');
         // Снимаем подсветку со всех элементов меню
         [...cEls, ...mEls].forEach(el => el.classList.remove('menu-kb-focus'));
-        [helpBtnEl, audioBtnEl, bonusBtnEl, resetBtnEl, tutorialBtnEl].forEach(el => el && el.classList.remove('menu-kb-focus'));
+        [helpBtnEl, achBtnEl, audioBtnEl, bonusBtnEl, resetBtnEl, tutorialBtnEl].forEach(el => el && el.classList.remove('menu-kb-focus'));
         if (section === 'char') {
             if (cEls[idx]) cEls[idx].classList.add('menu-kb-focus');
         } else if (section === 'mode') {
             if (mEls[idx]) mEls[idx].classList.add('menu-kb-focus');
         } else if (section === 'help') {
             if (helpBtnEl) helpBtnEl.classList.add('menu-kb-focus');
+        } else if (section === 'ach') {
+            if (achBtnEl) achBtnEl.classList.add('menu-kb-focus');
         } else if (section === 'audio') {
             if (audioBtnEl) audioBtnEl.classList.add('menu-kb-focus');
         } else if (section === 'bonus') {
@@ -1934,6 +2225,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const cEls = Array.from(document.querySelectorAll('.char'));
         const mEls = Array.from(document.querySelectorAll('.mode'));
         const helpBtnEl = document.getElementById('help-btn');
+        const achBtnEl = document.getElementById('ach-btn');
         const audioBtnEl = document.getElementById('audio-toggle-btn');
         const bonusBtnEl = document.getElementById('bonus-level-btn');
         const resetBtnEl = document.getElementById('reset-progress-btn');
@@ -1946,6 +2238,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const fChar = cEls.findIndex(el => el.classList.contains('menu-kb-focus'));
         const fMode = mEls.findIndex(el => el.classList.contains('menu-kb-focus'));
         const fHelp = helpBtnEl && helpBtnEl.classList.contains('menu-kb-focus');
+        const fAch = achBtnEl && achBtnEl.classList.contains('menu-kb-focus');
         const fAudio = audioBtnEl && audioBtnEl.classList.contains('menu-kb-focus');
         const fBonus = bonusBtnEl && bonusBtnEl.classList.contains('menu-kb-focus');
         const fReset = resetBtnEl && resetBtnEl.classList.contains('menu-kb-focus');
@@ -1955,6 +2248,7 @@ document.addEventListener('DOMContentLoaded', () => {
         else if (fBonus) { section = 'bonus'; idx = 0; }
         else if (fAudio) { section = 'audio'; idx = 0; }
         else if (fHelp)  { section = 'help';  idx = 0; }
+        else if (fAch)   { section = 'ach';   idx = 0; }
         else if (fMode >= 0 && modesVisible) { section = 'mode'; idx = fMode; }
         else if (fChar >= 0) { section = 'char'; idx = fChar; }
         // Очищаем зависший menu-kb-focus с кнопок режима, если панель скрыта
@@ -1988,6 +2282,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (idx < mEls.length - 1) menuNavFocus('mode', idx + 1);
                 else menuNavFocus('tutorial', 0);
             } else if (section === 'tutorial') {
+                menuNavFocus('ach', 0);
+            } else if (section === 'ach') {
                 menuNavFocus('help', 0);
             } else if (section === 'help') {
                 menuNavFocus('audio', 0);
@@ -2013,6 +2309,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 menuNavFocus('tutorial', 0);
             } else if (section === 'audio') {
                 menuNavFocus('help', 0);
+            } else if (section === 'ach') {
+                menuNavFocus('tutorial', 0);
             } else if (section === 'bonus') {
                 menuNavFocus('audio', 0);
             } else if (section === 'reset') {
@@ -2031,6 +2329,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 mEls[idx]?.click();
             } else if (section === 'help') {
                 helpBtnEl?.click();
+            } else if (section === 'ach') {
+                achBtnEl?.click();
             } else if (section === 'audio') {
                 audioBtnEl?.click();
             } else if (section === 'bonus') {

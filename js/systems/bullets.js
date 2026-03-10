@@ -8,6 +8,9 @@ function shootPlayerBullet(p) {
     p.shooting = true;
     p.shootTimer = 0;
     p.frame = SHOOT_FRAME;
+    if (gameMode === 'nosok' && nosokGoals < nosokTargetGoals) {
+        nosokRunAnyShotFired = true;
+    }
 
     let emoji;
     switch (p.type) {

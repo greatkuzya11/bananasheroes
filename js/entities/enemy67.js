@@ -197,6 +197,9 @@ class Enemy67 {
         const bulletW = Math.max(8, Math.round(16 * bulletScale));
         const bulletH = Math.max(12, Math.round(24 * bulletScale));
         enemyBullets.push({ x: bx, y: by, w: bulletW, h: bulletH, emoji, vx, vy });
+        if (gameMode === 'mode67' && typeof mode67RunEnemyBulletsFired === 'number') {
+            mode67RunEnemyBulletsFired += 1;
+        }
         if (window.BHAudio && typeof window.BHAudio.playEnemyShoot === 'function') {
             window.BHAudio.playEnemyShoot('67');
         }

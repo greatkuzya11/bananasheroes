@@ -26,6 +26,25 @@ let lives = PLAYER_LIVES;
 let invuln = INVULN_TIME;
 let bonusShots = 0;
 let bonusMode = false;
+// Статистика текущего раунда для ачивок normal.
+let normalRunDamageTaken = 0;
+let normalRunBeerCollected = 0;
+// Статистика текущего раунда для ачивок уровня "67" (Телепузик).
+let mode67FinalBlowFromRight = false;
+let mode67BossReachedMaxSize = false;
+let mode67EnemyBulletLeftScreen = false;
+let mode67RunDamageTaken = 0;
+let mode67RunElapsedSec = 0;
+let mode67RunEnemyBulletsFired = 0;
+let mode67RunBulletRuleBroken = false;
+// Статистика текущего раунда для ачивок уровня "Носок".
+let nosokRunAnyShotFired = false;
+let nosokRunPoopExplodedAfterWin = false;
+// Minimum assist for 67_early_death: 12 bonus shots => 4 bottles at 3 shots per bottle.
+const MODE67_EARLY_DEATH_REQUIRED_BONUS_SHOTS = 12;
+const MODE67_EARLY_DEATH_REQUIRED_BOTTLES = Math.ceil(
+    MODE67_EARLY_DEATH_REQUIRED_BONUS_SHOTS / Math.max(1, BONUS_SHOTS_PER_BOTTLE)
+);
 
 let playerBulletDir = 'up';
 let dirSwitchHeld = false;
@@ -142,6 +161,17 @@ function resetGameRuntimeCore() {
     invuln = INVULN_TIME;
     bonusShots = 0;
     bonusMode = false;
+    normalRunDamageTaken = 0;
+    normalRunBeerCollected = 0;
+    mode67FinalBlowFromRight = false;
+    mode67BossReachedMaxSize = false;
+    mode67EnemyBulletLeftScreen = false;
+    mode67RunDamageTaken = 0;
+    mode67RunElapsedSec = 0;
+    mode67RunEnemyBulletsFired = 0;
+    mode67RunBulletRuleBroken = false;
+    nosokRunAnyShotFired = false;
+    nosokRunPoopExplodedAfterWin = false;
 
     playerBulletDir = 'up';
     dirSwitchHeld = false;
@@ -238,6 +268,30 @@ function setRunBackground(src) {
 }
 
 /**
+ * Спавнит минимально необходимое число бутылок пива для ачивки "67_early_death".
+ * Дропы добавляются только для персонажа Макс в режиме "67".
+ */
+function spawnMode67EarlyDeathAssistBottles() {
+    if (gameMode !== '67') return;
+    if (!player) return;
+    if (MODE67_EARLY_DEATH_REQUIRED_BOTTLES <= 0) return;
+
+    const size = (typeof getCombatPickupSize === 'function')
+        ? getCombatPickupSize('bottle')
+        : { w: 18, h: 36 };
+    const pad = Math.max(8, Math.round(size.w * 1.5));
+    const laneWidth = Math.max(1, canvas.width - size.w - pad * 2);
+    const yStep = Math.max(Math.round(canvas.height * 0.14), size.h * 4);
+
+    for (let i = 0; i < MODE67_EARLY_DEATH_REQUIRED_BOTTLES; i++) {
+        const xRatio = Math.min(0.68, 0.20 + i * 0.16);
+        const x = pad + Math.round(laneWidth * xRatio);
+        const y = -size.h - (i * yStep);
+        bottles.push({ x, y, w: size.w, h: size.h, fromTop: true, mode67Assist: true });
+    }
+}
+
+/**
  * Инициализирует объекты и параметры конкретного игрового режима.
  * @param {string} mode - идентификатор режима.
  */
@@ -258,6 +312,7 @@ function initRunWorldByMode(mode) {
         playerBulletDir = 'right';
         enemy67 = new Enemy67(player.x, player.y);
         if (window.BHBulletPerf) window.BHBulletPerf.setEnemy67RenderMode('tp');
+        spawnMode67EarlyDeathAssistBottles();
         return;
     }
 

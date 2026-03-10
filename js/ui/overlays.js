@@ -1,4 +1,4 @@
-// ==== ОВЕРЛЕИ / РЕКОРДЫ ====
+﻿// ==== ОВЕРЛЕИ / РЕКОРДЫ ====
 /**
  * Показывает экран завершения уровня и фиксирует рекорд при необходимости.
  */
@@ -436,6 +436,67 @@ function showLevelComplete() {
     if (typeof refreshModeButtonsByProgress === 'function') {
         refreshModeButtonsByProgress();
     }
+
+    // Grant achievements for normal mode
+    try {
+        if (typeof BHAchievements !== 'undefined' && gameMode === 'normal') {
+            // Achievement 1: Букин спасен - for completing the level
+            BHAchievements.grant('normal_bukins_saved');
+            
+            // Achievement 2: complete normal with zero damage taken in the run.
+            if (normalRunDamageTaken === 0) {
+                BHAchievements.grant('normal_fresh_air');
+            }
+            
+            // Achievement 3: complete normal without collecting any beer bottle pickup.
+            if (normalRunBeerCollected === 0) {
+                BHAchievements.grant('normal_no_bonus');
+            }
+        }
+        if (typeof BHAchievements !== 'undefined' && gameMode === '67') {
+            // Achievement 1: last hit on 67 while player is on the right side.
+            if (mode67FinalBlowFromRight) {
+                BHAchievements.grant('67_right_funeral');
+            }
+            // Achievement 2: kill 67 before it reaches max size.
+            if (!mode67BossReachedMaxSize) {
+                BHAchievements.grant('67_early_death');
+            }
+            // Achievement 3: no enemy bullet is allowed to leave the screen.
+            if (!mode67EnemyBulletLeftScreen) {
+                BHAchievements.grant('67_no_miss');
+            }
+        }
+        if (typeof BHAchievements !== 'undefined' && gameMode === 'mode67') {
+            // Achievement 1: kill boss without taking damage.
+            if (mode67RunDamageTaken === 0) {
+                BHAchievements.grant('mode67_no_69');
+            }
+            // Achievement 2: kill boss only after 3 minutes in-level.
+            if (mode67RunElapsedSec >= 180) {
+                BHAchievements.grant('mode67_forgot_how_to_shoot');
+            }
+            // Achievement 3: do not intercept boss bullets and do not get hit by them.
+            if (!mode67RunBulletRuleBroken && mode67RunEnemyBulletsFired > 0) {
+                BHAchievements.grant('mode67_boris_no_hit');
+            }
+        }
+        if (typeof BHAchievements !== 'undefined' && gameMode === 'nosok') {
+            const runTimeMs = Math.max(1, nosokFinalTimeMs || Math.round(nosokElapsedTime * 1000));
+            // Achievement 1: score all 10 goals within 100 seconds.
+            if (runTimeMs <= 100000) {
+                BHAchievements.grant('nosok_speed_shooter');
+            }
+            // Achievement 2: complete 10 goals without a single player shot.
+            if (!nosokRunAnyShotFired) {
+                BHAchievements.grant('nosok_no_gun_needed');
+            }
+            // Achievement 3 can be granted later after victory when dynamite explodes the poop-form.
+            if (nosokRunPoopExplodedAfterWin) {
+                BHAchievements.grant('nosok_purifying_fire');
+            }
+        }
+    } catch (e) { }
 
     // Если оверлей уже существует, удаляем его перед созданием нового.
     const existing = document.getElementById('level-complete-overlay');
@@ -1070,6 +1131,7 @@ function playGameOverSound(isNew) {
         console.warn('Audio not available', e);
     }
 }
+
 
 
 
