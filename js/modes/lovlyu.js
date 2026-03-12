@@ -325,6 +325,9 @@ function updateLovlyuMode(dt) {
     hearts.forEach((h, hi) => {
         if (rect(h, player)) {
             lives++;
+            if (window.BHGlobalAchievements && typeof window.BHGlobalAchievements.addBonusPickup === 'function') {
+                window.BHGlobalAchievements.addBonusPickup('heart', 1);
+            }
             hearts.splice(hi, 1);
             if (window.BHAudio) {
                 window.BHAudio.play('pickup_heart', { volumeMul: 0.95 });
@@ -363,6 +366,9 @@ function updateLovlyuMode(dt) {
         if (rect(lovlyuMagnets[mi], player)) {
             lovlyuMagnetActive = true;
             lovlyuMagnetTimer = lovlyuMagnetDuration;
+            if (window.BHGlobalAchievements && typeof window.BHGlobalAchievements.addBonusPickup === 'function') {
+                window.BHGlobalAchievements.addBonusPickup('magnet', 1);
+            }
             lovlyuMagnets.splice(mi, 1);
         }
     }
@@ -406,6 +412,9 @@ function updateLovlyuMode(dt) {
             lovlyuLightningTimer = lovlyuLightningDuration;
             player.speed = PLAYER_SPEED * 2;
             lovlyuRunLightningPicked = true;
+            if (window.BHGlobalAchievements && typeof window.BHGlobalAchievements.addBonusPickup === 'function') {
+                window.BHGlobalAchievements.addBonusPickup('lightning', 1);
+            }
             lovlyuLightnings.splice(li, 1);
         }
     }

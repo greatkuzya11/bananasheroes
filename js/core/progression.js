@@ -28,6 +28,7 @@ const CAMPAIGN_RUN_LEVELS = Object.freeze([
     'runner'
 ]);
 const FINAL_CAMPAIGN_LEVEL = 'library';
+const LIBRARY_UNLOCK_TOOLTIP = 'Для открытия уровня пройди все прошлые уровни кампании и получи достижение "Охотник за трофеями".';
 
 /**
  * Метаданные уровней для меню и стартовой таблички.
@@ -264,7 +265,7 @@ function getNextCampaignMode(mode) {
     const idx = CAMPAIGN_LEVEL_ORDER.indexOf(mode);
     if (idx < 0 || idx >= CAMPAIGN_LEVEL_ORDER.length - 1) return null;
     const next = CAMPAIGN_LEVEL_ORDER[idx + 1];
-    if (next === FINAL_CAMPAIGN_LEVEL && !areAllRunLevelsCompleted()) return null;
+    if (next === FINAL_CAMPAIGN_LEVEL && !isLibraryUnlockedByProgress()) return null;
     return next;
 }
 
@@ -324,7 +325,7 @@ function isModeUnlockedByProgress(mode) {
     if (mode === 'stepan') return isStepanUnlocked();
     if (mode === 'mode67') return isMode67Unlocked();
     if (mode === 'bonus') return isBonusUnlocked();
-    if (mode === FINAL_CAMPAIGN_LEVEL) return areAllRunLevelsCompleted();
+    if (mode === FINAL_CAMPAIGN_LEVEL) return isLibraryUnlockedByProgress();
     if (CAMPAIGN_RUN_LEVELS.indexOf(mode) >= 0) return true;
     const campaignIdx = CAMPAIGN_LEVEL_ORDER.indexOf(mode);
     if (campaignIdx >= 0) return true;
@@ -341,16 +342,31 @@ function refreshModeButtonsByProgress() {
         const unlocked = isModeUnlockedByProgress(mode);
         const inCampaignChain = CAMPAIGN_LEVEL_ORDER.indexOf(mode) >= 0;
         const completed = inCampaignChain && isLevelCompleted(mode);
+        const isLibrary = mode === FINAL_CAMPAIGN_LEVEL;
         btn.classList.toggle('mode-completed', completed);
-        btn.disabled = !unlocked;
         if (!unlocked) {
+            if (isLibrary) {
+                btn.disabled = false;
+                btn.setAttribute('aria-disabled', 'true');
+                btn.dataset.locked = '1';
+                btn.style.opacity = '0.48';
+                btn.style.cursor = 'not-allowed';
+                btn.title = '';
+            } else {
+                btn.disabled = true;
+                btn.removeAttribute('aria-disabled');
+                btn.dataset.locked = '0';
+                btn.style.opacity = '0.48';
+                btn.style.cursor = 'not-allowed';
+                btn.title = (mode === FINAL_CAMPAIGN_LEVEL)
+                    ? 'Откроется после прохождения всех уровней кампании'
+                    : 'Откроется после выполнения условий прогрессии';
+            }
             btn.classList.remove('selected');
-            btn.style.opacity = '0.48';
-            btn.style.cursor = 'not-allowed';
-            btn.title = (mode === FINAL_CAMPAIGN_LEVEL)
-                ? 'Откроется после прохождения всех уровней кампании'
-                : 'Откроется после выполнения условий прогрессии';
         } else {
+            btn.disabled = false;
+            btn.removeAttribute('aria-disabled');
+            btn.dataset.locked = '0';
             btn.style.opacity = '1';
             btn.style.cursor = 'pointer';
             btn.title = '';
@@ -611,6 +627,52 @@ function areAllRunLevelsCompleted() {
     return true;
 }
 
+/**
+ * Возвращает количество открытых достижений (fallback без BHAchievements).
+ * @returns {number}
+ */
+function getUnlockedAchievementsCountFallback() {
+    try {
+        const raw = localStorage.getItem('bh_achievements_v1') || '';
+        if (!raw) return 0;
+        const obj = JSON.parse(raw);
+        if (Array.isArray(obj)) return obj.length;
+        if (obj && typeof obj === 'object') return Object.keys(obj).length;
+        return 0;
+    } catch (err) {
+        return 0;
+    }
+}
+
+/**
+ * Возвращает true, если открыто достижение "Охотник за трофеями" или 20 ачивок.
+ * @returns {boolean}
+ */
+function hasTrophyHunterUnlock() {
+    try {
+        if (window.BHAchievements && typeof window.BHAchievements.has === 'function') {
+            if (window.BHAchievements.has('global_trophy_hunter_20')) return true;
+        }
+        let count = 0;
+        if (window.BHAchievements && typeof window.BHAchievements.list === 'function') {
+            count = window.BHAchievements.list().length;
+        } else {
+            count = getUnlockedAchievementsCountFallback();
+        }
+        return count >= 20;
+    } catch (err) {
+        return false;
+    }
+}
+
+/**
+ * Возвращает true, если открыт уровень "Библиотека".
+ * @returns {boolean}
+ */
+function isLibraryUnlockedByProgress() {
+    return areAllRunLevelsCompleted() && hasTrophyHunterUnlock();
+}
+
 // Экспорт в глобальную область (обычные script-теги).
 window.CAMPAIGN_LEVEL_ORDER = CAMPAIGN_LEVEL_ORDER;
 window.getModeDisplayName = getModeDisplayName;
@@ -624,6 +686,8 @@ window.registerCampaignLevelCompletion = registerCampaignLevelCompletion;
 window.getCampaignSessionSummary = getCampaignSessionSummary;
 window.isMode67Unlocked = isMode67Unlocked;
 window.isBonusUnlocked = isBonusUnlocked;
+window.isLibraryUnlockedByProgress = isLibraryUnlockedByProgress;
+window.LIBRARY_UNLOCK_TOOLTIP = LIBRARY_UNLOCK_TOOLTIP;
 window.consumePendingMode67Notice = consumePendingMode67Notice;
 window.consumePendingSurvivalNotice = consumePendingSurvivalNotice;
 window.consumePendingPoimalNotice = consumePendingPoimalNotice;

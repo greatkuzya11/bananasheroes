@@ -1290,6 +1290,9 @@ function _tHandlePickups() {
         const b = bottles[i];
         if (!rect(b, player)) continue;
         bonusShots += BONUS_SHOTS_PER_BOTTLE;
+        if (window.BHGlobalAchievements && typeof window.BHGlobalAchievements.addBeerPickup === 'function') {
+            window.BHGlobalAchievements.addBeerPickup(1);
+        }
         bottles.splice(i, 1);
     }
     for (let i = hearts.length - 1; i >= 0; i--) {
@@ -1297,6 +1300,9 @@ function _tHandlePickups() {
         if (!rect(h, player)) continue;
         if (lives < PLAYER_LIVES) lives++;
         else bonusShots += 5;
+        if (window.BHGlobalAchievements && typeof window.BHGlobalAchievements.addBonusPickup === 'function') {
+            window.BHGlobalAchievements.addBonusPickup('heart', 1);
+        }
         hearts.splice(i, 1);
     }
 }
@@ -1771,6 +1777,7 @@ function updateTutorialMode(dt) {
     // Урон игроку в обучении такой же, как в боевых режимах.
     const applyTutorialDamage = () => {
         lives--;
+        runHeartsDamageTaken += 1;
         combo = 0;
         invuln = INVULN_TIME;
         speechBalloons.push({

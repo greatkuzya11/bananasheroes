@@ -445,6 +445,16 @@ function showLevelComplete() {
             isNew = true;
         }
     }
+    try {
+        if (window.BHGlobalAchievements && typeof window.BHGlobalAchievements.onRunWin === 'function') {
+            window.BHGlobalAchievements.onRunWin({
+                mode: gameMode,
+                selectedChar: selectedChar || 'kuzy',
+                noDamage: (typeof runHeartsDamageTaken === 'number') ? (runHeartsDamageTaken === 0) : false,
+                isNewRecord: isNew
+            });
+        }
+    } catch (e) { }
     updateBestScoresDisplay();
     if (typeof refreshModeButtonsByProgress === 'function') {
         refreshModeButtonsByProgress();
@@ -787,21 +797,71 @@ function showLevelComplete() {
         }
     };
 
-    const nextMode = (typeof getNextCampaignMode === 'function')
-        ? getNextCampaignMode(gameMode)
-        : null;
+    const nextCandidate = (typeof CAMPAIGN_LEVEL_ORDER !== 'undefined' && Array.isArray(CAMPAIGN_LEVEL_ORDER))
+        ? (() => {
+            const idx = CAMPAIGN_LEVEL_ORDER.indexOf(gameMode);
+            if (idx < 0 || idx >= CAMPAIGN_LEVEL_ORDER.length - 1) return null;
+            return CAMPAIGN_LEVEL_ORDER[idx + 1] || null;
+        })()
+        : (typeof getNextCampaignMode === 'function' ? getNextCampaignMode(gameMode) : null);
+    let nextMode = null;
+    let nextLocked = false;
+    if (nextCandidate) {
+        if (nextCandidate === 'library') {
+            const libUnlocked = (typeof isModeUnlockedByProgress === 'function')
+                ? isModeUnlockedByProgress('library')
+                : false;
+            if (libUnlocked) {
+                nextMode = 'library';
+            } else {
+                nextLocked = true;
+            }
+        } else if (typeof getNextCampaignMode === 'function') {
+            nextMode = getNextCampaignMode(gameMode);
+            if (!nextMode) nextMode = nextCandidate;
+        } else {
+            nextMode = nextCandidate;
+        }
+    }
+
     const btnNext = document.createElement('button');
     btnNext.innerText = 'Следующий уровень';
     btnNext.dataset.overlayBtnIdx = '2';
     Object.assign(btnNext.style, { padding: '8px 14px', fontSize: '16px', cursor: 'pointer' });
-    if (!nextMode) {
-        btnNext.disabled = true;
+
+    const libraryTooltipText = (typeof window.LIBRARY_UNLOCK_TOOLTIP === 'string' && window.LIBRARY_UNLOCK_TOOLTIP)
+        ? window.LIBRARY_UNLOCK_TOOLTIP
+        : 'Для открытия уровня пройди все прошлые уровни кампании и получи достижение "Охотник за трофеями".';
+    const showNextLockedTooltip = () => {
+        if (window.showFloatingTooltip) {
+            window.showFloatingTooltip(btnNext, libraryTooltipText, { maxWidth: 360 });
+        }
+    };
+    const hideNextLockedTooltip = () => {
+        if (window.hideFloatingTooltip) {
+            window.hideFloatingTooltip();
+        }
+    };
+
+    if (nextLocked) {
+        btnNext.setAttribute('aria-disabled', 'true');
         btnNext.style.opacity = '0.6';
         btnNext.style.cursor = 'not-allowed';
-    } else {
+        btnNext.onclick = () => {
+            showNextLockedTooltip();
+            setTimeout(() => {
+                if (window.hideFloatingTooltip) window.hideFloatingTooltip();
+            }, 3000);
+        };
+        btnNext.addEventListener('mouseenter', showNextLockedTooltip);
+        btnNext.addEventListener('mouseleave', hideNextLockedTooltip);
+        btnNext.addEventListener('focus', showNextLockedTooltip);
+        btnNext.addEventListener('blur', hideNextLockedTooltip);
+    } else if (nextMode) {
         btnNext.onclick = async () => {
             if (window.BHAudio) window.BHAudio.play('ui_click');
             overlay.remove();
+            if (window.hideFloatingTooltip) window.hideFloatingTooltip();
             const mode67Text2 = (typeof consumePendingMode67Notice === 'function') ? consumePendingMode67Notice() : '';
             if (mode67Text2) { await showTransientInfoNotice(mode67Text2, 2400); }
             const survivalText = (typeof consumePendingSurvivalNotice === 'function')
@@ -832,7 +892,7 @@ function showLevelComplete() {
 
     buttons.appendChild(btnRetry);
     buttons.appendChild(btnMain);
-    if (nextMode) {
+    if (nextMode || nextLocked) {
         buttons.appendChild(btnNext);
     }
 
@@ -1090,6 +1150,15 @@ function showGameOver() {
     if (!window.BHAudio) {
         playGameOverSound(isNew);
     }
+    try {
+        if (window.BHGlobalAchievements && typeof window.BHGlobalAchievements.onRunLoss === 'function') {
+            window.BHGlobalAchievements.onRunLoss({
+                mode: gameMode,
+                selectedChar: selectedChar || 'kuzy',
+                isNewRecord: isNew
+            });
+        }
+    } catch (e) { }
     updateBestScoresDisplay();
     try {
         if (gameMode === 'survival') {

@@ -1020,6 +1020,9 @@ function update(dt) {
     bottles.forEach((b, bi) => {
         if (rect(b, player)) {
             bonusShots += BONUS_SHOTS_PER_BOTTLE;
+            if (window.BHGlobalAchievements && typeof window.BHGlobalAchievements.addBeerPickup === 'function') {
+                window.BHGlobalAchievements.addBeerPickup(1);
+            }
             if (gameMode === 'normal') {
                 normalRunBeerCollected += 1;
             }
@@ -1040,6 +1043,9 @@ function update(dt) {
             } else {
                 bonusShots += 5; // +5 бонусных выстрелов если максимум жизней
             }
+            if (window.BHGlobalAchievements && typeof window.BHGlobalAchievements.addBonusPickup === 'function') {
+                window.BHGlobalAchievements.addBonusPickup('heart', 1);
+            }
             hearts.splice(hi, 1);
             bhPlaySfx('pickup_heart', { volumeMul: 0.95 });
         }
@@ -1051,6 +1057,9 @@ function update(dt) {
             lives = Math.min(PLAYER_LIVES, lives + 1); // +1 жизнь
             bonusShots += 5; // +5 бонусных выстрелов
             score += 3;
+            if (window.BHGlobalAchievements && typeof window.BHGlobalAchievements.addBonusPickup === 'function') {
+                window.BHGlobalAchievements.addBonusPickup('banana', 1);
+            }
             if (gameMode === 'o4ko') {
                 o4koRunBananaCollectedCount += 1;
             }
@@ -1064,6 +1073,7 @@ function update(dt) {
      */
     const applyPlayerDamage = () => {
         lives--;
+        runHeartsDamageTaken += 1;
         if (gameMode === 'normal') {
             normalRunDamageTaken += 1;
         }

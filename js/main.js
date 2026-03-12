@@ -10,6 +10,13 @@ function loop(ts) {
         const dt = (ts - last) / 1000;
         last = ts;
         update(dt);
+        if (
+            dt > 0
+            && window.BHGlobalAchievements
+            && typeof window.BHGlobalAchievements.addActivePlayMs === 'function'
+        ) {
+            window.BHGlobalAchievements.addActivePlayMs(dt * 1000);
+        }
     }
     draw();
     animFrameId = requestAnimationFrame(loop);
@@ -1509,6 +1516,108 @@ document.addEventListener('DOMContentLoaded', () => {
     const achOverlay = document.getElementById('achievements-overlay');
     const achGrid = document.getElementById('ach-grid');
     const achSummary = document.getElementById('ach-summary');
+    const floatingTooltip = document.createElement('div');
+    floatingTooltip.id = 'ach-floating-tooltip';
+    Object.assign(floatingTooltip.style, {
+        position: 'fixed',
+        left: '0',
+        top: '0',
+        zIndex: '2200',
+        maxWidth: '200px',
+        background: 'rgba(0,0,0,0.9)',
+        color: '#fff',
+        padding: '6px 10px',
+        borderRadius: '6px',
+        fontSize: '11px',
+        lineHeight: '1.3',
+        textAlign: 'center',
+        pointerEvents: 'none',
+        boxSizing: 'border-box',
+        whiteSpace: 'normal',
+        display: 'none'
+    });
+    document.body.appendChild(floatingTooltip);
+    let floatingTooltipTarget = null;
+    let floatingTooltipHideTimer = null;
+
+    function isFloatingTooltipVisible() {
+        return floatingTooltip.style.display === 'block';
+    }
+
+    function clearFloatingTooltipTimer() {
+        if (floatingTooltipHideTimer) {
+            clearTimeout(floatingTooltipHideTimer);
+            floatingTooltipHideTimer = null;
+        }
+    }
+
+    function hideFloatingTooltip() {
+        clearFloatingTooltipTimer();
+        floatingTooltip.style.display = 'none';
+        floatingTooltip.textContent = '';
+        floatingTooltipTarget = null;
+    }
+
+    function positionFloatingTooltip() {
+        if (!isFloatingTooltipVisible() || !floatingTooltipTarget || !floatingTooltipTarget.isConnected) return;
+        const rect = floatingTooltipTarget.getBoundingClientRect();
+        const margin = 8;
+        const gap = 8;
+        const tipRect = floatingTooltip.getBoundingClientRect();
+
+        let left = rect.left + rect.width / 2 - tipRect.width / 2;
+        if (left < margin) left = margin;
+        if (left + tipRect.width > window.innerWidth - margin) {
+            left = window.innerWidth - tipRect.width - margin;
+        }
+
+        let top = rect.bottom + gap;
+        if (top + tipRect.height > window.innerHeight - margin) {
+            top = rect.top - tipRect.height - gap;
+        }
+        if (top < margin) top = margin;
+
+        floatingTooltip.style.left = `${Math.round(left)}px`;
+        floatingTooltip.style.top = `${Math.round(top)}px`;
+    }
+
+    function showFloatingTooltip(target, text, opts = {}) {
+        if (!target || !text) {
+            hideFloatingTooltip();
+            return;
+        }
+        clearFloatingTooltipTimer();
+        floatingTooltipTarget = target;
+        floatingTooltip.textContent = text;
+        if (opts && opts.maxWidth) {
+            floatingTooltip.style.maxWidth = `${opts.maxWidth}px`;
+        }
+        floatingTooltip.style.display = 'block';
+        positionFloatingTooltip();
+    }
+
+    function scheduleFloatingTooltipHide(ms) {
+        clearFloatingTooltipTimer();
+        floatingTooltipHideTimer = setTimeout(() => {
+            hideFloatingTooltip();
+        }, Math.max(0, ms || 0));
+    }
+
+    function showAchTooltip(item) {
+        if (!item) {
+            hideFloatingTooltip();
+            return;
+        }
+        const tooltipText = item.getAttribute('data-tooltip');
+        if (!tooltipText) {
+            hideFloatingTooltip();
+            return;
+        }
+        showFloatingTooltip(item, tooltipText, { maxWidth: 200 });
+    }
+
+    window.showFloatingTooltip = showFloatingTooltip;
+    window.hideFloatingTooltip = hideFloatingTooltip;
 
     function createTileFromMeta(id, meta, unlockedFlag) {
         const tile = document.createElement('div');
@@ -1539,6 +1648,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function renderAchievementsPrototype() {
         if (!achGrid || !window.BHAchievements) return;
+        hideFloatingTooltip();
         achGrid.innerHTML = '';
         const manifest = window.BHAchievements.manifest || {};
         
@@ -1674,46 +1784,88 @@ document.addEventListener('DOMContentLoaded', () => {
         gBox.appendChild(gHeader);
         const gRow = document.createElement('div'); gRow.className = 'ach-level-row';
         const gListRow = document.createElement('div'); gListRow.className = 'ach-list-row';
-        
-        const global = [
-            { id: 'first_win', icon: '🏁', title: 'Первая победа', desc: 'Пройти хоть один уровень' },
-            { id: 'collector', icon: '🍌', title: 'Коллекционер', desc: 'Собрать 100 бананов' }
-        ];
+        gListRow.style.display = 'grid';
+        gListRow.style.gridTemplateColumns = 'repeat(2, minmax(0, 1fr))';
+        gListRow.style.gap = '8px';
+        gListRow.style.alignItems = 'stretch';
+
+        const global = Object.values(manifest).filter(a => a.mode === 'global');
         
         let globalUnlockedCount = 0;
-        
-        global.forEach(a => {
-            totalCount++;
-            const isUnlocked = window.BHAchievements.has(a.id);
-            if (isUnlocked) {
-                unlockedCount++;
-                globalUnlockedCount++;
-            }
-            
-            const item = document.createElement('div');
-            item.className = 'ach-item' + (isUnlocked ? ' unlocked' : ' locked');
-            item.setAttribute('tabindex', '0');
-            item.setAttribute('data-ach-id', a.id);
-            item.setAttribute('data-tooltip', a.desc || '');
-            
-            const emoji = document.createElement('div'); emoji.className = 'ach-emoji'; emoji.textContent = a.icon;
-            const txt = document.createElement('div'); txt.className = 'ach-item-text';
-            const titleEl = document.createElement('div'); titleEl.className = 'ach-title'; titleEl.textContent = a.title;
-            const descEl = document.createElement('div'); descEl.className = 'ach-desc';
-            
-            if (isUnlocked) {
-                const timestamp = window.BHAchievements.getTimestamp(a.id);
-                descEl.textContent = formatTime(timestamp);
-            } else {
-                descEl.textContent = '';
-                descEl.style.fontSize = '10px';
-                descEl.style.color = 'rgba(255,255,255,0.4)';
-            }
-            
-            txt.appendChild(titleEl); txt.appendChild(descEl);
-            item.appendChild(emoji); item.appendChild(txt);
-            gListRow.appendChild(item);
-        });
+
+        if (global.length === 0) {
+            const empty = document.createElement('div');
+            empty.className = 'ach-item locked';
+            empty.setAttribute('tabindex', '-1');
+            empty.style.gridColumn = '1 / span 2';
+            const emoji = document.createElement('div');
+            emoji.className = 'ach-emoji';
+            emoji.textContent = '—';
+            const txt = document.createElement('div');
+            txt.className = 'ach-item-text';
+            const titleEl = document.createElement('div');
+            titleEl.className = 'ach-title';
+            titleEl.textContent = 'Нет достижений';
+            const descEl = document.createElement('div');
+            descEl.className = 'ach-desc';
+            descEl.textContent = '';
+            txt.appendChild(titleEl);
+            txt.appendChild(descEl);
+            empty.appendChild(emoji);
+            empty.appendChild(txt);
+            gListRow.appendChild(empty);
+        } else {
+            global.forEach(a => {
+                totalCount++;
+                const isUnlocked = window.BHAchievements.has(a.id);
+                if (isUnlocked) {
+                    unlockedCount++;
+                    globalUnlockedCount++;
+                }
+                const isSecretLocked = !!a.secret && !isUnlocked;
+
+                const item = document.createElement('div');
+                item.className = 'ach-item' + (isUnlocked ? ' unlocked' : ' locked');
+                item.setAttribute('tabindex', '0');
+                item.setAttribute('data-ach-id', a.id);
+                item.style.minWidth = '0';
+                item.style.height = '100%';
+                if (!isSecretLocked && a.desc) {
+                    item.setAttribute('data-tooltip', a.desc);
+                }
+
+                const emoji = document.createElement('div');
+                emoji.className = 'ach-emoji';
+                emoji.textContent = isSecretLocked ? '🔒' : (a.icon || '☆');
+
+                const txt = document.createElement('div');
+                txt.className = 'ach-item-text';
+                const titleEl = document.createElement('div');
+                titleEl.className = 'ach-title';
+                titleEl.textContent = isSecretLocked ? 'Секретное достижение' : (a.title || a.id);
+                const descEl = document.createElement('div');
+                descEl.className = 'ach-desc';
+
+                if (isUnlocked) {
+                    const timestamp = window.BHAchievements.getTimestamp(a.id);
+                    descEl.textContent = formatTime(timestamp);
+                } else if (isSecretLocked) {
+                    descEl.textContent = '???';
+                    descEl.style.fontSize = '10px';
+                    descEl.style.color = 'rgba(255,255,255,0.4)';
+                } else {
+                    descEl.textContent = '';
+                    descEl.style.fontSize = '10px';
+                    descEl.style.color = 'rgba(255,255,255,0.4)';
+                }
+
+                txt.appendChild(titleEl);
+                txt.appendChild(descEl);
+                item.appendChild(emoji);
+                item.appendChild(txt);
+                gListRow.appendChild(item);
+            });
+        }
         gRow.appendChild(gListRow);
         gBox.appendChild(gRow);
         
@@ -1742,10 +1894,45 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     if (achBtn && achOverlay) {
-        achBtn.addEventListener('click', () => { renderAchievementsPrototype(); achOverlay.style.display = 'block'; });
+        achBtn.addEventListener('click', () => { hideFloatingTooltip(); renderAchievementsPrototype(); achOverlay.style.display = 'block'; });
         const closeBtn = achOverlay.querySelector('#ach-back-btn');
-        if (closeBtn) closeBtn.addEventListener('click', () => { achOverlay.style.display = 'none'; });
+        if (closeBtn) closeBtn.addEventListener('click', () => { hideFloatingTooltip(); achOverlay.style.display = 'none'; });
     }
+    if (achGrid) {
+        achGrid.addEventListener('mouseover', (ev) => {
+            const item = ev.target && ev.target.closest ? ev.target.closest('.ach-item[data-tooltip]') : null;
+            if (!item || !achGrid.contains(item)) return;
+            showAchTooltip(item);
+        });
+        achGrid.addEventListener('mouseout', (ev) => {
+            const item = ev.target && ev.target.closest ? ev.target.closest('.ach-item[data-tooltip]') : null;
+            if (!item || !achGrid.contains(item)) return;
+            const next = ev.relatedTarget && ev.relatedTarget.closest ? ev.relatedTarget.closest('.ach-item[data-tooltip]') : null;
+            if (next && achGrid.contains(next)) return;
+            hideFloatingTooltip();
+        });
+        achGrid.addEventListener('focusin', (ev) => {
+            const item = ev.target && ev.target.closest ? ev.target.closest('.ach-item[data-tooltip]') : null;
+            if (!item || !achGrid.contains(item)) return;
+            showAchTooltip(item);
+        });
+        achGrid.addEventListener('focusout', (ev) => {
+            const item = ev.target && ev.target.closest ? ev.target.closest('.ach-item[data-tooltip]') : null;
+            if (!item || !achGrid.contains(item)) return;
+            const next = ev.relatedTarget;
+            if (next && item.contains(next)) return;
+            hideFloatingTooltip();
+        });
+        achGrid.addEventListener('scroll', () => {
+            if (!isFloatingTooltipVisible()) return;
+            if (!floatingTooltipTarget || !achGrid.contains(floatingTooltipTarget)) {
+                hideFloatingTooltip();
+                return;
+            }
+            positionFloatingTooltip();
+        }, { passive: true });
+    }
+    window.addEventListener('resize', () => { if (isFloatingTooltipVisible()) positionFloatingTooltip(); });
     // Update tiles when an achievement is granted
     if (typeof window !== 'undefined') {
         window.addEventListener('achievement:granted', (e) => {
@@ -1823,6 +2010,26 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         };
     }
+    const libraryBtn = document.querySelector('#modes .mode[data-mode="library"]');
+    const getLibraryUnlockTooltipText = () => (
+        (typeof window.LIBRARY_UNLOCK_TOOLTIP === 'string' && window.LIBRARY_UNLOCK_TOOLTIP)
+            ? window.LIBRARY_UNLOCK_TOOLTIP
+            : 'Для открытия уровня пройди все прошлые уровни кампании и получи достижение "Охотник за трофеями".'
+    );
+    const showLibraryLockedTooltip = (target, autoHideMs) => {
+        if (typeof isModeUnlockedByProgress === 'function' && isModeUnlockedByProgress('library')) {
+            hideFloatingTooltip();
+            return;
+        }
+        showFloatingTooltip(target, getLibraryUnlockTooltipText(), { maxWidth: 360 });
+        if (autoHideMs) scheduleFloatingTooltipHide(autoHideMs);
+    };
+    if (libraryBtn) {
+        libraryBtn.addEventListener('mouseenter', () => showLibraryLockedTooltip(libraryBtn, 0));
+        libraryBtn.addEventListener('mouseleave', () => hideFloatingTooltip());
+        libraryBtn.addEventListener('focus', () => showLibraryLockedTooltip(libraryBtn, 0));
+        libraryBtn.addEventListener('blur', () => hideFloatingTooltip());
+    }
     /**
      * Назначает обработчик выбора режима игры.
      * @param {HTMLElement} m - DOM-элемент кнопки режима.
@@ -1840,6 +2047,11 @@ document.addEventListener('DOMContentLoaded', () => {
             clearTouchInputs();
             paused = false;
             const targetMode = m.dataset.mode || 'normal';
+            if (targetMode === 'library' && typeof isModeUnlockedByProgress === 'function' && !isModeUnlockedByProgress('library')) {
+                audioPlay('ui_error');
+                showLibraryLockedTooltip(m, 3000);
+                return;
+            }
             if (typeof isModeUnlockedByProgress === 'function' && !isModeUnlockedByProgress(targetMode)) {
                 audioPlay('ui_error');
                 return;
@@ -1848,6 +2060,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 audioPlay('ui_error');
                 return;
             }
+            hideFloatingTooltip();
             // Снимаем выделение со всех кнопок режима
             // mb — кнопка режима
             modeButtons.forEach(mb => mb.classList.remove('selected'));

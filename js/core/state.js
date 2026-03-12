@@ -29,6 +29,7 @@ let bonusMode = false;
 // Статистика текущего раунда для ачивок normal.
 let normalRunDamageTaken = 0;
 let normalRunBeerCollected = 0;
+let runHeartsDamageTaken = 0;
 // Статистика текущего раунда для ачивок уровня "67" (Телепузик).
 let mode67FinalBlowFromRight = false;
 let mode67BossReachedMaxSize = false;
@@ -207,6 +208,7 @@ function resetGameRuntimeCore() {
     bonusMode = false;
     normalRunDamageTaken = 0;
     normalRunBeerCollected = 0;
+    runHeartsDamageTaken = 0;
     mode67FinalBlowFromRight = false;
     mode67BossReachedMaxSize = false;
     mode67EnemyBulletLeftScreen = false;

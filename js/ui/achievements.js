@@ -276,6 +276,86 @@
             icon: '\ud83e\udd2b',
             mode: 'tutorial',
             secret: true
+        },
+        'global_just_for_beer': {
+            id: 'global_just_for_beer',
+            title: '\u042f \u0437\u0434\u0435\u0441\u044c \u0442\u043e\u043b\u044c\u043a\u043e \u0437\u0430 \u044d\u0442\u0438\u043c',
+            desc: '\u041f\u0438\u0432\u043e! \u041f\u0440\u043e\u0441\u0442\u043e \u0441\u043e\u0431\u0435\u0440\u0438 \u0032\u0032\u0035',
+            icon: '\ud83c\udf7a',
+            mode: 'global'
+        },
+        'global_tour_of_bananstvo': {
+            id: 'global_tour_of_bananstvo',
+            title: '\u0422\u0443\u0440 \u043f\u043e \u0411\u0430\u043d\u0430\u043d\u0441\u0442\u0432\u0443',
+            desc: '\u0417\u0430\u043a\u0440\u043e\u0439 \u0432\u0441\u0435 \u0443\u0440\u043e\u0432\u043d\u0438 \u0438\u0437 \u043f\u0440\u043e\u0445\u043e\u0436\u0434\u0435\u043d\u0438\u044f',
+            icon: '\ud83d\uddfa\ufe0f',
+            mode: 'global'
+        },
+        'global_all_in_game': {
+            id: 'global_all_in_game',
+            title: '\u0412\u0441\u0435 \u0432 \u0434\u0435\u043b\u0435',
+            desc: '\u0412\u044b\u0438\u0433\u0440\u0430\u0439 \u0432\u0441\u0435\u043c\u0438 \u0433\u0435\u0440\u043e\u044f\u043c\u0438',
+            icon: '\ud83e\udde9',
+            mode: 'global',
+            secret: true
+        },
+        'global_on_streak': {
+            id: 'global_on_streak',
+            title: '\u041d\u0430 \u0441\u0435\u0440\u0438\u0438',
+            desc: '\u0035 \u043f\u043e\u0431\u0435\u0434 \u043f\u043e\u0434\u0440\u044f\u0434',
+            icon: '\ud83d\udd25',
+            mode: 'global'
+        },
+        'global_unkillable': {
+            id: 'global_unkillable',
+            title: '\u041d\u0435\u0443\u0431\u0438\u0432\u0430\u0435\u043c\u044b\u0439',
+            desc: '\u0033 \u043f\u043e\u0431\u0435\u0434\u044b \u0431\u0435\u0437 \u0443\u0440\u043e\u043d\u0430 \u043f\u043e\u0434\u0440\u044f\u0434',
+            icon: '\ud83d\udee1\ufe0f',
+            mode: 'global'
+        },
+        'global_banana_marathon': {
+            id: 'global_banana_marathon',
+            title: '\u0411\u0430\u043d\u0430\u043d\u0441\u043a\u0438\u0439 \u043c\u0430\u0440\u0430\u0444\u043e\u043d',
+            desc: '\u0031 \u0447\u0430\u0441 \u0432 \u0438\u0433\u0440\u0435',
+            icon: '\u23f1\ufe0f',
+            mode: 'global',
+            secret: true
+        },
+        'global_hoarder': {
+            id: 'global_hoarder',
+            title: '\u041f\u043b\u044e\u0448\u043a\u0438\u043d',
+            desc: '\u0421\u043e\u0431\u0435\u0440\u0438 \u0035\u0030\u0030 \u0431\u043e\u043d\u0443\u0441\u043e\u0432',
+            icon: '\ud83c\udf92',
+            mode: 'global'
+        },
+        'global_record_on_record': {
+            id: 'global_record_on_record',
+            title: '\u0420\u0435\u043a\u043e\u0440\u0434 \u043d\u0430 \u0440\u0435\u043a\u043e\u0440\u0434\u0435',
+            desc: '\u0031\u0030 \u043d\u043e\u0432\u044b\u0445 \u0440\u0435\u043a\u043e\u0440\u0434\u043e\u0432',
+            icon: '\ud83d\udcc8',
+            mode: 'global',
+            secret: true
+        },
+        'global_trophy_hunter_20': {
+            id: 'global_trophy_hunter_20',
+            title: '\u041e\u0445\u043e\u0442\u043d\u0438\u043a \u0437\u0430 \u0442\u0440\u043e\u0444\u0435\u044f\u043c\u0438',
+            desc: '\u041e\u0442\u043a\u0440\u043e\u0439 \u0032\u0030 \u0434\u043e\u0441\u0442\u0438\u0436\u0435\u043d\u0438\u0439',
+            icon: '\ud83c\udfc6',
+            mode: 'global'
+        },
+        'global_trophy_hunter_39': {
+            id: 'global_trophy_hunter_39',
+            title: '\u042f\u043d\u0442\u0430\u0440\u043d\u044b\u0439 \u041e\u0445\u043e\u0442\u043d\u0438\u043a \u0437\u0430 \u0442\u0440\u043e\u0444\u0435\u044f\u043c\u0438',
+            desc: '\u041e\u0442\u043a\u0440\u043e\u0439 \u0033\u0039 \u0434\u043e\u0441\u0442\u0438\u0436\u0435\u043d\u0438\u0439',
+            icon: '\ud83c\udfc6',
+            mode: 'global'
+        },
+        'global_trophy_hunter_90pct': {
+            id: 'global_trophy_hunter_90pct',
+            title: '\u0411\u0430\u043d\u0430\u043d\u0441\u043a\u0438\u0439 \u041e\u0445\u043e\u0442\u043d\u0438\u043a \u0437\u0430 \u0442\u0440\u043e\u0444\u0435\u044f\u043c\u0438',
+            desc: '\u041e\u0442\u043a\u0440\u043e\u0439 \u0039\u0030\u0025 \u0434\u043e\u0441\u0442\u0438\u0436\u0435\u043d\u0438\u0439, \u0430 \u043e\u0441\u0442\u0430\u043b\u044c\u043d\u043e\u0435 \u043f\u043e\u0442\u043e\u043c',
+            icon: '\ud83c\udfc6',
+            mode: 'global'
         }
     };
 
@@ -374,6 +454,241 @@
     }
 
     const unlocked = load();
+    const GLOBAL_STATS_KEY = 'bh_global_ach_stats_v1';
+    const GLOBAL_LEVEL_COMPLETED_PREFIX = 'bh_level_completed_v1_';
+    const GLOBAL_CHARS = Object.freeze(['max', 'dron', 'kuzy']);
+    const FALLBACK_CAMPAIGN_MODES = Object.freeze([
+        'normal',
+        '67',
+        'o4ko',
+        'nosok',
+        'platforms',
+        'lovlyu',
+        'runner',
+        'library'
+    ]);
+    const PLAYTIME_ACH_TARGET_MS = 60 * 60 * 1000;
+
+    function getCampaignModes() {
+        if (Array.isArray(window.CAMPAIGN_LEVEL_ORDER) && window.CAMPAIGN_LEVEL_ORDER.length > 0) {
+            return window.CAMPAIGN_LEVEL_ORDER.slice();
+        }
+        return FALLBACK_CAMPAIGN_MODES.slice();
+    }
+
+    function createDefaultGlobalStats() {
+        return {
+            beerPicked: 0,
+            bonusPicked: 0,
+            campaignWinStreak: 0,
+            campaignNoDamageWinStreak: 0,
+            activePlayMs: 0,
+            personalRecordsSet: 0,
+            campaignWinsByChar: { max: 0, dron: 0, kuzy: 0 },
+            campaignWinsByMode: {}
+        };
+    }
+
+    function normalizeGlobalStats(raw) {
+        const base = createDefaultGlobalStats();
+        const src = (raw && typeof raw === 'object') ? raw : {};
+
+        const numberFields = [
+            'beerPicked',
+            'bonusPicked',
+            'campaignWinStreak',
+            'campaignNoDamageWinStreak',
+            'activePlayMs',
+            'personalRecordsSet'
+        ];
+        numberFields.forEach(key => {
+            const n = Number(src[key]);
+            base[key] = Number.isFinite(n) && n >= 0 ? n : 0;
+        });
+
+        const winsByChar = (src.campaignWinsByChar && typeof src.campaignWinsByChar === 'object')
+            ? src.campaignWinsByChar
+            : {};
+        GLOBAL_CHARS.forEach(charId => {
+            const n = Number(winsByChar[charId]);
+            base.campaignWinsByChar[charId] = Number.isFinite(n) && n >= 0 ? n : 0;
+        });
+
+        const winsByMode = (src.campaignWinsByMode && typeof src.campaignWinsByMode === 'object')
+            ? src.campaignWinsByMode
+            : {};
+        Object.keys(winsByMode).forEach(mode => {
+            const n = Number(winsByMode[mode]);
+            if (Number.isFinite(n) && n >= 0) base.campaignWinsByMode[mode] = n;
+        });
+
+        return base;
+    }
+
+    function loadGlobalStats() {
+        try {
+            const raw = localStorage.getItem(GLOBAL_STATS_KEY) || '{}';
+            return normalizeGlobalStats(JSON.parse(raw));
+        } catch (e) {
+            return createDefaultGlobalStats();
+        }
+    }
+
+    function saveGlobalStats(obj) {
+        try { localStorage.setItem(GLOBAL_STATS_KEY, JSON.stringify(obj)); } catch (e) { }
+    }
+
+    function isCampaignModeForGlobals(mode) {
+        return getCampaignModes().indexOf(mode) >= 0;
+    }
+
+    function isCampaignLevelCompleted(mode, statsRef) {
+        if (!mode) return false;
+        try {
+            if (localStorage.getItem(GLOBAL_LEVEL_COMPLETED_PREFIX + mode) === '1') return true;
+        } catch (e) { }
+        const src = statsRef || globalStats;
+        return !!(src && src.campaignWinsByMode && src.campaignWinsByMode[mode] > 0);
+    }
+
+    let globalStats = loadGlobalStats();
+    let pendingPlaytimeSaveMs = 0;
+    let globalSyncLock = false;
+
+    function persistGlobalStats(force = false) {
+        if (force || pendingPlaytimeSaveMs >= 1000) {
+            saveGlobalStats(globalStats);
+            pendingPlaytimeSaveMs = 0;
+        }
+    }
+
+    function tryGrantGlobal(id, condition) {
+        if (!condition || !window.BHAchievements || typeof window.BHAchievements.grant !== 'function') {
+            return false;
+        }
+        return !!window.BHAchievements.grant(id);
+    }
+
+    function syncGlobalAchievements() {
+        if (globalSyncLock) return;
+        if (!window.BHAchievements || typeof window.BHAchievements.grant !== 'function') return;
+
+        globalSyncLock = true;
+        try {
+            let changed = false;
+            let guard = 0;
+            do {
+                changed = false;
+                guard += 1;
+
+                const campaignModes = getCampaignModes();
+                const allCampaignCompleted = campaignModes.length > 0
+                    && campaignModes.every(mode => isCampaignLevelCompleted(mode, globalStats));
+                const allCharsWon = GLOBAL_CHARS.every(charId => (globalStats.campaignWinsByChar[charId] || 0) > 0);
+                const totalAchievements = Math.max(1, Object.keys(manifest).length);
+                const unlockedCount = Object.keys(unlocked).length;
+                const unlockedRatio = unlockedCount / totalAchievements;
+
+                changed = tryGrantGlobal('global_just_for_beer', globalStats.beerPicked >= 225) || changed;
+                changed = tryGrantGlobal('global_tour_of_bananstvo', allCampaignCompleted) || changed;
+                changed = tryGrantGlobal('global_all_in_game', allCharsWon) || changed;
+                changed = tryGrantGlobal('global_on_streak', globalStats.campaignWinStreak >= 5) || changed;
+                changed = tryGrantGlobal('global_unkillable', globalStats.campaignNoDamageWinStreak >= 3) || changed;
+                changed = tryGrantGlobal('global_banana_marathon', globalStats.activePlayMs >= PLAYTIME_ACH_TARGET_MS) || changed;
+                changed = tryGrantGlobal('global_hoarder', globalStats.bonusPicked >= 500) || changed;
+                changed = tryGrantGlobal('global_record_on_record', globalStats.personalRecordsSet >= 10) || changed;
+                changed = tryGrantGlobal('global_trophy_hunter_20', unlockedCount >= 20) || changed;
+                changed = tryGrantGlobal('global_trophy_hunter_39', unlockedCount >= 39) || changed;
+                changed = tryGrantGlobal('global_trophy_hunter_90pct', unlockedRatio >= 0.9) || changed;
+            } while (changed && guard < 20);
+        } finally {
+            globalSyncLock = false;
+        }
+    }
+
+    function incrementGlobalBonus(type, count = 1) {
+        const step = Math.max(0, Number(count) || 0);
+        if (!step) return;
+        globalStats.bonusPicked += step;
+        if (type === 'beer') {
+            globalStats.beerPicked += step;
+        }
+        persistGlobalStats(true);
+        syncGlobalAchievements();
+    }
+
+    function addGlobalPlaytimeMs(ms) {
+        const step = Number(ms);
+        if (!Number.isFinite(step) || step <= 0) return;
+        const prev = globalStats.activePlayMs;
+        globalStats.activePlayMs += step;
+        pendingPlaytimeSaveMs += step;
+        persistGlobalStats(false);
+        if (prev < PLAYTIME_ACH_TARGET_MS && globalStats.activePlayMs >= PLAYTIME_ACH_TARGET_MS) {
+            persistGlobalStats(true);
+            syncGlobalAchievements();
+        }
+    }
+
+    function addGlobalPersonalRecord(count = 1) {
+        const step = Math.max(0, Number(count) || 0);
+        if (!step) return;
+        globalStats.personalRecordsSet += step;
+        persistGlobalStats(true);
+        syncGlobalAchievements();
+    }
+
+    function registerGlobalRunWin(meta = {}) {
+        const mode = String(meta.mode || '');
+        const charId = String(meta.char || meta.selectedChar || '');
+        const noDamage = !!meta.noDamage;
+        if (isCampaignModeForGlobals(mode)) {
+            const prevWins = Number(globalStats.campaignWinsByMode[mode]) || 0;
+            globalStats.campaignWinsByMode[mode] = prevWins + 1;
+            if (GLOBAL_CHARS.indexOf(charId) >= 0) {
+                globalStats.campaignWinsByChar[charId] = (Number(globalStats.campaignWinsByChar[charId]) || 0) + 1;
+            }
+            globalStats.campaignWinStreak += 1;
+            globalStats.campaignNoDamageWinStreak = noDamage
+                ? (globalStats.campaignNoDamageWinStreak + 1)
+                : 0;
+        }
+        if (meta.isNewRecord) {
+            globalStats.personalRecordsSet += 1;
+        }
+        persistGlobalStats(true);
+        syncGlobalAchievements();
+    }
+
+    function registerGlobalRunLoss(meta = {}) {
+        const mode = String(meta.mode || '');
+        if (isCampaignModeForGlobals(mode)) {
+            globalStats.campaignWinStreak = 0;
+            globalStats.campaignNoDamageWinStreak = 0;
+        }
+        if (meta.isNewRecord) {
+            globalStats.personalRecordsSet += 1;
+        }
+        persistGlobalStats(true);
+        syncGlobalAchievements();
+    }
+
+    function cloneGlobalStats() {
+        return {
+            beerPicked: globalStats.beerPicked,
+            bonusPicked: globalStats.bonusPicked,
+            campaignWinStreak: globalStats.campaignWinStreak,
+            campaignNoDamageWinStreak: globalStats.campaignNoDamageWinStreak,
+            activePlayMs: globalStats.activePlayMs,
+            personalRecordsSet: globalStats.personalRecordsSet,
+            campaignWinsByChar: {
+                max: globalStats.campaignWinsByChar.max || 0,
+                dron: globalStats.campaignWinsByChar.dron || 0,
+                kuzy: globalStats.campaignWinsByChar.kuzy || 0
+            },
+            campaignWinsByMode: Object.assign({}, globalStats.campaignWinsByMode)
+        };
+    }
 
     window.BHAchievements = {
         manifest,
@@ -399,4 +714,39 @@
             return true;
         }
     };
+
+    window.BHGlobalAchievements = {
+        getStats() {
+            return cloneGlobalStats();
+        },
+        addBonusPickup(type, count = 1) {
+            incrementGlobalBonus(type, count);
+        },
+        addBeerPickup(count = 1) {
+            incrementGlobalBonus('beer', count);
+        },
+        addActivePlayMs(ms) {
+            addGlobalPlaytimeMs(ms);
+        },
+        addPersonalRecord(count = 1) {
+            addGlobalPersonalRecord(count);
+        },
+        onRunWin(meta) {
+            registerGlobalRunWin(meta || {});
+        },
+        onRunLoss(meta) {
+            registerGlobalRunLoss(meta || {});
+        },
+        sync() {
+            syncGlobalAchievements();
+        }
+    };
+
+    try {
+        window.addEventListener('achievement:granted', () => {
+            syncGlobalAchievements();
+        });
+    } catch (e) { }
+
+    syncGlobalAchievements();
 })();

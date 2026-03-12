@@ -551,6 +551,7 @@ function segmentCircleHit(x1, y1, x2, y2, cx, cy, r) {
 function applyNosokPlayerDamage() {
     if (invuln > 0) return;
     lives--;
+    runHeartsDamageTaken += 1;
     combo = 0;
     invuln = INVULN_TIME;
     explosions.push({ x: player.x + player.w * 0.5, y: player.y + player.h * 0.5, timer: 0 });
@@ -1198,6 +1199,9 @@ function updateNosokDrops(dt) {
     for (let i = bottles.length - 1; i >= 0; i--) {
         if (rect(bottles[i], player)) {
             bonusShots += BONUS_SHOTS_PER_BOTTLE;
+            if (window.BHGlobalAchievements && typeof window.BHGlobalAchievements.addBeerPickup === 'function') {
+                window.BHGlobalAchievements.addBeerPickup(1);
+            }
             bottles.splice(i, 1);
             if (window.BHAudio) {
                 window.BHAudio.play('pickup_beer', { volumeMul: 0.95 });
@@ -1209,6 +1213,9 @@ function updateNosokDrops(dt) {
             if (rect(hearts[i], player)) {
                 if (lives < PLAYER_LIVES) lives++;
                 else bonusShots += 5;
+                if (window.BHGlobalAchievements && typeof window.BHGlobalAchievements.addBonusPickup === 'function') {
+                    window.BHGlobalAchievements.addBonusPickup('heart', 1);
+                }
                 hearts.splice(i, 1);
                 if (window.BHAudio) {
                     window.BHAudio.play('pickup_heart', { volumeMul: 0.95 });
@@ -1221,6 +1228,9 @@ function updateNosokDrops(dt) {
         if (!rect(p, player)) continue;
         if (p.type === 'ice' && bossNosok) {
             bossNosok.freeze(5);
+            if (window.BHGlobalAchievements && typeof window.BHGlobalAchievements.addBonusPickup === 'function') {
+                window.BHGlobalAchievements.addBonusPickup('ice', 1);
+            }
             if (window.BHAudio) {
                 window.BHAudio.play('pickup_ice', { volumeMul: 0.95 });
             }
@@ -1235,6 +1245,9 @@ function updateNosokDrops(dt) {
             });
         } else if (p.type === 'dynamite' && bossNosok) {
             bossNosok.applyDynamiteBlast();
+            if (window.BHGlobalAchievements && typeof window.BHGlobalAchievements.addBonusPickup === 'function') {
+                window.BHGlobalAchievements.addBonusPickup('dynamite', 1);
+            }
             if (!stepanMode && nosokGoals >= nosokTargetGoals) {
                 nosokRunPoopExplodedAfterWin = true;
                 if (typeof BHAchievements !== 'undefined') {

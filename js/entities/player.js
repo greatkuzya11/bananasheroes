@@ -356,6 +356,7 @@ class Player {
             if (this.y > canvas.height) {
                 platformRunFellOffLevel = true;
                 lives--;
+                runHeartsDamageTaken += 1;
                 combo = 0;
                 if (lives <= 0) {
                     showGameOver();

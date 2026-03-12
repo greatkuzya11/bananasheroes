@@ -969,6 +969,9 @@ function updateRunnerFakeBonuses(dt) {
         if (rect(runnerEnergyDrops[i], player)) {
             runnerEnergyActive = true;
             runnerEnergyTimer = 10.0;
+            if (window.BHGlobalAchievements && typeof window.BHGlobalAchievements.addBonusPickup === 'function') {
+                window.BHGlobalAchievements.addBonusPickup('runner_energy', 1);
+            }
             runnerEnergyDrops.splice(i, 1);
             if (window.BHAudio) {
                 window.BHAudio.play('runner_turbo', { volumeMul: 0.96 });
@@ -979,6 +982,9 @@ function updateRunnerFakeBonuses(dt) {
         if (rect(runnerCigarDrops[i], player)) {
             runnerCigarXLActive = true;
             runnerCigarXLTimer = 10.0;
+            if (window.BHGlobalAchievements && typeof window.BHGlobalAchievements.addBonusPickup === 'function') {
+                window.BHGlobalAchievements.addBonusPickup('runner_cigar', 1);
+            }
             runnerCigarDrops.splice(i, 1);
             if (window.BHAudio) {
                 window.BHAudio.play('runner_puff', { volumeMul: 0.95, playbackRate: 0.9 });

@@ -134,6 +134,51 @@
 
         lines.unshift(`Achievements[${currentMode}]: ${unlocked}/${ids.length}`);
 
+        if (window.BHGlobalAchievements && typeof window.BHGlobalAchievements.getStats === 'function') {
+            const gs = window.BHGlobalAchievements.getStats();
+            const allIds = Object.keys(manifest);
+            const allTotal = Math.max(1, allIds.length);
+            let allUnlocked = 0;
+            for (let i = 0; i < allIds.length; i++) {
+                if (api.has(allIds[i])) allUnlocked += 1;
+            }
+            const campaignModes = (Array.isArray(window.CAMPAIGN_LEVEL_ORDER) && window.CAMPAIGN_LEVEL_ORDER.length > 0)
+                ? window.CAMPAIGN_LEVEL_ORDER.slice()
+                : ['normal', '67', 'o4ko', 'nosok', 'platforms', 'lovlyu', 'runner', 'library'];
+            let campaignCompleted = 0;
+            for (let i = 0; i < campaignModes.length; i++) {
+                const mode = campaignModes[i];
+                const modeFromStats = gs.campaignWinsByMode && (gs.campaignWinsByMode[mode] > 0);
+                let modeFromLs = false;
+                try { modeFromLs = localStorage.getItem('bh_level_completed_v1_' + mode) === '1'; } catch (e) { modeFromLs = false; }
+                if (modeFromStats || modeFromLs) campaignCompleted += 1;
+            }
+            const required90 = Math.ceil(allTotal * 0.9);
+            const playSec = Math.max(0, (Number(gs.activePlayMs) || 0) / 1000);
+
+            lines.push('--- Global achievements ---');
+            lines.push(`global beer picked: ${Math.max(0, Math.floor(gs.beerPicked || 0))}/225`);
+            lines.push(`global campaign completed: ${campaignCompleted}/${campaignModes.length}`);
+            lines.push(`global wins by char: max=${Math.max(0, Math.floor(gs.campaignWinsByChar?.max || 0))}, dron=${Math.max(0, Math.floor(gs.campaignWinsByChar?.dron || 0))}, kuzy=${Math.max(0, Math.floor(gs.campaignWinsByChar?.kuzy || 0))}`);
+            lines.push(`global win streak: ${Math.max(0, Math.floor(gs.campaignWinStreak || 0))}/5`);
+            lines.push(`global no-dmg streak: ${Math.max(0, Math.floor(gs.campaignNoDamageWinStreak || 0))}/3`);
+            lines.push(`global active time: ${playSec.toFixed(1)}s / 3600.0s`);
+            lines.push(`global bonuses picked: ${Math.max(0, Math.floor(gs.bonusPicked || 0))}/500`);
+            lines.push(`global personal records: ${Math.max(0, Math.floor(gs.personalRecordsSet || 0))}/10`);
+            lines.push(`global unlocked all: ${allUnlocked}/${allTotal} (need 20/39/${required90})`);
+            lines.push(`global ach just_for_beer: ${api.has('global_just_for_beer')}`);
+            lines.push(`global ach tour_of_bananstvo: ${api.has('global_tour_of_bananstvo')}`);
+            lines.push(`global ach all_in_game: ${api.has('global_all_in_game')}`);
+            lines.push(`global ach on_streak: ${api.has('global_on_streak')}`);
+            lines.push(`global ach unkillable: ${api.has('global_unkillable')}`);
+            lines.push(`global ach banana_marathon: ${api.has('global_banana_marathon')}`);
+            lines.push(`global ach hoarder: ${api.has('global_hoarder')}`);
+            lines.push(`global ach record_on_record: ${api.has('global_record_on_record')}`);
+            lines.push(`global ach trophy_hunter_20: ${api.has('global_trophy_hunter_20')}`);
+            lines.push(`global ach trophy_hunter_39: ${api.has('global_trophy_hunter_39')}`);
+            lines.push(`global ach trophy_hunter_90pct: ${api.has('global_trophy_hunter_90pct')}`);
+        }
+
         if (currentMode === 'normal'
             && typeof normalRunDamageTaken === 'number'
             && typeof normalRunBeerCollected === 'number'
