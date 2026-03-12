@@ -85,6 +85,111 @@
             desc: '\u0412\u0437\u043e\u0440\u0432\u0438 \u044d\u0442\u043e\u0442 \u043a\u0443\u0441\u043e\u043a \u0433\u043e\u0432\u043d\u0430.',
             icon: '🧨',
             mode: 'nosok'
+        },
+        'stepan_not_worthy': {
+            id: 'stepan_not_worthy',
+            title: '\u042d\u0442\u043e \u043d\u0435\u0434\u043e\u0441\u0442\u043e\u0439\u043d\u043e \u043c\u0435\u043d\u044f',
+            desc: '\u041e\u0442\u043a\u0430\u0436\u0438\u0441\u044c \u0437\u0430\u0431\u0438\u0432\u0430\u0442\u044c \u043f\u043e\u0441\u043b\u0435 \u0036\u0037 \u0433\u043e\u043b\u0430',
+            icon: '👑',
+            mode: 'stepan'
+        },
+        'stepan_need_cannon': {
+            id: 'stepan_need_cannon',
+            title: '\u041f\u0443\u0448\u043a\u0430 \u043d\u0443\u0436\u043d\u0430',
+            desc: '\u0414\u0430\u0436\u0435 \u043d\u0435 \u043f\u044b\u0442\u0430\u0439\u0441\u044f \u043a \u043d\u0435\u043c\u0443 \u043f\u043e\u0434\u043e\u0439\u0442\u0438 \u0438 \u0437\u0430\u0431\u0435\u0439 \u0031\u0031',
+            icon: '🔫',
+            mode: 'stepan'
+        },
+        'stepan_hundred_in_motion': {
+            id: 'stepan_hundred_in_motion',
+            title: '\u0421\u043e\u0442\u043a\u0430 \u0432 \u0434\u0432\u0438\u0436\u0435\u043d\u0438\u0438',
+            desc: '\u041d\u0430\u0432\u0430\u043b\u0438 \u0435\u043c\u0443 \u0441\u043e\u0442\u043a\u0443 \u0431\u0435\u0437 \u043f\u0440\u043e\u0441\u0442\u043e\u0435\u0432',
+            icon: '🏃',
+            mode: 'stepan'
+        },
+        'lovlyu_no_butt_pain': {
+            id: 'lovlyu_no_butt_pain',
+            title: '\u0416\u043e\u043f\u0430 \u043d\u0435 \u0431\u043e\u043b\u0438\u0442',
+            desc: '\u041f\u043e\u0439\u043c\u0430\u0439 \u0432\u0441\u0435\u0445 \u041a\u0443\u0437\u0435\u0439',
+            icon: '🍑',
+            mode: 'lovlyu'
+        },
+        'lovlyu_magic_kick': {
+            id: 'lovlyu_magic_kick',
+            title: '\u0412\u043e\u043b\u0448\u0435\u0431\u043d\u044b\u0439 \u043f\u0435\u043d\u0434\u0435\u043b\u044c',
+            desc: '\u0437\u0430\u043c\u0435\u0434\u043b\u0438 \u043f\u043e\u043b\u043e\u0432\u0438\u043d\u0443 \u041a\u0443\u0437\u0435\u0439 \u0432\u043e\u043b\u0448\u0435\u0431\u043d\u044b\u043c \u043f\u0435\u043d\u0434\u0435\u043b\u0435\u043c.',
+            icon: '🦶',
+            mode: 'lovlyu'
+        },
+        'lovlyu_no_energy': {
+            id: 'lovlyu_no_energy',
+            title: '\u0411\u0435\u0437 \u044d\u043d\u0435\u0440\u0433\u0435\u0442\u0438\u043a\u043e\u0432',
+            desc: '\u041f\u043e\u043a\u0430\u0436\u0438, \u0447\u0442\u043e \u0438 \u043d\u0430 \u0431\u0430\u043d\u0430\u043d\u0441\u043a\u043e\u0439 \u0441\u043a\u043e\u0440\u043e\u0441\u0442\u0438 \u0442\u044b \u0432\u0441\u0451 \u0441\u043c\u043e\u0436\u0435\u0448\u044c',
+            icon: '🚫',
+            mode: 'lovlyu'
+        },
+        'platforms_last_strength': {
+            id: 'platforms_last_strength',
+            title: '\u0418\u0437 \u043f\u043e\u0441\u043b\u0435\u0434\u043d\u0438\u0445 \u0441\u0438\u043b',
+            desc: '\u0421\u043d\u0435\u0441\u0438 \u0431\u043e\u0441\u0441\u0443 \u0431\u043e\u043b\u044c\u0448\u0438\u043d\u0441\u0442\u0432\u043e hp, \u0438\u043c\u0435\u044f \u0442\u043e\u043b\u044c\u043a\u043e \u043e\u0434\u043d\u043e \u2764\ufe0f',
+            icon: '💔',
+            mode: 'platforms'
+        },
+        'platforms_not_skewered': {
+            id: 'platforms_not_skewered',
+            title: '\u041d\u0435 \u043d\u0430\u0441\u0430\u0436\u0435\u043d\u043d\u044b\u0439 \u043d\u0430 \u043a\u0443\u043a\u0430\u043d',
+            desc: '\u0418\u0437\u0431\u0435\u0433\u0430\u0439 \u043f\u0430\u0434\u0435\u043d\u0438\u044f \u043d\u0430 \u0440\u043e\u0437\u043e\u0432\u044b\u0435 \u0448\u0438\u043f\u044b',
+            icon: '🛡️',
+            mode: 'platforms'
+        },
+        'platforms_no_idle_spawns': {
+            id: 'platforms_no_idle_spawns',
+            title: '\u0411\u0435\u0437 \u043f\u0440\u043e\u0441\u0442\u043e\u0435\u0432',
+            desc: '\u041f\u0440\u043e\u0439\u0434\u0438 \u0431\u0435\u0437 \u043b\u0438\u0448\u043d\u0438\u0445 \u0441\u043f\u0430\u0432\u043d\u043e\u0432 \u0432\u0440\u0430\u0433\u043e\u0432',
+            icon: '🏃',
+            mode: 'platforms'
+        },
+        'o4ko_three_bananas': {
+            id: 'o4ko_three_bananas',
+            title: '\u0033 \u0411\u0430\u043d\u0430\u043d\u0430 \u043d\u0430 \u0431\u0435\u0440\u0435\u0437\u043a\u0430\u0445',
+            desc: '\u041a\u043e\u043c\u0431\u043e \u0031\u0035 \u043c\u043e\u0436\u0435\u0442 \u0441\u043f\u0430\u0432\u043d\u0438\u0442\u044c \u0431\u0430\u043d\u0430\u043d',
+            icon: '🍌',
+            mode: 'o4ko'
+        },
+        'o4ko_no_jump': {
+            id: 'o4ko_no_jump',
+            title: '\u042f \u043d\u0435 \u043f\u0440\u044b\u0433\u043d\u0443',
+            desc: '\u041d\u0435\u043b\u044c\u0437\u044f \u043f\u0440\u044b\u0433\u0430\u0442\u044c \u043f\u0440\u0438 \u0434\u0435\u0432\u043e\u0447\u043a\u0430\u0445',
+            icon: '🚫',
+            mode: 'o4ko'
+        },
+        'o4ko_no_bonus_use': {
+            id: 'o4ko_no_bonus_use',
+            title: '\u041d\u0435 \u0437\u0430\u0441\u043b\u0443\u0436\u0438\u043b\u0430 \u0431\u043e\u043d\u0443\u0441\u044b',
+            desc: '\u041d\u0435 \u043c\u0430\u0440\u0430\u0439 \u0441\u0432\u043e\u0438 \u0431\u043e\u043d\u0443\u0441\u044b \u043e\u0431 \u043e\u0447\u043a\u043e',
+            icon: '🙅',
+            mode: 'o4ko'
+        },
+        'runner_karate_101': {
+            id: 'runner_karate_101',
+            title: '\u0031\u0030\u0031 \u043f\u0440\u0438\u0435\u043c \u043a\u0430\u0440\u0430\u0442\u0435',
+            desc: '\u0418\u0437\u043c\u0430\u0442\u044b\u0432\u0430\u043d\u0438\u0435 \u043f\u0440\u043e\u0442\u0438\u0432\u043d\u0438\u043a\u0430 \u0431\u0435\u0433\u043e\u043c',
+            icon: '\ud83e\udd4b',
+            mode: 'runner'
+        },
+        'runner_too_easy': {
+            id: 'runner_too_easy',
+            title: '\u042d\u0442\u043e \u0431\u044b\u043b\u043e \u043b\u0435\u0433\u043a\u043e',
+            desc: '\u0417\u0430\u0448\u0435\u043b-\u0432\u044b\u0448\u0435\u043b, \u0434\u0435\u043b\u043e \u043d\u0430 \u0032\u0030 \u0441\u0435\u043a\u0443\u043d\u0434',
+            icon: '\u23f1\ufe0f',
+            mode: 'runner'
+        },
+        'runner_no_arcade_magic': {
+            id: 'runner_no_arcade_magic',
+            title: '\u0411\u0435\u0437 \u0430\u0440\u043a\u0430\u0434\u043d\u043e\u0439 \u043c\u0430\u0433\u0438\u0438',
+            desc: '\u041f\u0440\u043e\u0439\u0442\u0438 \u0431\u0435\u0437 \u0442\u0435\u043b\u0435\u043f\u043e\u0440\u0442\u043e\u0432',
+            icon: '\ud83e\uddf1',
+            mode: 'runner'
         }
     };
 

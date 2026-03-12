@@ -122,6 +122,16 @@ function resetNosokLevelState() {
     nosokSpecialBonuses = [];
     nosokRunAnyShotFired = false;
     nosokRunPoopExplodedAfterWin = false;
+    stepanRunExitWith67FromPause = false;
+    stepanRunNoMoveShootGoalsStreak = 0;
+    stepanRunNoMoveShootShotSinceGoal = false;
+    stepanRunNoMoveShootInvalid = false;
+    stepanRunNoMoveShootAnchorX = null;
+    stepanRunNoMoveShootAchieved = false;
+    stepanRunStationaryTimerSec = 0;
+    stepanRunStationaryRuleBroken = false;
+    stepanRunSotkaInMotionAchieved = false;
+    stepanRunLastX = 0;
     bossNosok = null;
 }
 
@@ -200,6 +210,7 @@ function initNosokLevel() {
         nosokElapsedTime = 0;
         nosokFinalTimeMs = 0;
         hearts.length = 0;
+        stepanRunLastX = player ? player.x : 0;
     }
     nosokElapsedTime = 0;
     nosokFinalTimeMs = 0;
@@ -553,11 +564,98 @@ function applyNosokPlayerDamage() {
 }
 
 /**
+ * Обновляет runtime-флаги ачивок уровня "Степан".
+ * @param {number} dt - время кадра.
+ */
+function updateStepanAchievementsRuntime(dt) {
+    if (!isStepanMode() || !player) return;
+    if (typeof stepanRunLastX !== 'number' || !isFinite(stepanRunLastX)) {
+        stepanRunLastX = player.x;
+    }
+    const eps = Math.max(2, player.w * 0.03);
+    const moved = Math.abs(player.x - stepanRunLastX) > eps;
+    const jumping = !!player.isJumping;
+
+    if (stepanRunNoMoveShootGoalsStreak > 0 || typeof stepanRunNoMoveShootAnchorX === 'number') {
+        if (moved || jumping) {
+            stepanRunNoMoveShootInvalid = true;
+        }
+        if (
+            typeof stepanRunNoMoveShootAnchorX === 'number'
+            && Math.abs(player.x - stepanRunNoMoveShootAnchorX) > eps
+        ) {
+            stepanRunNoMoveShootInvalid = true;
+        }
+    }
+
+    if (!jumping && !moved) {
+        stepanRunStationaryTimerSec += dt;
+    } else {
+        stepanRunStationaryTimerSec = 0;
+    }
+    if (stepanRunStationaryTimerSec > 10) {
+        stepanRunStationaryRuleBroken = true;
+    }
+
+    stepanRunLastX = player.x;
+}
+
+/**
+ * Проверяет условия ачивок "Степан" при каждом забитом голе.
+ */
+function handleStepanGoalAchievements() {
+    if (!isStepanMode() || !player) return;
+    const eps = Math.max(2, player.w * 0.03);
+    const hasAnchor = typeof stepanRunNoMoveShootAnchorX === 'number';
+    const onAnchor = !hasAnchor || Math.abs(player.x - stepanRunNoMoveShootAnchorX) <= eps;
+    const goalQualifies = (
+        stepanRunNoMoveShootShotSinceGoal
+        && !stepanRunNoMoveShootInvalid
+        && onAnchor
+        && !player.isJumping
+    );
+
+    if (goalQualifies) {
+        if (!hasAnchor || stepanRunNoMoveShootGoalsStreak <= 0) {
+            stepanRunNoMoveShootAnchorX = player.x;
+            stepanRunNoMoveShootGoalsStreak = 1;
+        } else {
+            stepanRunNoMoveShootGoalsStreak += 1;
+        }
+    } else {
+        stepanRunNoMoveShootGoalsStreak = 0;
+        stepanRunNoMoveShootAnchorX = null;
+    }
+
+    stepanRunNoMoveShootShotSinceGoal = false;
+    stepanRunNoMoveShootInvalid = false;
+
+    if (
+        !stepanRunNoMoveShootAchieved
+        && stepanRunNoMoveShootGoalsStreak >= 11
+        && typeof BHAchievements !== 'undefined'
+    ) {
+        stepanRunNoMoveShootAchieved = true;
+        BHAchievements.grant('stepan_need_cannon');
+    }
+    if (
+        !stepanRunSotkaInMotionAchieved
+        && !stepanRunStationaryRuleBroken
+        && nosokGoals >= 100
+        && typeof BHAchievements !== 'undefined'
+    ) {
+        stepanRunSotkaInMotionAchieved = true;
+        BHAchievements.grant('stepan_hundred_in_motion');
+    }
+}
+
+/**
  * Обновляет физику и коллизии мяча в режиме "Носок".
  * @param {number} dt - время кадра.
  */
 function updateNosokBall(dt) {
     if (!nosokBall) return;
+    const stepanMode = isStepanMode();
 
     if (nosokGoalPauseTimer > 0) {
         nosokGoalPauseTimer = Math.max(0, nosokGoalPauseTimer - dt);
@@ -798,6 +896,9 @@ function updateNosokBall(dt) {
             nosokGoalFlashTimer = 0.9;
             nosokGoalConfettiTimer = 2.0;
             spawnNosokGoalConfetti(44);
+            if (stepanMode) {
+                handleStepanGoalAchievements();
+            }
             if (window.BHAudio) {
                 window.BHAudio.play('goal_horn', { volumeMul: 0.98, duck: 0.7 });
                 window.BHAudio.play('goal_applause', { volumeMul: 0.9 });
@@ -1227,6 +1328,9 @@ function updateNosokMode(dt) {
     }
 
     player.update(dt);
+    if (stepanMode) {
+        updateStepanAchievementsRuntime(dt);
+    }
     if (bossNosok && nosokGoals < nosokTargetGoals) {
         bossNosok.update(dt, nosokBall);
     }

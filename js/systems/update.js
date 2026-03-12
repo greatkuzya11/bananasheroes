@@ -143,13 +143,13 @@ function update(dt) {
     // Случайные дропы в уровне "Очко"
     if (gameMode === 'o4ko' && bossO4ko) {
         o4koRandomDropTimer += dt;
-        if (o4koRandomDropTimer >= 15) {
+        if (o4koRandomDropTimer >= 10) {
             o4koRandomDropTimer = 0;
             if (Math.random() < 0.50) {
                 spawnO4koDrop('random');
             }
             // Банан по таймеру: при хорошем стрике
-            if (o4koHitStreak >= 15 && Math.random() < 0.20) {
+            if (o4koHitStreak >= 15 && Math.random() < 0.50) {
                 spawnO4koDrop('banana');
             }
         }
@@ -478,6 +478,8 @@ function update(dt) {
                         flowers,
                         platformIndex: platforms.indexOf(plat)
                     });
+                    platformRunIdleLilacSpawned = true;
+                    platformRunIdleLilacSpawnCount += 1;
                 }
             }
         }
@@ -641,8 +643,13 @@ function update(dt) {
             if (insideOpaqueShape) {
                 // Бонусный выстрел Кузи и Дрона наносит 2 урона
                 const damage = (b.isBonus && (player.type === 'kuzy' || player.type === 'dron')) ? 2 : 1;
+                const enemy67PrevHp = enemy67.hp;
                 enemy67.hp -= damage;
                 bhPlaySfx('hit_boss', { volumeMul: 0.95, duck: 0.88 });
+                if (gameMode === 'platforms' && lives === 1) {
+                    const appliedDamageAtOneHp = Math.max(0, Math.min(damage, enemy67PrevHp));
+                    platformRunDamageAtOneHp += appliedDamageAtOneHp;
+                }
                 
                 // В режиме платформ отслеживаем попадания для спавна врагов
                 if (gameMode === 'platforms') {
@@ -717,6 +724,9 @@ function update(dt) {
                 bhPlaySfx('explosion_small', { volumeMul: 0.86 });
                 
                 if (enemy67.hp <= 0) {
+                    if (gameMode === 'platforms') {
+                        platformRunBossKilledAtOneHp = (lives === 1);
+                    }
                     if (gameMode === '67') {
                         const playerCenterX = player.x + player.w * 0.5;
                         mode67FinalBlowFromRight = playerCenterX > enemy67Hitbox.cx;
@@ -1030,6 +1040,9 @@ function update(dt) {
             lives = Math.min(PLAYER_LIVES, lives + 1); // +1 жизнь
             bonusShots += 5; // +5 бонусных выстрелов
             score += 3;
+            if (gameMode === 'o4ko') {
+                o4koRunBananaCollectedCount += 1;
+            }
             bananaBonuses.splice(bni, 1);
             bhPlaySfx('pickup_banana', { volumeMul: 0.95 });
         }

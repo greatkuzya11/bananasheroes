@@ -40,6 +40,34 @@ let mode67RunBulletRuleBroken = false;
 // Статистика текущего раунда для ачивок уровня "Носок".
 let nosokRunAnyShotFired = false;
 let nosokRunPoopExplodedAfterWin = false;
+let stepanRunExitWith67FromPause = false;
+let stepanRunNoMoveShootGoalsStreak = 0;
+let stepanRunNoMoveShootShotSinceGoal = false;
+let stepanRunNoMoveShootInvalid = false;
+let stepanRunNoMoveShootAnchorX = null;
+let stepanRunNoMoveShootAchieved = false;
+let stepanRunStationaryTimerSec = 0;
+let stepanRunStationaryRuleBroken = false;
+let stepanRunSotkaInMotionAchieved = false;
+let stepanRunLastX = 0;
+let lovlyuRunAnyLanded = false;
+let lovlyuRunStunnedCount = 0;
+let lovlyuRunLightningPicked = false;
+let platformRunDamageAtOneHp = 0;
+let platformRunBossMaxHp = 0;
+let platformRunBossKilledAtOneHp = false;
+let platformRunFellOffLevel = false;
+let platformRunIdleLilacSpawned = false;
+let platformRunIdleLilacSpawnCount = 0;
+let o4koRunBananaCollectedCount = 0;
+let o4koRunJumped = false;
+let o4koRunBonusShotUsed = false;
+let runnerRunElapsedSec = 0;
+let runnerRunBossCaught = false;
+let runnerRunBossCaughtDuringSlow = false;
+let runnerRunCatchTimeSec = 0;
+let runnerRunPlayerUsedEdgeWarp = false;
+let runnerRunSlowWindowActivations = 0;
 // Minimum assist for 67_early_death: 12 bonus shots => 4 bottles at 3 shots per bottle.
 const MODE67_EARLY_DEATH_REQUIRED_BONUS_SHOTS = 12;
 const MODE67_EARLY_DEATH_REQUIRED_BOTTLES = Math.ceil(
@@ -172,6 +200,34 @@ function resetGameRuntimeCore() {
     mode67RunBulletRuleBroken = false;
     nosokRunAnyShotFired = false;
     nosokRunPoopExplodedAfterWin = false;
+    stepanRunExitWith67FromPause = false;
+    stepanRunNoMoveShootGoalsStreak = 0;
+    stepanRunNoMoveShootShotSinceGoal = false;
+    stepanRunNoMoveShootInvalid = false;
+    stepanRunNoMoveShootAnchorX = null;
+    stepanRunNoMoveShootAchieved = false;
+    stepanRunStationaryTimerSec = 0;
+    stepanRunStationaryRuleBroken = false;
+    stepanRunSotkaInMotionAchieved = false;
+    stepanRunLastX = 0;
+    lovlyuRunAnyLanded = false;
+    lovlyuRunStunnedCount = 0;
+    lovlyuRunLightningPicked = false;
+    platformRunDamageAtOneHp = 0;
+    platformRunBossMaxHp = 0;
+    platformRunBossKilledAtOneHp = false;
+    platformRunFellOffLevel = false;
+    platformRunIdleLilacSpawned = false;
+    platformRunIdleLilacSpawnCount = 0;
+    o4koRunBananaCollectedCount = 0;
+    o4koRunJumped = false;
+    o4koRunBonusShotUsed = false;
+    runnerRunElapsedSec = 0;
+    runnerRunBossCaught = false;
+    runnerRunBossCaughtDuringSlow = false;
+    runnerRunCatchTimeSec = 0;
+    runnerRunPlayerUsedEdgeWarp = false;
+    runnerRunSlowWindowActivations = 0;
 
     playerBulletDir = 'up';
     dirSwitchHeld = false;
@@ -417,6 +473,7 @@ function initRunWorldByMode(mode) {
         if (bossPlatform) {
             enemy67 = new Enemy67(player.x, player.y, true);
             platform67HitCount = 0;
+            platformRunBossMaxHp = Math.max(0, Math.floor(enemy67.maxHp || enemy67.hp || 0));
         }
         return;
     }

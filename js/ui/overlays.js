@@ -496,6 +496,69 @@ function showLevelComplete() {
                 BHAchievements.grant('nosok_purifying_fire');
             }
         }
+        if (typeof BHAchievements !== 'undefined' && gameMode === 'lovlyu') {
+            const kickTarget = Math.ceil(Math.max(1, lovlyuTotalSpawns || 50) * 0.5);
+            // Achievement 1: finish lovlyu without any fallen character touching ground.
+            if (!lovlyuRunAnyLanded) {
+                BHAchievements.grant('lovlyu_no_butt_pain');
+            }
+            // Achievement 2: stun at least half of all spawned characters and finish the level.
+            if (lovlyuRunStunnedCount >= kickTarget) {
+                BHAchievements.grant('lovlyu_magic_kick');
+            }
+            // Achievement 3: finish lovlyu without picking lightning speed bonus.
+            if (!lovlyuRunLightningPicked) {
+                BHAchievements.grant('lovlyu_no_energy');
+            }
+        }
+        if (typeof BHAchievements !== 'undefined' && gameMode === 'platforms') {
+            const bossMaxHp = Math.max(0, platformRunBossMaxHp || 0);
+            // Achievement 1: deal more than half of boss HP while player has exactly 1 heart
+            // and finish boss with exactly 1 heart.
+            if (
+                bossMaxHp > 0
+                && platformRunDamageAtOneHp > (bossMaxHp * 0.5)
+                && platformRunBossKilledAtOneHp
+            ) {
+                BHAchievements.grant('platforms_last_strength');
+            }
+            // Achievement 2: never fall off the level into spikes.
+            if (!platformRunFellOffLevel) {
+                BHAchievements.grant('platforms_not_skewered');
+            }
+            // Achievement 3: never trigger extra lilac spawns from standing still too long.
+            if (!platformRunIdleLilacSpawned) {
+                BHAchievements.grant('platforms_no_idle_spawns');
+            }
+        }
+        if (typeof BHAchievements !== 'undefined' && gameMode === 'o4ko') {
+            // Achievement 1: collect at least 3 banana bonuses in a successful run.
+            if (o4koRunBananaCollectedCount >= 3) {
+                BHAchievements.grant('o4ko_three_bananas');
+            }
+            // Achievement 2: beat the level without a single jump.
+            if (!o4koRunJumped) {
+                BHAchievements.grant('o4ko_no_jump');
+            }
+            // Achievement 3: no bonus shots were used (can pick bonuses, but not fire bonus bullets).
+            if (!o4koRunBonusShotUsed) {
+                BHAchievements.grant('o4ko_no_bonus_use');
+            }
+        }
+        if (typeof BHAchievements !== 'undefined' && gameMode === 'runner') {
+            // Achievement 1: catch boss outside the 5-second slowdown window.
+            if (runnerRunBossCaught && !runnerRunBossCaughtDuringSlow) {
+                BHAchievements.grant('runner_karate_101');
+            }
+            // Achievement 2: catch boss in less than 25 seconds from run start.
+            if (runnerRunBossCaught && runnerRunCatchTimeSec > 0 && runnerRunCatchTimeSec < 25) {
+                BHAchievements.grant('runner_too_easy');
+            }
+            // Achievement 3: complete without using edge-warp teleports.
+            if (!runnerRunPlayerUsedEdgeWarp) {
+                BHAchievements.grant('runner_no_arcade_magic');
+            }
+        }
     } catch (e) { }
 
     // Если оверлей уже существует, удаляем его перед созданием нового.
@@ -973,6 +1036,21 @@ function showGameOver() {
         playGameOverSound(isNew);
     }
     updateBestScoresDisplay();
+    try {
+        if (typeof BHAchievements !== 'undefined' && gameMode === 'stepan') {
+            if (stepanRunNoMoveShootGoalsStreak >= 11 || stepanRunNoMoveShootAchieved) {
+                stepanRunNoMoveShootAchieved = true;
+                BHAchievements.grant('stepan_need_cannon');
+            }
+            if (
+                (!stepanRunStationaryRuleBroken && Math.max(0, Math.floor(nosokGoals || 0)) >= 100)
+                || stepanRunSotkaInMotionAchieved
+            ) {
+                stepanRunSotkaInMotionAchieved = true;
+                BHAchievements.grant('stepan_hundred_in_motion');
+            }
+        }
+    } catch (e) { }
 
     const existing = document.getElementById('game-over-overlay');
     if (existing) existing.remove();

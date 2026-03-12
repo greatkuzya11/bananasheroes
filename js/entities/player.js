@@ -105,6 +105,9 @@ class Player {
         // В режиме платформ можно прыгать только стоя на платформе
         const canJump = (gameMode === 'platforms') ? this.onPlatform : true;
         if (keys["ArrowUp"] && !this.isJumping && canJump) {
+            if (gameMode === 'o4ko') {
+                o4koRunJumped = true;
+            }
             this.isJumping = true;
             this.jumpTimer = 0;
             this.jumpBaseY = this.y;
@@ -348,6 +351,7 @@ class Player {
             
             // Проверка выхода за нижнюю границу (телепорт на homePlatform с потерей жизни)
             if (this.y > canvas.height) {
+                platformRunFellOffLevel = true;
                 lives--;
                 combo = 0;
                 if (lives <= 0) {

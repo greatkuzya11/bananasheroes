@@ -175,6 +175,102 @@
             lines.push(`nosok ach no_gun_needed: ${noGunOk}`);
             lines.push(`nosok ach purifying_fire: ${purifyingFireOk}`);
         }
+        if (
+            typeof stepanRunExitWith67FromPause === 'boolean'
+            && typeof stepanRunNoMoveShootGoalsStreak === 'number'
+            && typeof stepanRunNoMoveShootShotSinceGoal === 'boolean'
+            && typeof stepanRunNoMoveShootInvalid === 'boolean'
+            && typeof stepanRunNoMoveShootAchieved === 'boolean'
+            && typeof stepanRunStationaryTimerSec === 'number'
+            && typeof stepanRunStationaryRuleBroken === 'boolean'
+            && typeof stepanRunSotkaInMotionAchieved === 'boolean'
+            && typeof nosokGoals === 'number'
+        ) {
+            const goals = Math.max(0, Math.floor(nosokGoals || 0));
+            const notWorthyEligible = (gameMode === 'stepan') && goals >= 67;
+            const needCannonOk = stepanRunNoMoveShootAchieved || stepanRunNoMoveShootGoalsStreak >= 11;
+            const hundredInMotionOk = stepanRunSotkaInMotionAchieved || (!stepanRunStationaryRuleBroken && goals >= 100);
+            lines.push(`stepan goals: ${goals}`);
+            lines.push(`stepan exit>=67 via pause: ${stepanRunExitWith67FromPause}`);
+            lines.push(`stepan ach not_worthy eligible: ${notWorthyEligible}`);
+            lines.push(`stepan no-move shoot streak: ${stepanRunNoMoveShootGoalsStreak}/11`);
+            lines.push(`stepan shot since goal: ${stepanRunNoMoveShootShotSinceGoal}`);
+            lines.push(`stepan streak invalid: ${stepanRunNoMoveShootInvalid}`);
+            lines.push(`stepan stationary timer: ${stepanRunStationaryTimerSec.toFixed(2)}s`);
+            lines.push(`stepan stationary broken: ${stepanRunStationaryRuleBroken}`);
+            lines.push(`stepan ach need_cannon: ${needCannonOk}`);
+            lines.push(`stepan ach hundred_in_motion: ${hundredInMotionOk}`);
+        }
+        if (
+            typeof lovlyuRunAnyLanded === 'boolean'
+            && typeof lovlyuRunStunnedCount === 'number'
+            && typeof lovlyuRunLightningPicked === 'boolean'
+            && typeof lovlyuSpawnedCount === 'number'
+            && typeof lovlyuTotalSpawns === 'number'
+        ) {
+            const totalSpawns = Math.max(1, Math.floor(lovlyuTotalSpawns || 1));
+            const kickTarget = Math.ceil(totalSpawns * 0.5);
+            lines.push(`lovlyu spawned: ${lovlyuSpawnedCount}/${totalSpawns}`);
+            lines.push(`lovlyu landed any: ${lovlyuRunAnyLanded}`);
+            lines.push(`lovlyu stunned: ${lovlyuRunStunnedCount}/${kickTarget}`);
+            lines.push(`lovlyu lightning picked: ${lovlyuRunLightningPicked}`);
+            lines.push(`lovlyu ach no_butt_pain: ${!lovlyuRunAnyLanded}`);
+            lines.push(`lovlyu ach magic_kick: ${lovlyuRunStunnedCount >= kickTarget}`);
+            lines.push(`lovlyu ach no_energy: ${!lovlyuRunLightningPicked}`);
+        }
+        if (
+            typeof platformRunDamageAtOneHp === 'number'
+            && typeof platformRunBossMaxHp === 'number'
+            && typeof platformRunBossKilledAtOneHp === 'boolean'
+            && typeof platformRunFellOffLevel === 'boolean'
+            && typeof platformRunIdleLilacSpawned === 'boolean'
+            && typeof platformRunIdleLilacSpawnCount === 'number'
+        ) {
+            const bossMaxHp = Math.max(0, platformRunBossMaxHp || 0);
+            const lastStrengthOk = bossMaxHp > 0
+                && platformRunDamageAtOneHp > bossMaxHp * 0.5
+                && platformRunBossKilledAtOneHp;
+            lines.push(`platforms damage@1hp: ${platformRunDamageAtOneHp}/${bossMaxHp}`);
+            lines.push(`platforms killed@1hp: ${platformRunBossKilledAtOneHp}`);
+            lines.push(`platforms fell off level: ${platformRunFellOffLevel}`);
+            lines.push(`platforms idle lilac spawned: ${platformRunIdleLilacSpawned} (${platformRunIdleLilacSpawnCount})`);
+            lines.push(`platforms ach last_strength: ${lastStrengthOk}`);
+            lines.push(`platforms ach not_skewered: ${!platformRunFellOffLevel}`);
+            lines.push(`platforms ach no_idle_spawns: ${!platformRunIdleLilacSpawned}`);
+        }
+        if (
+            typeof o4koRunBananaCollectedCount === 'number'
+            && typeof o4koRunJumped === 'boolean'
+            && typeof o4koRunBonusShotUsed === 'boolean'
+        ) {
+            lines.push(`o4ko bananas picked: ${o4koRunBananaCollectedCount}/3`);
+            lines.push(`o4ko jumped: ${o4koRunJumped}`);
+            lines.push(`o4ko bonus shot used: ${o4koRunBonusShotUsed}`);
+            lines.push(`o4ko ach three_bananas: ${o4koRunBananaCollectedCount >= 3}`);
+            lines.push(`o4ko ach no_jump: ${!o4koRunJumped}`);
+            lines.push(`o4ko ach no_bonus_use: ${!o4koRunBonusShotUsed}`);
+        }
+        if (
+            typeof runnerRunElapsedSec === 'number'
+            && typeof runnerRunBossCaught === 'boolean'
+            && typeof runnerRunBossCaughtDuringSlow === 'boolean'
+            && typeof runnerRunCatchTimeSec === 'number'
+            && typeof runnerRunPlayerUsedEdgeWarp === 'boolean'
+            && typeof runnerRunSlowWindowActivations === 'number'
+        ) {
+            const karateOk = runnerRunBossCaught && !runnerRunBossCaughtDuringSlow;
+            const easyOk = runnerRunBossCaught && runnerRunCatchTimeSec > 0 && runnerRunCatchTimeSec < 25;
+            const noMagicOk = !runnerRunPlayerUsedEdgeWarp;
+            lines.push(`runner elapsed: ${runnerRunElapsedSec.toFixed(2)}s`);
+            lines.push(`runner caught: ${runnerRunBossCaught}`);
+            lines.push(`runner catch time: ${runnerRunCatchTimeSec.toFixed(2)}s`);
+            lines.push(`runner caught during slow: ${runnerRunBossCaughtDuringSlow}`);
+            lines.push(`runner slow windows: ${runnerRunSlowWindowActivations}`);
+            lines.push(`runner edge warp used: ${runnerRunPlayerUsedEdgeWarp}`);
+            lines.push(`runner ach karate_101: ${karateOk}`);
+            lines.push(`runner ach too_easy: ${easyOk}`);
+            lines.push(`runner ach no_arcade_magic: ${noMagicOk}`);
+        }
 
         // На случай unlock'ов, которых нет в манифесте (устаревшие/ручные id).
         if (typeof api.list === 'function') {

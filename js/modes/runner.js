@@ -465,6 +465,9 @@ function tryRunnerEdgeWarp(actor, side) {
         actor.currentPlatform = targetSurface;
         actor.isJumping = false;
     }
+    if (actor === player) {
+        runnerRunPlayerUsedEdgeWarp = true;
+    }
 
     // После телепорта босс кратко бежит "внутрь" экрана,
     // чтобы не дергаться на одном и том же краю.
@@ -1328,6 +1331,9 @@ function updateRunnerMode(dt) {
     }
 
     if (invuln > 0) invuln -= dt;
+    if (!runnerRunBossCaught) {
+        runnerRunElapsedSec += dt;
+    }
 
     // Таймер очков "Бегуна":
     // каждые 5 секунд уменьшаем очки на 1, не ниже 0.
@@ -1374,6 +1380,7 @@ function updateRunnerMode(dt) {
     } else {
         if (runnerIdleArmed) {
             runnerBossSlowTimer = 5.0;
+            runnerRunSlowWindowActivations += 1;
         }
         runnerIdleTimer = 0;
         runnerIdleArmed = false;
@@ -1411,6 +1418,9 @@ function updateRunnerMode(dt) {
 
         // Условие победы: сигарета коснулась босса.
         if (!runnerVictory && runnerBoss && rect(cigHitRect, runnerBoss) && !levelCompleteShown) {
+            runnerRunBossCaught = true;
+            runnerRunCatchTimeSec = Math.max(0, runnerRunElapsedSec);
+            runnerRunBossCaughtDuringSlow = runnerBossSlowTimer > 0;
             runnerVictory = true;
             levelCompleteShown = true;
             runnerBossSpeech = {

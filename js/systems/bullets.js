@@ -10,6 +10,8 @@ function shootPlayerBullet(p) {
     p.frame = SHOOT_FRAME;
     if (gameMode === 'nosok' && nosokGoals < nosokTargetGoals) {
         nosokRunAnyShotFired = true;
+    } else if (gameMode === 'stepan') {
+        stepanRunNoMoveShootShotSinceGoal = true;
     }
 
     let emoji;
@@ -44,6 +46,9 @@ function shootPlayerBullet(p) {
             bonusShots = 0;
             bonusMode = false;
         }
+    }
+    if (gameMode === 'o4ko' && isBonus) {
+        o4koRunBonusShotUsed = true;
     }
     // Точные радиусы пуль Макса: не бонусная 10, бонусная 12
     if (p.type === 'max') r = isBonus ? 12 : 10;

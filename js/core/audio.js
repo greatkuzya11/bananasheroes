@@ -114,7 +114,7 @@
         nosok: 'audio/music/nosok_theme.wav',
         stepan: 'audio/music/nosok_theme.wav',
         platforms: 'audio/music/platforms_theme.wav',
-        lovlyu: 'audio/music/lovlyu_theme.wav',
+        lovlyu: 'audio/music/lovlyu_theme.mp3',
         poimal: 'audio/music/lovlyu_theme.wav',
         runner: 'audio/music/runner_theme.wav',
         library: 'audio/music/library_theme.wav'

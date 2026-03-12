@@ -1147,6 +1147,14 @@ document.addEventListener('DOMContentLoaded', () => {
         // Обработчик клика по кнопке "Главный экран"
         btnMain.onclick = () => {
             audioPlay('ui_click');
+            if (
+                gameMode === 'stepan'
+                && Math.max(0, Math.floor(nosokGoals || 0)) >= 67
+                && typeof BHAchievements !== 'undefined'
+            ) {
+                stepanRunExitWith67FromPause = true;
+                BHAchievements.grant('stepan_not_worthy');
+            }
             disableTouchBlockDragging();
             const pauseOverlay = document.getElementById('pauseOverlay');
             if (pauseOverlay) pauseOverlay.remove();

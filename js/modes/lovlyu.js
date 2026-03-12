@@ -120,6 +120,9 @@ function resetLovlyuLevelState() {
     lovlyuLightningActive = false;
     lovlyuLightningTimer = 0;
     lovlyuLightningDropTimer = 0;
+    lovlyuRunAnyLanded = false;
+    lovlyuRunStunnedCount = 0;
+    lovlyuRunLightningPicked = false;
 }
 
 /**
@@ -397,6 +400,7 @@ function updateLovlyuMode(dt) {
             lovlyuLightningActive = true;
             lovlyuLightningTimer = lovlyuLightningDuration;
             player.speed = PLAYER_SPEED * 2;
+            lovlyuRunLightningPicked = true;
             lovlyuLightnings.splice(li, 1);
         }
     }
@@ -619,6 +623,7 @@ function updateLovlyuMode(dt) {
                 } else if (!ch.stunned) {
                     // Контакт в воздухе выше нижней трети — оглушаем персонажа
                     ch.stunned = true;
+                    lovlyuRunStunnedCount += 1;
                 }
             }
 
@@ -628,6 +633,7 @@ function updateLovlyuMode(dt) {
                 ch.state = 'landed';
                 ch.stateTimer = 0;
                 ch.landedTimer = 0;
+                lovlyuRunAnyLanded = true;
             }
         } else if (ch.state === 'caught') {
             // Поймали! Показываем кадры 2.png -> 1.png -> облачко -> исчезает
