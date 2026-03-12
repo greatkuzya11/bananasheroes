@@ -1539,6 +1539,7 @@ document.addEventListener('DOMContentLoaded', () => {
     document.body.appendChild(floatingTooltip);
     let floatingTooltipTarget = null;
     let floatingTooltipHideTimer = null;
+    const menuEl = document.getElementById('menu');
 
     function isFloatingTooltipVisible() {
         return floatingTooltip.style.display === 'block';
@@ -1616,8 +1617,44 @@ document.addEventListener('DOMContentLoaded', () => {
         showFloatingTooltip(item, tooltipText, { maxWidth: 200 });
     }
 
+    function getUnlockedAchievementCountFallback() {
+        try {
+            const raw = localStorage.getItem('bh_achievements_v1') || '';
+            if (!raw) return 0;
+            const obj = JSON.parse(raw);
+            if (Array.isArray(obj)) return obj.length;
+            if (obj && typeof obj === 'object') return Object.keys(obj).length;
+            return 0;
+        } catch (err) {
+            return 0;
+        }
+    }
+
+    function hasTrophyHunterAchievement() {
+        try {
+            if (window.BHAchievements && typeof window.BHAchievements.has === 'function') {
+                if (window.BHAchievements.has('global_trophy_hunter_20')) return true;
+            }
+            let count = 0;
+            if (window.BHAchievements && typeof window.BHAchievements.list === 'function') {
+                count = window.BHAchievements.list().length;
+            } else {
+                count = getUnlockedAchievementCountFallback();
+            }
+            return count >= 20;
+        } catch (err) {
+            return false;
+        }
+    }
+
+    function updateMenuTitleTrophyState() {
+        if (!menuEl) return;
+        menuEl.classList.toggle('trophy-title', hasTrophyHunterAchievement());
+    }
+
     window.showFloatingTooltip = showFloatingTooltip;
     window.hideFloatingTooltip = hideFloatingTooltip;
+    window.updateMenuTitleTrophyState = updateMenuTitleTrophyState;
 
     function createTileFromMeta(id, meta, unlockedFlag) {
         const tile = document.createElement('div');
@@ -1940,8 +1977,10 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!id) return;
             // update summary and tile
             try { renderAchievementsPrototype(); } catch (err) { }
+            try { updateMenuTitleTrophyState(); } catch (err) { }
         });
     }
+    updateMenuTitleTrophyState();
     updateAudioToggleButtonLabel();
     if (audioToggleBtn) {
         audioToggleBtn.onclick = () => {

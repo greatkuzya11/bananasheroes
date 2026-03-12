@@ -35,6 +35,7 @@
             background-position: center;
             background-repeat: no-repeat;
             color: white;
+            --menu-title-scale: 1;
         }
         /* darken background so menu text stays readable on top */
         #menu::before {
@@ -181,7 +182,7 @@
         }
 
         #menu h1 {
-            font-size: 36px;
+            font-size: calc(36px * var(--menu-title-scale, 1));
             position: relative;
             display: inline-block;
             font-weight: 900;
@@ -220,6 +221,12 @@
             -webkit-text-fill-color: initial;
             display: inline-block;
             animation: emojiFlicker 1.8s ease-in-out infinite alternate;
+        }
+        #menu.trophy-title {
+            --menu-title-scale: 2;
+        }
+        #menu.trophy-title h1 {
+            margin: 0 !important;
         }
 
         @keyframes emojiFlicker {
@@ -860,7 +867,7 @@
             }
 
             #menu h1 {
-                font-size: min(5.5vw, 5svh);
+                font-size: calc(min(5.5vw, 5svh) * var(--menu-title-scale, 1));
                 margin: 0 2vw 1.2svh;
                 filter: drop-shadow(0 0 4px rgba(255, 120, 0, 0.6))
                         drop-shadow(0 0 14px rgba(255, 80, 0, 0.35));
@@ -1088,7 +1095,7 @@
 
         /* Landscape on small touch device — squish vertically, 4-column grid */
         @media (pointer: coarse) and (orientation: landscape) and (max-height: 500px) {
-            #menu h1 { font-size: min(3.5vw, 6svh); margin-bottom: 0.5svh; }
+            #menu h1 { font-size: calc(min(3.5vw, 6svh) * var(--menu-title-scale, 1)); margin-bottom: 0.5svh; }
             .char { font-size: min(3vw, 5svh); padding: 1svh 1.5vw; }
             #modes.active { gap: 0.5svh; grid-template-columns: repeat(4, 1fr); margin-top: 0.5svh; }
             #modes button { min-height: 5.5svh; font-size: min(2.2vw, 4svh); padding: 0.8svh 1vw; }
