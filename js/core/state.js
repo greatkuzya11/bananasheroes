@@ -53,6 +53,14 @@ let stepanRunLastX = 0;
 let lovlyuRunAnyLanded = false;
 let lovlyuRunStunnedCount = 0;
 let lovlyuRunLightningPicked = false;
+let poimalRunCatchStreak = 0;
+let poimalRunKickStreak = 0;
+let poimalRunJumped = false;
+let poimalRunAnyLanded = false;
+let libraryRunBeerPicked = false;
+let libraryRunToiletBooksByPlayer = 0;
+let libraryRunJuggleToiletDone = false;
+let libraryRunJuggleToiletFailed = false;
 let platformRunDamageAtOneHp = 0;
 let platformRunBossMaxHp = 0;
 let platformRunBossKilledAtOneHp = false;
@@ -68,6 +76,14 @@ let runnerRunBossCaughtDuringSlow = false;
 let runnerRunCatchTimeSec = 0;
 let runnerRunPlayerUsedEdgeWarp = false;
 let runnerRunSlowWindowActivations = 0;
+let tutorialRunBonusShotUsed = false;
+let tutorialRunBossPhaseStarted = false;
+let tutorialRunBossPhaseEntryBonusShots = 0;
+let tutorialRunBossPhaseBonusShotsFired = 0;
+let tutorialRunBoss67Killed = false;
+let tutorialRunBoss67KilledByBonus = false;
+let tutorialRunBoss67KilledByBonusFromPrevPhases = false;
+let tutorialRunCompletedSuccessfully = false;
 // Minimum assist for 67_early_death: 12 bonus shots => 4 bottles at 3 shots per bottle.
 const MODE67_EARLY_DEATH_REQUIRED_BONUS_SHOTS = 12;
 const MODE67_EARLY_DEATH_REQUIRED_BOTTLES = Math.ceil(
@@ -213,6 +229,14 @@ function resetGameRuntimeCore() {
     lovlyuRunAnyLanded = false;
     lovlyuRunStunnedCount = 0;
     lovlyuRunLightningPicked = false;
+    poimalRunCatchStreak = 0;
+    poimalRunKickStreak = 0;
+    poimalRunJumped = false;
+    poimalRunAnyLanded = false;
+    libraryRunBeerPicked = false;
+    libraryRunToiletBooksByPlayer = 0;
+    libraryRunJuggleToiletDone = false;
+    libraryRunJuggleToiletFailed = false;
     platformRunDamageAtOneHp = 0;
     platformRunBossMaxHp = 0;
     platformRunBossKilledAtOneHp = false;
@@ -228,6 +252,14 @@ function resetGameRuntimeCore() {
     runnerRunCatchTimeSec = 0;
     runnerRunPlayerUsedEdgeWarp = false;
     runnerRunSlowWindowActivations = 0;
+    tutorialRunBonusShotUsed = false;
+    tutorialRunBossPhaseStarted = false;
+    tutorialRunBossPhaseEntryBonusShots = 0;
+    tutorialRunBossPhaseBonusShotsFired = 0;
+    tutorialRunBoss67Killed = false;
+    tutorialRunBoss67KilledByBonus = false;
+    tutorialRunBoss67KilledByBonusFromPrevPhases = false;
+    tutorialRunCompletedSuccessfully = false;
 
     playerBulletDir = 'up';
     dirSwitchHeld = false;
@@ -428,6 +460,7 @@ function initRunWorldByMode(mode) {
     if (startMode === 'lovlyu') {
         setRunBackground('img/avs-bg.png');
         playerBulletDir = 'up';
+        altShootMode = true;
         initLovlyuLevel();
         player.y = canvas.height - player.h - Math.max(8, Math.round(canvas.height * 0.033));
         return;
@@ -436,6 +469,7 @@ function initRunWorldByMode(mode) {
     if (startMode === 'poimal') {
         setRunBackground('img/avs-bg.png');
         playerBulletDir = 'up';
+        altShootMode = true;
         initLovlyuLevel();
         player.y = canvas.height - player.h - Math.max(8, Math.round(canvas.height * 0.033));
         return;

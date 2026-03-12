@@ -50,6 +50,12 @@ function shootPlayerBullet(p) {
     if (gameMode === 'o4ko' && isBonus) {
         o4koRunBonusShotUsed = true;
     }
+    if (gameMode === 'tutorial' && isBonus) {
+        tutorialRunBonusShotUsed = true;
+        if (tutorialRunBossPhaseStarted && !tutorialRunBoss67Killed) {
+            tutorialRunBossPhaseBonusShotsFired += 1;
+        }
+    }
     // Точные радиусы пуль Макса: не бонусная 10, бонусная 12
     if (p.type === 'max') r = isBonus ? 12 : 10;
     // В mobile landscape для адаптируемых режимов уменьшаем радиусы под масштаб экрана.

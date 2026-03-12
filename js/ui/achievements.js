@@ -128,6 +128,48 @@
             icon: '🚫',
             mode: 'lovlyu'
         },
+        'poimal_hands_not_leaky': {
+            id: 'poimal_hands_not_leaky',
+            title: '\u0420\u0443\u043a\u0438 \u043d\u0435 \u0434\u044b\u0440\u044f\u0432\u044b\u0435',
+            desc: '\u0033\u0030 \u043f\u043e\u0434\u0440\u044f\u0434, \u043d\u0438 \u043e\u0434\u043d\u043e\u0433\u043e \u043d\u0430 \u043f\u043e\u043b',
+            icon: '\ud83e\udde4',
+            mode: 'poimal'
+        },
+        'poimal_kick_master': {
+            id: 'poimal_kick_master',
+            title: '\u041f\u0435\u043d\u0434\u0435\u043b\u044c-\u043c\u0430\u0441\u0442\u0435\u0440',
+            desc: '\u0414\u0430\u0439 \u0031\u0032 \u0432\u043e\u043b\u0448\u0435\u0431\u043d\u044b\u0445 \u043f\u0435\u043d\u0434\u0435\u043b\u0435\u0439',
+            icon: '\ud83e\uddb5',
+            mode: 'poimal'
+        },
+        'poimal_banana_thrust': {
+            id: 'poimal_banana_thrust',
+            title: '\u041d\u0430 \u0431\u0430\u043d\u0430\u043d\u0441\u043a\u043e\u0439 \u0442\u044f\u0433\u0435',
+            desc: '\u041e\u0447\u043a\u0438 \u0431\u0435\u0437 \u043f\u0440\u044b\u0436\u043a\u0430',
+            icon: '\ud83c\udf4c',
+            mode: 'poimal'
+        },
+        'library_banapocalypse_plumber': {
+            id: 'library_banapocalypse_plumber',
+            title: '\u0421\u0430\u043d\u0442\u0435\u0445\u043d\u0438\u043a \u0411\u0430\u043d\u0430\u043f\u043e\u043a\u0430\u043b\u0438\u043f\u0441\u0438\u0441\u0430',
+            desc: '\u041f\u0440\u043e\u0441\u0442\u043e \u043e\u0431\u043e\u0433\u0430\u0449\u0430\u0439 \u0443\u043d\u0438\u0442\u0430\u0437',
+            icon: '\ud83d\udebd',
+            mode: 'library'
+        },
+        'library_kind_of_goal': {
+            id: 'library_kind_of_goal',
+            title: '\u0422\u043e\u0436\u0435 \u0441\u0432\u043e\u0435\u0433\u043e \u0440\u043e\u0434\u0430 \u0433\u043e\u043b',
+            desc: '\u041f\u043e\u043a\u0430\u0436\u0438 \u0447\u0435\u043c\u0443 \u043d\u0430\u0443\u0447\u0438\u043b\u0441\u044f \u0432 \u0443\u0440\u043e\u0432\u043d\u0435 \u043d\u0410\u0441\u043e\u043a',
+            icon: '\ud83d\udcda',
+            mode: 'library'
+        },
+        'library_sober_reader': {
+            id: 'library_sober_reader',
+            title: '\u0422\u0440\u0435\u0437\u0432\u044b\u0439 \u0447\u0438\u0442\u0430\u0442\u0435\u043b\u044c',
+            desc: '\u0411\u0435\u0437 \u043f\u0438\u0432\u0430 \u0434\u043e \u0444\u0438\u043d\u0430\u043b\u0430',
+            icon: '\ud83d\udeab\ud83c\udf7a',
+            mode: 'library'
+        },
         'platforms_last_strength': {
             id: 'platforms_last_strength',
             title: '\u0418\u0437 \u043f\u043e\u0441\u043b\u0435\u0434\u043d\u0438\u0445 \u0441\u0438\u043b',
@@ -190,6 +232,28 @@
             desc: '\u041f\u0440\u043e\u0439\u0442\u0438 \u0431\u0435\u0437 \u0442\u0435\u043b\u0435\u043f\u043e\u0440\u0442\u043e\u0432',
             icon: '\ud83e\uddf1',
             mode: 'runner'
+        },
+        'tutorial_saved_for_sweet': {
+            id: 'tutorial_saved_for_sweet',
+            title: '\u041f\u0440\u0438\u0431\u0435\u0440\u0451\u0433 \u043d\u0430 \u0441\u043b\u0430\u0434\u043a\u043e\u0435',
+            desc: '\u0411\u043e\u043d\u0443\u0441\u043d\u044b\u0435 \u0432\u044b\u0441\u0442\u0440\u0435\u043b\u044b, \u043c\u043e\u0436\u043d\u043e \u043e\u0442\u043b\u043e\u0436\u0438\u0442\u044c, \u0036\u0037 \u043e\u0446\u0435\u043d\u0438\u0442',
+            icon: '\ud83c\udf70',
+            mode: 'tutorial'
+        },
+        'tutorial_good_for_something': {
+            id: 'tutorial_good_for_something',
+            title: '\u0425\u043e\u0442\u044c \u043d\u0430 \u0447\u0442\u043e-\u0442\u043e \u0433\u043e\u0436\u0443\u0441\u044c',
+            desc: '\u041f\u0440\u043e\u0439\u0442\u0438 \u043e\u0431\u0443\u0447\u0435\u043d\u0438\u0435',
+            icon: '\ud83d\udc4d',
+            mode: 'tutorial'
+        },
+        'tutorial_no_promises': {
+            id: 'tutorial_no_promises',
+            title: '\u042f \u043d\u0438\u0447\u0435\u0433\u043e \u043d\u0438\u043a\u043e\u043c\u0443 \u043d\u0435 \u043e\u0431\u0435\u0449\u0430\u043b',
+            desc: '\u041d\u0435 \u0441\u043b\u0443\u0448\u0430\u0442\u044c\u0441\u044f \u0440\u0430\u0441\u0441\u043a\u0430\u0437\u0447\u0438\u043a\u0430',
+            icon: '\ud83e\udd2b',
+            mode: 'tutorial',
+            secret: true
         }
     };
 

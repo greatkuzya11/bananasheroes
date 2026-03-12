@@ -1015,6 +1015,9 @@ function update(dt) {
             if (gameMode === 'normal') {
                 normalRunBeerCollected += 1;
             }
+            if (gameMode === 'library') {
+                libraryRunBeerPicked = true;
+            }
             bottles.splice(bi, 1);
             bhPlaySfx('pickup_beer', { volumeMul: 0.95 });
         }

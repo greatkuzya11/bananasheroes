@@ -286,6 +286,19 @@ function showTutorialCompleteOverlay() {
     }
     paused = true;
     levelCompleteShown = true;
+    try {
+        if (typeof BHAchievements !== 'undefined' && gameMode === 'tutorial') {
+            if (tutorialRunBoss67KilledByBonusFromPrevPhases) {
+                BHAchievements.grant('tutorial_saved_for_sweet');
+            }
+            if (tutorialRunCompletedSuccessfully) {
+                BHAchievements.grant('tutorial_good_for_something');
+            }
+            if (!tutorialRunBonusShotUsed) {
+                BHAchievements.grant('tutorial_no_promises');
+            }
+        }
+    } catch (e) { }
 
     const existing = document.getElementById('level-complete-overlay');
     if (existing) existing.remove();
@@ -511,6 +524,20 @@ function showLevelComplete() {
                 BHAchievements.grant('lovlyu_no_energy');
             }
         }
+        if (typeof BHAchievements !== 'undefined' && gameMode === 'poimal') {
+            // Achievement 1: catch 30 characters in a row without a single miss to the ground.
+            if (poimalRunCatchStreak >= 30) {
+                BHAchievements.grant('poimal_hands_not_leaky');
+            }
+            // Achievement 2: 12 consecutive jump-stunned catches in one run.
+            if (poimalRunKickStreak >= 12) {
+                BHAchievements.grant('poimal_kick_master');
+            }
+            // Achievement 3: reach 120 points without any jump.
+            if (!poimalRunJumped && score >= 120) {
+                BHAchievements.grant('poimal_banana_thrust');
+            }
+        }
         if (typeof BHAchievements !== 'undefined' && gameMode === 'platforms') {
             const bossMaxHp = Math.max(0, platformRunBossMaxHp || 0);
             // Achievement 1: deal more than half of boss HP while player has exactly 1 heart
@@ -557,6 +584,34 @@ function showLevelComplete() {
             // Achievement 3: complete without using edge-warp teleports.
             if (!runnerRunPlayerUsedEdgeWarp) {
                 BHAchievements.grant('runner_no_arcade_magic');
+            }
+        }
+        if (typeof BHAchievements !== 'undefined' && gameMode === 'tutorial') {
+            // Achievement 1: kill final boss 67 with a bonus bullet carried into boss phase.
+            if (tutorialRunBoss67KilledByBonusFromPrevPhases) {
+                BHAchievements.grant('tutorial_saved_for_sweet');
+            }
+            // Achievement 2: complete tutorial successfully.
+            if (tutorialRunCompletedSuccessfully) {
+                BHAchievements.grant('tutorial_good_for_something');
+            }
+            // Achievement 3: finish tutorial without using any bonus shots.
+            if (!tutorialRunBonusShotUsed) {
+                BHAchievements.grant('tutorial_no_promises');
+            }
+        }
+        if (typeof BHAchievements !== 'undefined' && gameMode === 'library') {
+            // Achievement 1: deliver at least 25 books to toilet by player actions and win.
+            if (libraryRunToiletBooksByPlayer >= 25) {
+                BHAchievements.grant('library_banapocalypse_plumber');
+            }
+            // Achievement 2: one book touched by player >=10 times and then delivered to toilet.
+            if (libraryRunJuggleToiletDone && !libraryRunJuggleToiletFailed) {
+                BHAchievements.grant('library_kind_of_goal');
+            }
+            // Achievement 3: finish level without picking any beer bonus.
+            if (!libraryRunBeerPicked) {
+                BHAchievements.grant('library_sober_reader');
             }
         }
     } catch (e) { }

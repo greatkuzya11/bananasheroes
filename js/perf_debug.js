@@ -230,6 +230,26 @@
             lines.push(`lovlyu ach no_energy: ${!lovlyuRunLightningPicked}`);
         }
         if (
+            currentMode === 'poimal'
+            && typeof poimalRunCatchStreak === 'number'
+            && typeof poimalRunKickStreak === 'number'
+            && typeof poimalRunJumped === 'boolean'
+            && typeof poimalRunAnyLanded === 'boolean'
+            && typeof score === 'number'
+        ) {
+            const handsOk = poimalRunCatchStreak >= 30;
+            const kickOk = poimalRunKickStreak >= 12;
+            const bananaOk = !poimalRunJumped && score >= 120;
+            lines.push(`poimal score: ${Math.max(0, Math.floor(score || 0))}/120`);
+            lines.push(`poimal catch streak: ${poimalRunCatchStreak}/30`);
+            lines.push(`poimal kick streak: ${poimalRunKickStreak}/12`);
+            lines.push(`poimal jumped: ${poimalRunJumped}`);
+            lines.push(`poimal landed any: ${poimalRunAnyLanded}`);
+            lines.push(`poimal ach hands_not_leaky: ${handsOk}`);
+            lines.push(`poimal ach kick_master: ${kickOk}`);
+            lines.push(`poimal ach banana_thrust: ${bananaOk}`);
+        }
+        if (
             currentMode === 'platforms'
             && typeof platformRunDamageAtOneHp === 'number'
             && typeof platformRunBossMaxHp === 'number'
@@ -284,6 +304,51 @@
             lines.push(`runner ach karate_101: ${karateOk}`);
             lines.push(`runner ach too_easy: ${easyOk}`);
             lines.push(`runner ach no_arcade_magic: ${noMagicOk}`);
+        }
+        if (
+            currentMode === 'tutorial'
+            && typeof tutorialRunBonusShotUsed === 'boolean'
+            && typeof tutorialRunBossPhaseStarted === 'boolean'
+            && typeof tutorialRunBossPhaseEntryBonusShots === 'number'
+            && typeof tutorialRunBossPhaseBonusShotsFired === 'number'
+            && typeof tutorialRunBoss67Killed === 'boolean'
+            && typeof tutorialRunBoss67KilledByBonus === 'boolean'
+            && typeof tutorialRunBoss67KilledByBonusFromPrevPhases === 'boolean'
+            && typeof tutorialRunCompletedSuccessfully === 'boolean'
+        ) {
+            lines.push(`tutorial bonus shot used: ${tutorialRunBonusShotUsed}`);
+            lines.push(`tutorial boss phase started: ${tutorialRunBossPhaseStarted}`);
+            lines.push(`tutorial boss phase entry bonus: ${tutorialRunBossPhaseEntryBonusShots}`);
+            lines.push(`tutorial boss phase bonus fired: ${tutorialRunBossPhaseBonusShotsFired}`);
+            lines.push(`tutorial boss killed: ${tutorialRunBoss67Killed}`);
+            lines.push(`tutorial boss killed by bonus: ${tutorialRunBoss67KilledByBonus}`);
+            lines.push(`tutorial boss killed by carried bonus: ${tutorialRunBoss67KilledByBonusFromPrevPhases}`);
+            lines.push(`tutorial completed: ${tutorialRunCompletedSuccessfully}`);
+            lines.push(`tutorial ach saved_for_sweet: ${tutorialRunBoss67KilledByBonusFromPrevPhases}`);
+            lines.push(`tutorial ach good_for_something: ${tutorialRunCompletedSuccessfully}`);
+            lines.push(`tutorial ach no_promises: ${!tutorialRunBonusShotUsed}`);
+        }
+        if (
+            currentMode === 'library'
+            && typeof libraryRunBeerPicked === 'boolean'
+            && typeof libraryRunToiletBooksByPlayer === 'number'
+            && typeof libraryRunJuggleToiletDone === 'boolean'
+            && typeof libraryRunJuggleToiletFailed === 'boolean'
+        ) {
+            const toiletTotal = (typeof libraryToiletCaughtBooks === 'number')
+                ? Math.max(0, Math.floor(libraryToiletCaughtBooks))
+                : '?';
+            const plumberOk = libraryRunToiletBooksByPlayer >= 25;
+            const kindOfGoalOk = libraryRunJuggleToiletDone && !libraryRunJuggleToiletFailed;
+            const soberOk = !libraryRunBeerPicked;
+            lines.push(`library toilet total: ${toiletTotal}`);
+            lines.push(`library toilet by player: ${libraryRunToiletBooksByPlayer}/25`);
+            lines.push(`library juggle done: ${libraryRunJuggleToiletDone}`);
+            lines.push(`library juggle failed: ${libraryRunJuggleToiletFailed}`);
+            lines.push(`library beer picked: ${libraryRunBeerPicked}`);
+            lines.push(`library ach plumber: ${plumberOk}`);
+            lines.push(`library ach kind_of_goal: ${kindOfGoalOk}`);
+            lines.push(`library ach sober_reader: ${soberOk}`);
         }
 
         ACH.lines = lines;

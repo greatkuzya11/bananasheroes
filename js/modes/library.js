@@ -533,6 +533,8 @@ function spawnLibraryBook() {
         frameCount,
         animFrame: Math.floor(Math.random() * frameCount),
         frameTimer: 0,
+        touchedByPlayer: false,
+        playerTouchCount: 0,
         playerHitCooldown: 0
     });
 }
@@ -1275,6 +1277,18 @@ function updateLibraryBooksPhysics(dt) {
                 const splashX = Math.max(catchPlatform.x, Math.min(catchPlatform.x + catchPlatform.w, bk.x + bk.w * 0.5));
                 const splashY = catchPlatform.y;
                 spawnLibraryCatchSplash(splashX, splashY);
+                const deliveredByPlayer = !!bk.touchedByPlayer;
+                const playerTouches = Math.max(0, Math.floor(bk.playerTouchCount || 0));
+                if (deliveredByPlayer) {
+                    libraryRunToiletBooksByPlayer += 1;
+                    if (!libraryRunJuggleToiletDone && !libraryRunJuggleToiletFailed) {
+                        if (playerTouches >= 10) {
+                            libraryRunJuggleToiletDone = true;
+                        } else {
+                            libraryRunJuggleToiletFailed = true;
+                        }
+                    }
+                }
                 libraryBooks.splice(i, 1); // Описание.
 
                 libraryToiletCaughtBooks++;
@@ -1287,6 +1301,10 @@ function updateLibraryBooksPhysics(dt) {
 
         // Описание.
         if (bk.y + bk.h >= libraryGroundY) {
+            const playerTouches = Math.max(0, Math.floor(bk.playerTouchCount || 0));
+            if (!libraryRunJuggleToiletDone && !libraryRunJuggleToiletFailed && playerTouches >= 10) {
+                libraryRunJuggleToiletFailed = true;
+            }
             explosions.push({ x: bk.x + bk.w * 0.5, y: libraryGroundY - 10, timer: 0 });
             if (window.BHAudio) {
                 window.BHAudio.play('library_plop', { volumeMul: 0.9 });
@@ -1308,7 +1326,7 @@ function updateLibraryBooksPhysics(dt) {
  * @param {number} [powerMul=1] - Множитель силы импульса.
  * @param {boolean} [addScore=false] - Нужно ли начислять очки за попадание.
  */
-function applyLibraryBookArcImpulse(bk, hitY, pushDir, powerMul = 1, addScore = false) {
+function applyLibraryBookArcImpulse(bk, hitY, pushDir, powerMul = 1, addScore = false, fromPlayer = false) {
     const hitFraction = Math.max(0, Math.min(1, (hitY - bk.y) / Math.max(1, bk.h)));
     const upFactor = 0.6 + hitFraction * 1.6;
     const heightFactor = 0.55 + ((canvas.height - hitY) / canvas.height) * 0.9;
@@ -1324,6 +1342,10 @@ function applyLibraryBookArcImpulse(bk, hitY, pushDir, powerMul = 1, addScore = 
         window.BHAudio.play('book_hit', { volumeMul: 0.8 });
     }
 
+    if (fromPlayer) {
+        bk.touchedByPlayer = true;
+        bk.playerTouchCount = Math.max(0, Math.floor(bk.playerTouchCount || 0)) + 1;
+    }
     if (addScore) score += 5;
 }
 
@@ -1349,7 +1371,7 @@ function updateLibraryBookHitsByPlayerBullets() {
 
             const bulletVx = (typeof b.vx === 'number' && b.vx !== 0) ? b.vx : 5;
             const pushDir = bulletVx >= 0 ? 1 : -1;
-            applyLibraryBookArcImpulse(bk, b.y, pushDir, 1.0, true);
+            applyLibraryBookArcImpulse(bk, b.y, pushDir, 1.0, true, true);
 
             bullets.splice(bi, 1);
             hit = true;
@@ -1409,7 +1431,7 @@ function updateLibraryBookHitsByPlayerSprite(dt) {
         }
 
         const power = player.isJumping ? 1.12 : 1.0;
-        applyLibraryBookArcImpulse(bk, hitY, pushDir, power, false);
+        applyLibraryBookArcImpulse(bk, hitY, pushDir, power, false, true);
         bk.playerHitCooldown = 0.08;
     }
 }
@@ -1494,6 +1516,10 @@ function resetLibraryLevelState() {
     libraryBeerDropTimer = 0;
     libraryNextBeerDropTime = libraryRand(10, 15);
     libraryVictoryShown = false;
+    libraryRunBeerPicked = false;
+    libraryRunToiletBooksByPlayer = 0;
+    libraryRunJuggleToiletDone = false;
+    libraryRunJuggleToiletFailed = false;
 
     libraryLayoutWidth = 0;
     libraryLayoutHeight = 0;

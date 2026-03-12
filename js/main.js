@@ -1543,6 +1543,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const manifest = window.BHAchievements.manifest || {};
         
         const preview = [
+            { id: 'tutorial', icon: '📖', title: 'Обучение' },
             { id: 'normal', icon: '🌳', title: 'Сирень и Букин' },
             { id: '67', icon: '📺', title: 'Телепузик' },
             { id: 'mode67', icon: '🤖', title: 'Режим 67' },
@@ -1553,9 +1554,7 @@ document.addEventListener('DOMContentLoaded', () => {
             { id: 'lovlyu', icon: '🫴', title: 'Ловлю' },
             { id: 'poimal', icon: '🧤', title: 'Поймал' },
             { id: 'runner', icon: '🏃', title: 'Бегун' },
-            { id: 'library', icon: '📚', title: 'Библиотека' },
-            { id: 'bonus', icon: '🎁', title: 'Бонус' },
-            { id: 'tutorial', icon: '📖', title: 'Обучение' }
+            { id: 'library', icon: '📚', title: 'Библиотека' }
         ];
 
         let unlockedCount = 0, totalCount = 0;
@@ -1578,65 +1577,85 @@ document.addEventListener('DOMContentLoaded', () => {
             
             // Get achievements for this mode from manifest
             const modeAchievements = Object.values(manifest).filter(a => a.mode === level.id);
-            
-            // Use real achievements if exist, otherwise generate fake ones
-            const achsToRender = modeAchievements.length > 0 ? modeAchievements : [
-                { id: level.id + '_ach1', icon: '⭐', title: `Достижение 1`, desc: `Фейковое ач. #1` },
-                { id: level.id + '_ach2', icon: '🔥', title: `Достижение 2`, desc: `Фейковое ач. #2` },
-                { id: level.id + '_ach3', icon: '🍌', title: `Достижение 3`, desc: `Фейковое ач. #3` }
-            ];
+            const achsToRender = modeAchievements;
 
             let levelUnlockedCount = 0;
 
-            achsToRender.forEach(ach => {
-                totalCount++;
-                const isUnlocked = window.BHAchievements.has(ach.id);
-                if (isUnlocked) {
-                    unlockedCount++;
-                    levelUnlockedCount++;
-                }
-                
-                const item = document.createElement('div');
-                item.className = 'ach-item' + (isUnlocked ? ' unlocked' : ' locked');
-                item.setAttribute('tabindex', '0');
-                item.setAttribute('data-ach-id', ach.id);
-                
-                // Tooltip
-                item.setAttribute('data-tooltip', ach.desc || '');
-                
-                // Emoji
+            if (achsToRender.length === 0) {
+                const empty = document.createElement('div');
+                empty.className = 'ach-item locked';
+                empty.setAttribute('tabindex', '-1');
                 const emoji = document.createElement('div');
                 emoji.className = 'ach-emoji';
-                emoji.textContent = ach.icon || '☆';
-                
-                // Text content
+                emoji.textContent = '—';
                 const txt = document.createElement('div');
                 txt.className = 'ach-item-text';
-                
                 const titleEl = document.createElement('div');
                 titleEl.className = 'ach-title';
-                titleEl.textContent = ach.title;
-                
+                titleEl.textContent = 'Нет достижений';
                 const descEl = document.createElement('div');
                 descEl.className = 'ach-desc';
-                
-                // Show date for unlocked, or empty for locked
-                if (isUnlocked) {
-                    const timestamp = window.BHAchievements.getTimestamp(ach.id);
-                    descEl.textContent = formatTime(timestamp);
-                } else {
-                    descEl.textContent = '';
-                    descEl.style.fontSize = '10px';
-                    descEl.style.color = 'rgba(255,255,255,0.4)';
-                }
-                
+                descEl.textContent = '';
                 txt.appendChild(titleEl);
                 txt.appendChild(descEl);
-                
-                item.appendChild(emoji);
-                item.appendChild(txt);
-                listRow.appendChild(item);
-            });
+                empty.appendChild(emoji);
+                empty.appendChild(txt);
+                listRow.appendChild(empty);
+            } else {
+                achsToRender.forEach(ach => {
+                    totalCount++;
+                    const isUnlocked = window.BHAchievements.has(ach.id);
+                    if (isUnlocked) {
+                        unlockedCount++;
+                        levelUnlockedCount++;
+                    }
+                    const isSecretLocked = !!ach.secret && !isUnlocked;
+
+                    const item = document.createElement('div');
+                    item.className = 'ach-item' + (isUnlocked ? ' unlocked' : ' locked');
+                    item.setAttribute('tabindex', '0');
+                    item.setAttribute('data-ach-id', ach.id);
+
+                    // Tooltip: locked secret achievements must not reveal description.
+                    if (!isSecretLocked && ach.desc) {
+                        item.setAttribute('data-tooltip', ach.desc);
+                    }
+
+                    const emoji = document.createElement('div');
+                    emoji.className = 'ach-emoji';
+                    emoji.textContent = isSecretLocked ? '🔒' : (ach.icon || '☆');
+
+                    const txt = document.createElement('div');
+                    txt.className = 'ach-item-text';
+
+                    const titleEl = document.createElement('div');
+                    titleEl.className = 'ach-title';
+                    titleEl.textContent = isSecretLocked ? 'Секретное достижение' : (ach.title || ach.id);
+
+                    const descEl = document.createElement('div');
+                    descEl.className = 'ach-desc';
+
+                    if (isUnlocked) {
+                        const timestamp = window.BHAchievements.getTimestamp(ach.id);
+                        descEl.textContent = formatTime(timestamp);
+                    } else if (isSecretLocked) {
+                        descEl.textContent = '???';
+                        descEl.style.fontSize = '10px';
+                        descEl.style.color = 'rgba(255,255,255,0.4)';
+                    } else {
+                        descEl.textContent = '';
+                        descEl.style.fontSize = '10px';
+                        descEl.style.color = 'rgba(255,255,255,0.4)';
+                    }
+
+                    txt.appendChild(titleEl);
+                    txt.appendChild(descEl);
+
+                    item.appendChild(emoji);
+                    item.appendChild(txt);
+                    listRow.appendChild(item);
+                });
+            }
             
             row.appendChild(listRow);
             levelBox.appendChild(row);
@@ -1730,18 +1749,18 @@ document.addEventListener('DOMContentLoaded', () => {
             item.className = 'ach-item' + (isUnlocked ? ' unlocked' : ' locked');
             item.setAttribute('tabindex', '0');
             item.setAttribute('data-ach-id', a.id);
-            item.setAttribute('data-tooltip', a.desc || '');
+            if (isUnlocked && a.desc) item.setAttribute('data-tooltip', a.desc);
             
-            const emoji = document.createElement('div'); emoji.className = 'ach-emoji'; emoji.textContent = a.icon;
+            const emoji = document.createElement('div'); emoji.className = 'ach-emoji'; emoji.textContent = isUnlocked ? a.icon : '🔒';
             const txt = document.createElement('div'); txt.className = 'ach-item-text';
-            const titleEl = document.createElement('div'); titleEl.className = 'ach-title'; titleEl.textContent = a.title;
+            const titleEl = document.createElement('div'); titleEl.className = 'ach-title'; titleEl.textContent = isUnlocked ? a.title : 'Секретное достижение';
             const descEl = document.createElement('div'); descEl.className = 'ach-desc';
             
             if (isUnlocked) {
                 const timestamp = window.BHAchievements.getTimestamp(a.id);
                 descEl.textContent = formatTime(timestamp);
             } else {
-                descEl.textContent = '';
+                descEl.textContent = '???';
                 descEl.style.fontSize = '10px';
                 descEl.style.color = 'rgba(255,255,255,0.4)';
             }

@@ -108,6 +108,9 @@ class Player {
             if (gameMode === 'o4ko') {
                 o4koRunJumped = true;
             }
+            if (gameMode === 'poimal') {
+                poimalRunJumped = true;
+            }
             this.isJumping = true;
             this.jumpTimer = 0;
             this.jumpBaseY = this.y;

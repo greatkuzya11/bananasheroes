@@ -868,6 +868,12 @@ function _tEnterPhase(phase) {
         _tArrow = { x: _tMarkerX, y: _tMarkerY, dir: 'down', label: 'Иди влево' };
         _tBossDeathTimer = 0;
         _tBossDoneMessageTimer = 0;
+        tutorialRunBossPhaseStarted = true;
+        tutorialRunBossPhaseEntryBonusShots = Math.max(0, Math.floor(bonusShots || 0));
+        tutorialRunBossPhaseBonusShotsFired = 0;
+        tutorialRunBoss67Killed = false;
+        tutorialRunBoss67KilledByBonus = false;
+        tutorialRunBoss67KilledByBonusFromPrevPhases = false;
         return;
     }
 
@@ -1171,6 +1177,15 @@ function _tHandlePlayerBulletHit(b, bi) {
             // любая пуля исчезает после попадания (в т.ч. бонусная у Дрона).
             bullets.splice(bi, 1);
             if (enemy67.hp <= 0) {
+                const killedByBonus = !!b.isBonus;
+                tutorialRunBoss67Killed = true;
+                tutorialRunBoss67KilledByBonus = killedByBonus;
+                tutorialRunBoss67KilledByBonusFromPrevPhases = (
+                    killedByBonus
+                    && tutorialRunBossPhaseStarted
+                    && tutorialRunBossPhaseEntryBonusShots > 0
+                    && tutorialRunBossPhaseBonusShotsFired <= tutorialRunBossPhaseEntryBonusShots
+                );
                 enemy67 = null;
                 _tBossDeathTimer = 1.0;
                 _tSubPhase = 1;
@@ -1640,6 +1655,7 @@ function _tUpdatePhase10() {
         'Нажми Пробел/FIRE.',
         () => {
             localStorage.setItem(TUTORIAL_MODE_KEY, '1');
+            tutorialRunCompletedSuccessfully = true;
             _tDone = true;
             _tActive = false;
             enemies = [];

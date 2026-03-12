@@ -123,6 +123,10 @@ function resetLovlyuLevelState() {
     lovlyuRunAnyLanded = false;
     lovlyuRunStunnedCount = 0;
     lovlyuRunLightningPicked = false;
+    poimalRunCatchStreak = 0;
+    poimalRunKickStreak = 0;
+    poimalRunJumped = false;
+    poimalRunAnyLanded = false;
 }
 
 /**
@@ -270,7 +274,8 @@ function spawnLovlyuChar() {
         landedTimer: 0,
         speechBalloonAdded: false,
         landedBalloonAdded: false,
-        stunned: false  // оглушён при контакте в воздухе (падает вертикально, медленнее)
+        stunned: false,  // оглушён при контакте в воздухе (падает вертикально, медленнее)
+        poimalStunnedByJump: false
     });
 
     lovlyuSpawnedCount++;
@@ -602,6 +607,14 @@ function updateLovlyuMode(dt) {
                     ch.caughtTimer = 0;
                     score += 10;
                     combo++;
+                    if (gameMode === 'poimal') {
+                        poimalRunCatchStreak += 1;
+                        if (ch.poimalStunnedByJump) {
+                            poimalRunKickStreak += 1;
+                        } else {
+                            poimalRunKickStreak = 0;
+                        }
+                    }
                     if (window.BHAudio) {
                         window.BHAudio.play('lovlyu_catch', { volumeMul: 0.95 });
                     }
@@ -624,6 +637,9 @@ function updateLovlyuMode(dt) {
                     // Контакт в воздухе выше нижней трети — оглушаем персонажа
                     ch.stunned = true;
                     lovlyuRunStunnedCount += 1;
+                    if (gameMode === 'poimal') {
+                        ch.poimalStunnedByJump = true;
+                    }
                 }
             }
 
@@ -634,6 +650,11 @@ function updateLovlyuMode(dt) {
                 ch.stateTimer = 0;
                 ch.landedTimer = 0;
                 lovlyuRunAnyLanded = true;
+                if (gameMode === 'poimal') {
+                    poimalRunAnyLanded = true;
+                    poimalRunCatchStreak = 0;
+                    poimalRunKickStreak = 0;
+                }
             }
         } else if (ch.state === 'caught') {
             // Поймали! Показываем кадры 2.png -> 1.png -> облачко -> исчезает
@@ -683,7 +704,7 @@ function updateLovlyuMode(dt) {
                 // Наносим урон только при отсутствии неуязвимости.
                 if (invuln <= 0) {
                     // Баланс: стоящий игрок получает 1 урон, прыгающий/летающий получает 2 урона.
-                    const dmg = playerOnGround ? 1 : 2;
+                    const dmg = 1;
                     lives -= dmg;
                     combo = 0;
                     lovlyuMagnetComboCount = 0; // Сбрасываем счетчик комбинации для магнита.
@@ -719,6 +740,17 @@ function updateLovlyuMode(dt) {
     }
 
     // HUD (стандартный стиль, как в других режимах)
+    if (gameMode === 'poimal' && typeof BHAchievements !== 'undefined') {
+        if (poimalRunCatchStreak >= 30) {
+            BHAchievements.grant('poimal_hands_not_leaky');
+        }
+        if (poimalRunKickStreak >= 12) {
+            BHAchievements.grant('poimal_kick_master');
+        }
+        if (!poimalRunJumped && score >= 120) {
+            BHAchievements.grant('poimal_banana_thrust');
+        }
+    }
     if (!hudEl) hudEl = document.getElementById('hud');
     if (hudEl) {
         const playerName = charNames[selectedChar] || selectedChar;
