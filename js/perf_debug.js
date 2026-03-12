@@ -118,7 +118,11 @@
         }
 
         const manifest = (api.manifest && typeof api.manifest === 'object') ? api.manifest : {};
-        const ids = Object.keys(manifest);
+        const currentMode = (typeof gameMode === 'string' && gameMode) ? gameMode : 'unknown';
+        const ids = Object.keys(manifest).filter(id => {
+            const meta = manifest[id] || {};
+            return meta.mode === currentMode;
+        });
         let unlocked = 0;
         for (let i = 0; i < ids.length; i++) {
             const id = ids[i];
@@ -128,15 +132,18 @@
             lines.push(`${isUnlocked ? '[x]' : '[ ]'} ${id} | ${(meta.title || id)}`);
         }
 
-        lines.unshift(`Achievements: ${unlocked}/${ids.length}`);
+        lines.unshift(`Achievements[${currentMode}]: ${unlocked}/${ids.length}`);
 
-        // Служебные счётчики текущего ранa normal (если доступны).
-        if (typeof normalRunDamageTaken === 'number' && typeof normalRunBeerCollected === 'number') {
+        if (currentMode === 'normal'
+            && typeof normalRunDamageTaken === 'number'
+            && typeof normalRunBeerCollected === 'number'
+        ) {
             lines.push(`normal damage: ${normalRunDamageTaken}`);
             lines.push(`normal beer pickups: ${normalRunBeerCollected}`);
         }
         if (
-            typeof mode67FinalBlowFromRight === 'boolean'
+            currentMode === '67'
+            && typeof mode67FinalBlowFromRight === 'boolean'
             && typeof mode67BossReachedMaxSize === 'boolean'
             && typeof mode67EnemyBulletLeftScreen === 'boolean'
         ) {
@@ -145,7 +152,8 @@
             lines.push(`67 bullet left screen: ${mode67EnemyBulletLeftScreen}`);
         }
         if (
-            typeof mode67RunDamageTaken === 'number'
+            currentMode === 'mode67'
+            && typeof mode67RunDamageTaken === 'number'
             && typeof mode67RunElapsedSec === 'number'
             && typeof mode67RunEnemyBulletsFired === 'number'
             && typeof mode67RunBulletRuleBroken === 'boolean'
@@ -156,7 +164,8 @@
             lines.push(`mode67 bullet rule broken: ${mode67RunBulletRuleBroken}`);
         }
         if (
-            typeof nosokElapsedTime === 'number'
+            currentMode === 'nosok'
+            && typeof nosokElapsedTime === 'number'
             && typeof nosokFinalTimeMs === 'number'
             && typeof nosokGoals === 'number'
             && typeof nosokTargetGoals === 'number'
@@ -176,7 +185,8 @@
             lines.push(`nosok ach purifying_fire: ${purifyingFireOk}`);
         }
         if (
-            typeof stepanRunExitWith67FromPause === 'boolean'
+            currentMode === 'stepan'
+            && typeof stepanRunExitWith67FromPause === 'boolean'
             && typeof stepanRunNoMoveShootGoalsStreak === 'number'
             && typeof stepanRunNoMoveShootShotSinceGoal === 'boolean'
             && typeof stepanRunNoMoveShootInvalid === 'boolean'
@@ -187,7 +197,7 @@
             && typeof nosokGoals === 'number'
         ) {
             const goals = Math.max(0, Math.floor(nosokGoals || 0));
-            const notWorthyEligible = (gameMode === 'stepan') && goals >= 67;
+            const notWorthyEligible = goals >= 67;
             const needCannonOk = stepanRunNoMoveShootAchieved || stepanRunNoMoveShootGoalsStreak >= 11;
             const hundredInMotionOk = stepanRunSotkaInMotionAchieved || (!stepanRunStationaryRuleBroken && goals >= 100);
             lines.push(`stepan goals: ${goals}`);
@@ -202,7 +212,8 @@
             lines.push(`stepan ach hundred_in_motion: ${hundredInMotionOk}`);
         }
         if (
-            typeof lovlyuRunAnyLanded === 'boolean'
+            currentMode === 'lovlyu'
+            && typeof lovlyuRunAnyLanded === 'boolean'
             && typeof lovlyuRunStunnedCount === 'number'
             && typeof lovlyuRunLightningPicked === 'boolean'
             && typeof lovlyuSpawnedCount === 'number'
@@ -219,7 +230,8 @@
             lines.push(`lovlyu ach no_energy: ${!lovlyuRunLightningPicked}`);
         }
         if (
-            typeof platformRunDamageAtOneHp === 'number'
+            currentMode === 'platforms'
+            && typeof platformRunDamageAtOneHp === 'number'
             && typeof platformRunBossMaxHp === 'number'
             && typeof platformRunBossKilledAtOneHp === 'boolean'
             && typeof platformRunFellOffLevel === 'boolean'
@@ -239,7 +251,8 @@
             lines.push(`platforms ach no_idle_spawns: ${!platformRunIdleLilacSpawned}`);
         }
         if (
-            typeof o4koRunBananaCollectedCount === 'number'
+            currentMode === 'o4ko'
+            && typeof o4koRunBananaCollectedCount === 'number'
             && typeof o4koRunJumped === 'boolean'
             && typeof o4koRunBonusShotUsed === 'boolean'
         ) {
@@ -251,7 +264,8 @@
             lines.push(`o4ko ach no_bonus_use: ${!o4koRunBonusShotUsed}`);
         }
         if (
-            typeof runnerRunElapsedSec === 'number'
+            currentMode === 'runner'
+            && typeof runnerRunElapsedSec === 'number'
             && typeof runnerRunBossCaught === 'boolean'
             && typeof runnerRunBossCaughtDuringSlow === 'boolean'
             && typeof runnerRunCatchTimeSec === 'number'
@@ -270,14 +284,6 @@
             lines.push(`runner ach karate_101: ${karateOk}`);
             lines.push(`runner ach too_easy: ${easyOk}`);
             lines.push(`runner ach no_arcade_magic: ${noMagicOk}`);
-        }
-
-        // На случай unlock'ов, которых нет в манифесте (устаревшие/ручные id).
-        if (typeof api.list === 'function') {
-            const extraUnlocked = api.list().filter(id => !Object.prototype.hasOwnProperty.call(manifest, id));
-            if (extraUnlocked.length > 0) {
-                lines.push(`extra unlocked ids: ${extraUnlocked.join(', ')}`);
-            }
         }
 
         ACH.lines = lines;
