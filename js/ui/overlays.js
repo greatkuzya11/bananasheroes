@@ -1092,6 +1092,32 @@ function showGameOver() {
     }
     updateBestScoresDisplay();
     try {
+        if (gameMode === 'survival') {
+            const survivalScoreTarget = 1000;
+            const survivalAttemptsTarget = 20;
+            const survivalAttemptsKey = 'bh_survival_death_attempts_v1';
+            let survivalAttempts = 0;
+
+            if (typeof BHAchievements !== 'undefined' && score > survivalScoreTarget) {
+                // Achievement 1: death with score strictly greater than 1000.
+                BHAchievements.grant('survival_four_digits');
+            }
+
+            try {
+                survivalAttempts = parseInt(localStorage.getItem(survivalAttemptsKey) || '0', 10) || 0;
+            } catch (e) {
+                survivalAttempts = 0;
+            }
+            survivalAttempts += 1;
+            try {
+                localStorage.setItem(survivalAttemptsKey, String(survivalAttempts));
+            } catch (e) { }
+
+            if (typeof BHAchievements !== 'undefined' && survivalAttempts >= survivalAttemptsTarget) {
+                // Achievement 3: cumulative 20 survival deaths (menu exits are not counted).
+                BHAchievements.grant('survival_next_time');
+            }
+        }
         if (typeof BHAchievements !== 'undefined' && gameMode === 'stepan') {
             if (stepanRunNoMoveShootGoalsStreak >= 11 || stepanRunNoMoveShootAchieved) {
                 stepanRunNoMoveShootAchieved = true;

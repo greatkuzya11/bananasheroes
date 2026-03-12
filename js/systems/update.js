@@ -893,10 +893,18 @@ function update(dt) {
                             survivalBulletMultiplier *= 1.2;
                         }
                         // Каждые 30 убийств увеличиваем скорость врагов и пуль (до 10 раз)
-                        if (killCount % 30 === 0 && survivalSpeedUps < 10) {
+                        const survivalSpeedUpsCap = 10;
+                        if (killCount % 30 === 0 && survivalSpeedUps < survivalSpeedUpsCap) {
                             survivalEnemySpeedIncrease += 1;
                             survivalBulletSpeedIncrease += 1;
                             survivalSpeedUps += 1;
+                            if (
+                                survivalSpeedUps >= survivalSpeedUpsCap
+                                && typeof BHAchievements !== 'undefined'
+                            ) {
+                                // Achievement 2 (survival): grant immediately when max speed is reached.
+                                BHAchievements.grant('survival_hardcore');
+                            }
                         }
                     }
                     // Бонусная пуля Дрона не исчезает и продолжает лететь

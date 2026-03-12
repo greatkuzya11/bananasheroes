@@ -4,7 +4,7 @@
     const manifest = {
         'normal_bukins_saved': { 
             id: 'normal_bukins_saved', 
-            title: 'Букин спасен', 
+            title: 'Букин! Чики Бом-Бом!', 
             desc: 'Спасите Букина в уровне «Сирень и Букин»', 
             icon: '🍌',
             mode: 'normal'
@@ -22,6 +22,28 @@
             desc: '\u041f\u0440\u043e\u0439\u0442\u0438 \u0443\u0440\u043e\u0432\u0435\u043d\u044c, \u043d\u0435 \u043f\u043e\u0434\u043e\u0431\u0440\u0430\u0432 \u043d\u0438 \u043e\u0434\u043d\u043e\u0439 \u0431\u0443\u0442\u044b\u043b\u043a\u0438 \u043f\u0438\u0432\u0430', 
             icon: '🍺',
             mode: 'normal'
+        },
+        'survival_four_digits': {
+            id: 'survival_four_digits',
+            title: '\u041c\u044b \u0442\u0443\u0442 \u043e\u0431\u0441\u0443\u0436\u0434\u0430\u0435\u043c \u0034\u0445 \u0437\u043d\u0430\u0447\u043d\u044b\u0435 \u0447\u0438\u0441\u043b\u0430',
+            desc: '\u0031k \u043e\u0447\u043a\u043e\u0432',
+            icon: '\ud83d\udd22',
+            mode: 'survival'
+        },
+        'survival_hardcore': {
+            id: 'survival_hardcore',
+            title: '\u041f\u043e\u0448\u0435\u043b \u0445\u0430\u0440\u0434\u043a\u043e\u0440',
+            desc: '\u0420\u0430\u0437\u043e\u0437\u043b\u0438 \u0441\u0438\u0440\u0435\u043d\u044c \u043f\u043e \u043c\u0430\u043a\u0441\u0438\u043c\u0443\u043c\u0443',
+            icon: '\ud83d\udd25',
+            mode: 'survival'
+        },
+        'survival_next_time': {
+            id: 'survival_next_time',
+            title: '\u0412 \u0441\u043b\u0435\u0434\u0443\u044e\u0449\u0438\u0439 \u0440\u0430\u0437 \u0442\u043e\u0447\u043d\u043e \u043f\u043e\u043b\u0443\u0447\u0438\u0442\u0441\u044f',
+            desc: '\u0421\u0434\u0435\u043b\u0430\u0439 \u0032\u0030 \u043f\u043e\u043f\u044b\u0442\u043e\u043a \u043f\u043e\u0431\u0438\u0442\u044c \u0440\u0435\u043a\u043e\u0440\u0434',
+            icon: '\ud83d\udd01',
+            mode: 'survival',
+            secret: true
         },
         '67_right_funeral': {
             id: '67_right_funeral',

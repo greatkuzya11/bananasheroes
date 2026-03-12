@@ -142,6 +142,36 @@
             lines.push(`normal beer pickups: ${normalRunBeerCollected}`);
         }
         if (
+            currentMode === 'survival'
+            && typeof score === 'number'
+            && typeof killCount === 'number'
+            && typeof survivalSpeedUps === 'number'
+            && typeof survivalEnemySpeedIncrease === 'number'
+            && typeof survivalBulletSpeedIncrease === 'number'
+            && typeof survivalBulletMultiplier === 'number'
+        ) {
+            const survivalScoreTarget = 1000;
+            const survivalSpeedUpsCap = 10;
+            const survivalAttemptsTarget = 20;
+            const survivalAttemptsKey = 'bh_survival_death_attempts_v1';
+            let survivalAttempts = 0;
+            try {
+                survivalAttempts = parseInt(localStorage.getItem(survivalAttemptsKey) || '0', 10) || 0;
+            } catch (e) {
+                survivalAttempts = 0;
+            }
+            lines.push(`survival score: ${Math.max(0, Math.floor(score || 0))} (> ${survivalScoreTarget})`);
+            lines.push(`survival kills: ${Math.max(0, Math.floor(killCount || 0))}`);
+            lines.push(`survival speed-ups: ${survivalSpeedUps}/${survivalSpeedUpsCap}`);
+            lines.push(`survival enemy speed bonus: ${survivalEnemySpeedIncrease}`);
+            lines.push(`survival bullet speed bonus: ${survivalBulletSpeedIncrease}`);
+            lines.push(`survival bullet multiplier: ${survivalBulletMultiplier.toFixed(2)}`);
+            lines.push(`survival death attempts: ${survivalAttempts}/${survivalAttemptsTarget}`);
+            lines.push(`survival ach four_digits: ${score > survivalScoreTarget}`);
+            lines.push(`survival ach hardcore: ${survivalSpeedUps >= survivalSpeedUpsCap}`);
+            lines.push(`survival ach next_time: ${survivalAttempts >= survivalAttemptsTarget}`);
+        }
+        if (
             currentMode === '67'
             && typeof mode67FinalBlowFromRight === 'boolean'
             && typeof mode67BossReachedMaxSize === 'boolean'

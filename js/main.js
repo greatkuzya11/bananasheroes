@@ -1545,6 +1545,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const preview = [
             { id: 'tutorial', icon: '📖', title: 'Обучение' },
             { id: 'normal', icon: '🌳', title: 'Сирень и Букин' },
+            { id: 'survival', icon: '🌊', title: 'Выживание' },
             { id: '67', icon: '📺', title: 'Телепузик' },
             { id: 'mode67', icon: '🤖', title: 'Режим 67' },
             { id: 'o4ko', icon: '🎯', title: 'Очко' },
@@ -1610,13 +1611,12 @@ document.addEventListener('DOMContentLoaded', () => {
                         levelUnlockedCount++;
                     }
                     const isSecretLocked = !!ach.secret && !isUnlocked;
-
                     const item = document.createElement('div');
                     item.className = 'ach-item' + (isUnlocked ? ' unlocked' : ' locked');
                     item.setAttribute('tabindex', '0');
                     item.setAttribute('data-ach-id', ach.id);
 
-                    // Tooltip: locked secret achievements must not reveal description.
+                    // Locked secret achievements must not reveal description.
                     if (!isSecretLocked && ach.desc) {
                         item.setAttribute('data-tooltip', ach.desc);
                     }
@@ -1723,61 +1723,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         
         table.appendChild(gBox);
-
-        // Secret achievements section
-        const sHeader = document.createElement('div'); sHeader.className = 'ach-section-header'; sHeader.textContent = '🕵️‍♂️ Секретные достижения';
-        const sBox = document.createElement('div'); sBox.className = 'ach-level-box';
-        sBox.appendChild(sHeader);
-        const sRow = document.createElement('div'); sRow.className = 'ach-level-row';
-        const sListRow = document.createElement('div'); sListRow.className = 'ach-list-row';
-        
-        const secrets = [
-            { id: 'secret_banana', icon: '🥷', title: 'Секретный банан', desc: 'Найти скрытый банан' }
-        ];
-        
-        let secretUnlockedCount = 0;
-        
-        secrets.forEach(a => {
-            totalCount++;
-            const isUnlocked = window.BHAchievements.has(a.id);
-            if (isUnlocked) {
-                unlockedCount++;
-                secretUnlockedCount++;
-            }
-            
-            const item = document.createElement('div');
-            item.className = 'ach-item' + (isUnlocked ? ' unlocked' : ' locked');
-            item.setAttribute('tabindex', '0');
-            item.setAttribute('data-ach-id', a.id);
-            if (isUnlocked && a.desc) item.setAttribute('data-tooltip', a.desc);
-            
-            const emoji = document.createElement('div'); emoji.className = 'ach-emoji'; emoji.textContent = isUnlocked ? a.icon : '🔒';
-            const txt = document.createElement('div'); txt.className = 'ach-item-text';
-            const titleEl = document.createElement('div'); titleEl.className = 'ach-title'; titleEl.textContent = isUnlocked ? a.title : 'Секретное достижение';
-            const descEl = document.createElement('div'); descEl.className = 'ach-desc';
-            
-            if (isUnlocked) {
-                const timestamp = window.BHAchievements.getTimestamp(a.id);
-                descEl.textContent = formatTime(timestamp);
-            } else {
-                descEl.textContent = '???';
-                descEl.style.fontSize = '10px';
-                descEl.style.color = 'rgba(255,255,255,0.4)';
-            }
-            
-            txt.appendChild(titleEl); txt.appendChild(descEl);
-            item.appendChild(emoji); item.appendChild(txt);
-            sListRow.appendChild(item);
-        });
-        sRow.appendChild(sListRow);
-        sBox.appendChild(sRow);
-        
-        // Add 'completed' class if all secret achievements are unlocked
-        if (secretUnlockedCount === secrets.length && secrets.length > 0) {
-            sBox.classList.add('completed');
-        }
-        
-        table.appendChild(sBox);
 
         achGrid.appendChild(table);
         if (achSummary) achSummary.textContent = `Разблокировано: ${unlockedCount} / ${totalCount}`;
