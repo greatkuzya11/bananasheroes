@@ -15,6 +15,7 @@ function getIntroBackgroundForMode(mode) {
         normal: 'img/forest.png',
         survival: 'img/forest.png',
         '67': 'img/forest2.png',
+        mode67: 'img/forest2.png',
         o4ko: 'img/bg-avs.png',
         nosok: 'img/bn-bg.png',
         stepan: 'img/bn-bg.png',

@@ -6,12 +6,24 @@
     <title>Bananas Heroes</title>
     <link rel="icon" href="favicon.svg" type="image/svg+xml">
     <style>
+        * {
+            user-select: none !important;
+            -webkit-user-select: none !important;
+            -moz-user-select: none !important;
+            -ms-user-select: none !important;
+            -webkit-touch-callout: none !important;
+        }
         body {
             margin: 0;
             font-family: Arial, sans-serif;
             background-color: #4caf50;
             color: white;
             overflow: hidden;
+            user-select: none !important;
+            -webkit-user-select: none !important;
+            -moz-user-select: none !important;
+            -ms-user-select: none !important;
+            -webkit-touch-callout: none !important;
         }
 
         :root {
@@ -1666,6 +1678,24 @@
         #scores-back-btn:active { transform: scale(0.95); }
 
     </style>
+    <script>
+        // Блокируем контекстное меню (правый клик)
+        document.addEventListener('contextmenu', (e) => e.preventDefault(), false);
+        
+        // Блокируем выделение текста через selectstart
+        document.addEventListener('selectstart', (e) => {
+            e.preventDefault();
+            return false;
+        }, false);
+        
+        // Блокируем выделение текста через touchmove с 2+ пальцами
+        document.addEventListener('touchmove', (e) => {
+            if (e.touches.length > 1) {
+                e.preventDefault();
+                return false;
+            }
+        }, false);
+    </script>
 </head>
 <body>
 

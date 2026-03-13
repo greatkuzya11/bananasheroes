@@ -1,4 +1,5 @@
-body{margin:0;font-family:Arial;background:#1b5e20;color:white;overflow:hidden}
+body,*{margin:0;user-select:none;-webkit-user-select:none;-moz-user-select:none;-ms-user-select:none;-webkit-touch-callout:none}
+body{font-family:Arial;background:#1b5e20;color:white;overflow:hidden}
 #menu{text-align:center;margin-top:60px}
 .characters{display:flex;gap:20px;justify-content:center;margin:20px}
 .char{padding:15px 25px;font-size:20px;border-radius:10px;cursor:pointer}
