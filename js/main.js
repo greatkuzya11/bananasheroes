@@ -2024,12 +2024,8 @@ document.addEventListener('DOMContentLoaded', () => {
             audioPlay('ui_click');
             const ok = window.confirm('Сбросить прогресс кампании? Библиотека и Bonus снова будут закрыты.');
             if (!ok) return;
-            if (typeof resetCampaignProgressState === 'function') {
-                resetCampaignProgressState();
-            }
-            audioPlay('ui_confirm');
-            modeButtons.forEach(mb => mb.classList.remove('selected'));
-            if (typeof refreshModeButtonsByProgress === 'function') refreshModeButtonsByProgress();
+            localStorage.clear();
+            location.reload();
         };
     }
     if (bonusLevelBtn) {
