@@ -452,7 +452,11 @@ function showLevelComplete() {
                 mode: gameMode,
                 selectedChar: selectedChar || 'kuzy',
                 noDamage: (typeof runHeartsDamageTaken === 'number') ? (runHeartsDamageTaken === 0) : false,
-                isNewRecord: isNew
+                isNewRecord: isNew,
+                campaignChainSource: window.BHLastRunStartSource || '',
+                campaignChainStartIndex: (typeof window.BHChainStartIndex === 'number')
+                    ? window.BHChainStartIndex
+                    : -1
             });
         }
     } catch (e) { }

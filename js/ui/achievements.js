@@ -648,10 +648,30 @@
             if (GLOBAL_CHARS.indexOf(charId) >= 0) {
                 globalStats.campaignWinsByChar[charId] = (Number(globalStats.campaignWinsByChar[charId]) || 0) + 1;
             }
-            globalStats.campaignWinStreak += 1;
-            globalStats.campaignNoDamageWinStreak = noDamage
-                ? (globalStats.campaignNoDamageWinStreak + 1)
-                : 0;
+            const campaignModes = getCampaignModes();
+            const maxStartIdxForWinStreak = campaignModes.length - 5;
+            const maxStartIdxForNoDmgStreak = campaignModes.length - 3;
+            const startIdx = Number.isFinite(meta.campaignChainStartIndex)
+                ? meta.campaignChainStartIndex
+                : -1;
+            const chainSource = String(meta.campaignChainSource || '');
+            const startEligibleForWin = startIdx >= 0 && startIdx <= maxStartIdxForWinStreak;
+            const startEligibleForNoDmg = startIdx >= 0 && startIdx <= maxStartIdxForNoDmgStreak;
+
+            if (chainSource === 'menu') {
+                globalStats.campaignWinStreak = startEligibleForWin ? 1 : 0;
+                globalStats.campaignNoDamageWinStreak = (startEligibleForNoDmg && noDamage) ? 1 : 0;
+            } else if (chainSource === 'next') {
+                globalStats.campaignWinStreak = startEligibleForWin
+                    ? (globalStats.campaignWinStreak + 1)
+                    : 0;
+                globalStats.campaignNoDamageWinStreak = (startEligibleForNoDmg && noDamage)
+                    ? (globalStats.campaignNoDamageWinStreak + 1)
+                    : 0;
+            } else {
+                globalStats.campaignWinStreak = 0;
+                globalStats.campaignNoDamageWinStreak = 0;
+            }
         }
         if (meta.isNewRecord) {
             globalStats.personalRecordsSet += 1;

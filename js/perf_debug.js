@@ -160,8 +160,8 @@
             lines.push(`global beer picked: ${Math.max(0, Math.floor(gs.beerPicked || 0))}/225`);
             lines.push(`global campaign completed: ${campaignCompleted}/${campaignModes.length}`);
             lines.push(`global wins by char: max=${Math.max(0, Math.floor(gs.campaignWinsByChar?.max || 0))}, dron=${Math.max(0, Math.floor(gs.campaignWinsByChar?.dron || 0))}, kuzy=${Math.max(0, Math.floor(gs.campaignWinsByChar?.kuzy || 0))}`);
-            lines.push(`global win streak: ${Math.max(0, Math.floor(gs.campaignWinStreak || 0))}/5`);
-            lines.push(`global no-dmg streak: ${Math.max(0, Math.floor(gs.campaignNoDamageWinStreak || 0))}/3`);
+            lines.push(`campaignWinStreak: ${Math.max(0, Math.floor(gs.campaignWinStreak || 0))}/5`);
+            lines.push(`campaignNoDamageWinStreak: ${Math.max(0, Math.floor(gs.campaignNoDamageWinStreak || 0))}/3`);
             lines.push(`global active time: ${playSec.toFixed(1)}s / 3600.0s`);
             lines.push(`global bonuses picked: ${Math.max(0, Math.floor(gs.bonusPicked || 0))}/500`);
             lines.push(`global personal records: ${Math.max(0, Math.floor(gs.personalRecordsSet || 0))}/10`);

@@ -418,6 +418,14 @@ function resetCampaignSessionForMenu() {
  * @param {'menu'|'next'|'retry'|'pause-restart'} source - источник запуска.
  */
 function prepareCampaignSessionForStart(mode, source = 'menu') {
+    window.BHLastRunStartSource = source;
+    if (source === 'menu') {
+        const campaignIdx = CAMPAIGN_LEVEL_ORDER.indexOf(mode);
+        window.BHChainStartIndex = campaignIdx >= 0 ? campaignIdx : -1;
+    } else if (source !== 'next') {
+        window.BHChainStartIndex = -1;
+    }
+
     if (source === 'menu') {
         if (mode === CAMPAIGN_LEVEL_ORDER[0]) {
             startNewCampaignSession();
