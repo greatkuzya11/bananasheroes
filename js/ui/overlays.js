@@ -751,7 +751,14 @@ function showLevelComplete() {
             window.BHAudio.setMenuActive(true);
             window.BHAudio.setPaused(false);
         }
-        if (typeof window.menuNavFocus === 'function') window.menuNavFocus('char', 0);
+        if (typeof window.menuNavFocus === 'function') {
+            // Save the last game mode before restoring menu focus
+            if (typeof window !== 'undefined') {
+                window.lastGameMode = gameMode;
+            }
+            // Restore keyboard focus to last played mode after character selection
+            window.restoreMenuFocusAfterGame(window.menuNavFocus);
+        }
         const mode67Text = (typeof consumePendingMode67Notice === 'function') ? consumePendingMode67Notice() : '';
         if (mode67Text) { await showTransientInfoNotice(mode67Text, 2400); }
         const survivalText = (typeof consumePendingSurvivalNotice === 'function')
@@ -1308,7 +1315,8 @@ function showGameOver() {
             window.setGameTouchControlsVisible(false);
         }
         overlay.remove();
-        if (typeof window.menuNavFocus === 'function') window.menuNavFocus('char', 0);
+        window.lastGameMode = gameMode;
+        window.restoreMenuFocusAfterGame(window.menuNavFocus);
     };
 
     buttons.appendChild(btnRetry);

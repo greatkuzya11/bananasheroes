@@ -1181,7 +1181,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 window.BHAudio.setPaused(false);
             }
             setTouchControlsVisible(false);
-            menuNavFocus('char', 0);
+            // Save the last game mode before resetting state
+            if (typeof window !== 'undefined') {
+                window.lastGameMode = gameMode;
+            }
+            // Restore keyboard focus to last played mode after character selection
+            if (typeof window.restoreMenuFocusAfterGame === 'function') {
+                window.restoreMenuFocusAfterGame(menuNavFocus);
+            }
         };
         overlay.appendChild(btnMain);
 
@@ -1931,9 +1938,42 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     if (achBtn && achOverlay) {
-        achBtn.addEventListener('click', () => { hideFloatingTooltip(); renderAchievementsPrototype(); achOverlay.style.display = 'block'; });
+        achBtn.addEventListener('click', () => { 
+            hideFloatingTooltip(); 
+            renderAchievementsPrototype(); 
+            achOverlay.style.display = 'block';
+            // Save the index of the currently selected character BEFORE clearing .menu-kb-focus
+            let savedCharIndex = -1;
+            const cEls = Array.from(document.querySelectorAll('.char'));
+            const selectedCharEl = cEls.find(el => el.classList.contains('selected'));
+            if (selectedCharEl) {
+                savedCharIndex = cEls.indexOf(selectedCharEl);
+            }
+            // Store it for restoration when closing
+            achOverlay._savedCharIndex = savedCharIndex;
+            // Clear menu-kb-focus and set it to achievements grid for keyboard nav
+            document.querySelectorAll('.menu-kb-focus').forEach(x => x.classList.remove('menu-kb-focus'));
+            if (achGrid) { 
+                achGrid.scrollTop = 0;
+                achGrid.classList.add('menu-kb-focus');
+                try { achGrid.focus(); } catch (er) {}
+            }
+        });
         const closeBtn = achOverlay.querySelector('#ach-back-btn');
-        if (closeBtn) closeBtn.addEventListener('click', () => { hideFloatingTooltip(); achOverlay.style.display = 'none'; });
+        if (closeBtn) closeBtn.addEventListener('click', () => { 
+            hideFloatingTooltip(); 
+            achOverlay.style.display = 'none';
+            closeBtn.classList.remove('menu-kb-focus');
+            if (achGrid) achGrid.classList.remove('menu-kb-focus');
+            // Restore focus to the previously selected character, or to 'ach' button
+            const cEls = Array.from(document.querySelectorAll('.char'));
+            const savedIdx = achOverlay._savedCharIndex >= 0 ? achOverlay._savedCharIndex : -1;
+            if (savedIdx >= 0 && cEls[savedIdx]) {
+                cEls[savedIdx].classList.add('menu-kb-focus');
+            } else {
+                menuNavFocus('ach', 0);
+            }
+        });
     }
     if (achGrid) {
         achGrid.addEventListener('mouseover', (ev) => {
@@ -2443,6 +2483,61 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
+        // ==== ACHIEVEMENTS: Escape закрывает ====
+        if (e.key === 'Escape' && achOverlay && achOverlay.style.display === 'block') {
+            achOverlay.style.display = 'none';
+            const backBtn = document.getElementById('ach-back-btn');
+            if (backBtn) backBtn.classList.remove('menu-kb-focus');
+            if (achGrid) achGrid.classList.remove('menu-kb-focus');
+            e.preventDefault();
+            // Return focus to achievements button
+            menuNavFocus('ach', 0);
+            return;
+        }
+
+        // ==== ACHIEVEMENTS: навигация внутри ====
+        if (achOverlay && achOverlay.style.display === 'block') {
+            const scrollEl = achOverlay.querySelector('.help-scroll');
+            const backBtn = document.getElementById('ach-back-btn');
+            const backFocused = backBtn && backBtn.classList.contains('menu-kb-focus');
+            const gridFocused = achGrid && achGrid.classList.contains('menu-kb-focus');
+            const SCROLL_STEP = 120;
+
+            if (e.key === 'ArrowDown') {
+                if (!backFocused && scrollEl) {
+                    scrollEl.scrollTop += SCROLL_STEP;
+                    const atBottom = scrollEl.scrollTop + scrollEl.clientHeight >= scrollEl.scrollHeight - 4;
+                    if (atBottom && backBtn) {
+                        document.querySelectorAll('.menu-kb-focus').forEach(x => x.classList.remove('menu-kb-focus'));
+                        backBtn.classList.add('menu-kb-focus');
+                        try { backBtn.focus(); } catch (er) {}
+                    }
+                }
+                e.preventDefault();
+            } else if (e.key === 'ArrowUp') {
+                if (backFocused && scrollEl) {
+                    // move focus back into scroll region
+                    backBtn.classList.remove('menu-kb-focus');
+                    scrollEl.scrollTop -= SCROLL_STEP;
+                    if (achGrid) achGrid.classList.add('menu-kb-focus');
+                } else if (scrollEl) {
+                    scrollEl.scrollTop -= SCROLL_STEP;
+                }
+                e.preventDefault();
+            } else if ((e.key === 'Enter' || e.key === ' ')) {
+                if (backBtn && backBtn.classList.contains('menu-kb-focus')) {
+                    achOverlay.style.display = 'none';
+                    backBtn.classList.remove('menu-kb-focus');
+                    if (achGrid) achGrid.classList.remove('menu-kb-focus');
+                    e.preventDefault();
+                    // Return focus to achievements button
+                    menuNavFocus('ach', 0);
+                    return;
+                }
+            }
+            return;
+        }
+
         // ==== МЕНЮ: работаем только когда оно видимо ====
         if (!menuElement || menuElement.style.display === 'none') return;
 
@@ -2455,7 +2550,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const resetBtnEl = document.getElementById('reset-progress-btn');
         const tutorialBtnEl = document.getElementById('btnTutorial');
         const modesContainer = document.getElementById('modes');
-        const modesVisible = modesContainer && modesContainer.style.display !== 'none';
+        const modesVisible = modesContainer && modesContainer.classList.contains('active');
 
         // Определяем текущую секцию и индекс из DOM
         let section = 'char', idx = 0;
@@ -2483,7 +2578,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (section !== 'char') {
                 // Сбросить выбор персонажа и скрыть режимы
                 cEls.forEach(el => el.classList.remove('selected'));
-                if (modesContainer) modesContainer.style.display = 'none';
+                if (modesContainer) modesContainer.classList.remove('active');
                 menuNavFocus('char', 0);
                 e.preventDefault();
             }
@@ -2501,7 +2596,7 @@ document.addEventListener('DOMContentLoaded', () => {
         } else if (e.key === 'ArrowDown') {
             if (section === 'char') {
                 cEls[idx]?.click();
-                if (modesContainer && modesContainer.style.display !== 'none') menuNavFocus('mode', 0);
+                if (modesContainer && modesContainer.classList.contains('active')) menuNavFocus('mode', 0);
             } else if (section === 'mode') {
                 if (idx < mEls.length - 1) menuNavFocus('mode', idx + 1);
                 else menuNavFocus('tutorial', 0);
@@ -2548,7 +2643,7 @@ document.addEventListener('DOMContentLoaded', () => {
         } else if (e.key === 'Enter' || e.key === ' ') {
             if (section === 'char') {
                 cEls[idx]?.click();
-                if (modesContainer && modesContainer.style.display !== 'none') menuNavFocus('mode', 0);
+                if (modesContainer && modesContainer.classList.contains('active')) menuNavFocus('mode', 0);
             } else if (section === 'mode') {
                 mEls[idx]?.click();
             } else if (section === 'help') {

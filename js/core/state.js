@@ -97,6 +97,7 @@ let altShootMode = false;
 let ctrlHeld = false;
 
 let gameMode = 'normal';
+let lastGameMode = 'normal'; // Track the last played mode for keyboard focus restoration
 let selectedChar = 'kuzy';
 // Система спрайтов: 'kuzy' | 'max' | 'dron' (независима от персонажа)
 let selectedSpriteSystem = (typeof localStorage !== 'undefined' && localStorage.getItem('bh_char_skin')) || 'max';
@@ -326,12 +327,50 @@ function resetGameStateForMenu() {
     resetGameRuntimeCore();
     if (typeof resetCampaignSessionForMenu === 'function') resetCampaignSessionForMenu();
     gameMode = 'normal';
-    selectedChar = 'kuzy';
+    // Restore selectedChar from the currently selected character in the menu, NOT reset to kuzy
+    // This ensures we don't lose the player's character selection when returning to menu
+    const cEls = typeof document !== 'undefined' ? document.querySelectorAll('.char') : [];
+    const selectedEl = Array.from(cEls).find(el => el.classList.contains('selected'));
+    if (!selectedEl) {
+        // Only reset to 'kuzy' if no character is selected (first load)
+        selectedChar = 'kuzy';
+    } else {
+        // Restore from the selected element
+        selectedChar = selectedEl.dataset.char || 'kuzy';
+    }
     if (window.BHAudio) {
         window.BHAudio.setPaused(false);
         window.BHAudio.setMenuActive(true);
     }
 }
+
+/**
+ * Восстанавливает фокус меню после выхода из игры.
+ * Устанавливает фокус на выбранного персонажа, затем переместит его на последний играемый режим.
+ * @param {Function} menuNavFocus - функция для установления фокуса меню
+ */
+window.restoreMenuFocusAfterGame = function(menuNavFocus) {
+    if (typeof menuNavFocus !== 'function') return;
+    
+    // First, restore focus to the selected character
+    const cEls = typeof document !== 'undefined' ? Array.from(document.querySelectorAll('.char')) : [];
+    const selectedCharEl = cEls.find(el => el.classList.contains('selected'));
+    let charIdx = 0;
+    if (selectedCharEl) {
+        charIdx = cEls.indexOf(selectedCharEl);
+    }
+    menuNavFocus('char', charIdx);
+    
+    // Then, if we have a saved last game mode, restore focus to that mode
+    if (lastGameMode && lastGameMode !== 'normal') {
+        const modeButtons = typeof document !== 'undefined' ? Array.from(document.querySelectorAll('.mode')) : [];
+        const modeIdx = modeButtons.findIndex(btn => btn.dataset.mode === lastGameMode);
+        if (modeIdx >= 0) {
+            // Delay slightly to ensure modes are visible if they were just expanded
+            setTimeout(() => menuNavFocus('mode', modeIdx), 50);
+        }
+    }
+};
 
 /**
  * Сбрасывает состояние перед новым запуском режима, сохраняя выбранного персонажа.
