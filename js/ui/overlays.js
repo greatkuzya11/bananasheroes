@@ -390,7 +390,8 @@ function showTutorialCompleteOverlay() {
             refreshModeButtonsByProgress();
         }
         if (typeof window.menuNavFocus === 'function') {
-            window.menuNavFocus('char', 0);
+            window.lastGameMode = gameMode;
+            window.restoreMenuFocusAfterGame(window.menuNavFocus);
         }
     };
 
@@ -1014,6 +1015,7 @@ function showLevelCompleteMessage() {
 
     const btnRetryPlatforms = document.createElement('button');
     btnRetryPlatforms.innerText = 'Повторить';
+    btnRetryPlatforms.dataset.overlayBtnIdx = '0';
     Object.assign(btnRetryPlatforms.style, { padding: '10px 16px', fontSize: '16px', cursor: 'pointer' });
     btnRetryPlatforms.onclick = () => {
         if (window.BHAudio) window.BHAudio.play('ui_click');
@@ -1028,6 +1030,7 @@ function showLevelCompleteMessage() {
 
     const btnMain = document.createElement('button');
     btnMain.innerText = 'Главный экран';
+    btnMain.dataset.overlayBtnIdx = '1';
     Object.assign(btnMain.style, { padding: '10px 16px', fontSize: '16px', cursor: 'pointer' });
     // Обработчик клика по кнопке "Главный экран"
     btnMain.onclick = () => {
@@ -1048,12 +1051,14 @@ function showLevelCompleteMessage() {
         if (typeof window.setGameTouchControlsVisible === 'function') {
             window.setGameTouchControlsVisible(false);
         }
+        window.lastGameMode = gameMode;
+        window.restoreMenuFocusAfterGame(window.menuNavFocus);
         overlay.remove();
-        if (typeof window.menuNavFocus === 'function') window.menuNavFocus('char', 0);
     };
 
     const btnNextPlatforms = document.createElement('button');
     btnNextPlatforms.innerText = 'Следующий уровень';
+    btnNextPlatforms.dataset.overlayBtnIdx = '2';
     btnNextPlatforms.disabled = true;
     Object.assign(btnNextPlatforms.style, { padding: '10px 16px', fontSize: '16px', opacity: '0.6', cursor: 'not-allowed' });
 
@@ -1065,6 +1070,9 @@ function showLevelCompleteMessage() {
     box.appendChild(buttons);
     overlay.appendChild(box);
     document.body.appendChild(overlay);
+
+    // Инициализируем фокус на первой кнопке для навигации с джойстика
+    btnRetryPlatforms.classList.add('menu-kb-focus');
 
     // Коллбек анимации: запускаем плавное появление текста и иконок
     requestAnimationFrame(() => {

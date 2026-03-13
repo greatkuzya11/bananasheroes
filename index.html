@@ -770,6 +770,20 @@
             letter-spacing: 0.2px;
         }
 
+        #touch-controls .touch-btn.tutorial-highlight {
+            animation: tutorialGlow 0.9s ease-in-out infinite;
+            box-shadow: 0 0 0 2px rgba(255, 214, 79, 0.9), 0 0 12px rgba(255, 214, 79, 0.85);
+            border-color: rgba(255, 214, 79, 0.95);
+            color: #111;
+            background: rgba(250, 204, 21, 0.75);
+        }
+
+        @keyframes tutorialGlow {
+            0% { box-shadow: 0 0 0 1px rgba(255, 214, 79, 0.55), 0 0 6px rgba(255, 214, 79, 0.4); }
+            50% { box-shadow: 0 0 0 3px rgba(255, 214, 79, 0.95), 0 0 16px rgba(255, 214, 79, 0.95); }
+            100% { box-shadow: 0 0 0 1px rgba(255, 214, 79, 0.55), 0 0 6px rgba(255, 214, 79, 0.4); }
+        }
+
         /* ---- Drag-режим блоков управления (в паузе) ---- */
         #touch-controls [data-block-key].dragging-mode {
             outline: 2px dashed rgba(255, 255, 255, 0.6);
@@ -1997,8 +2011,8 @@
             <div class="hint-text">
                 🕹️ <b>Джойстик</b> — движение влево/вправо. В 2D-режиме: смахни вверх = прыжок.<br>
                 ⬆ <b>UP</b> — прыжок (отдельная кнопка).<br>
-                <b>FIRE</b> — стрельба (удерживай). <b>BONUS</b> — бонусный режим. <b>ALT</b> — альт. стрельба.<br>
-                <b>DIR</b> — смена направления пули; удерживай в режиме ALT = стрелять вверх.<br><br>
+                <b>FIRE</b> — стрельба (удерживай). <b>BONUS</b> — бонусный режим. <b>ALT</b> — альт. стрельба (переключение), в ALT направление = движение.<br>
+                <b>DIR</b> — в обычном режиме циклично меняет направление (вверх → влево → вправо → вверх). В ALT удерживай для стрельбы вверх.<br><br>
                 ⚙️ <b>Нажми ⏸ Паузу</b> чтобы перетащить кнопки, изменить размер (+/−) и настроить режим прыжка.
             </div>
             <button class="hint-close" data-action="close-mobile-hint">OK, понял!</button>

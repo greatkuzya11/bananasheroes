@@ -20,6 +20,7 @@ let _tActive = false;
 let _tPhase = 0;
 let _tSubPhase = 0;
 let _tOverlay = null;
+let _tOverlayFooter = null;
 let _tOverlayTimer = 0;
 let _tWaitKey = false;
 let _tWaitKeyLock = 0;
@@ -58,6 +59,8 @@ let _tMarkerY = 0;
 let _tJumpWasActive = false;
 let _tJumpCount = 0;
 let _tPhase3WrongShotTimer = 0;
+let _tDirSwitchUsed = false;
+let _tDirGateActive = false;
 let _tWaitContinue = null;
 let _tTutorialHeartSpawned = false;
 let _tBananaMaskCache = new Map();
@@ -71,6 +74,27 @@ const _tLeafEmojis = ["🍃", "🍂", "🍁", "🌿", "🌱"];
 
 /** Возвращает true если игра запущена на тач-устройстве (мобиле/планшете). */
 const _tIsMobile = () => !!(window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
+
+/**
+ * Возвращает набор подписей кнопок для текущего типа устройства.
+ * @returns {{fire:string, bonus:string, alt:string, dir:string, up:string}}
+ */
+function _tGetControlLabels() {
+    if (_tIsMobile()) {
+        return { fire: 'FIRE', bonus: 'BONUS', alt: 'ALT', dir: 'DIR', up: 'UP' };
+    }
+    return { fire: 'Пробел', bonus: 'Shift', alt: 'Ctrl', dir: '↓', up: '↑' };
+}
+
+/**
+ * Возвращает подпись управляющей кнопки.
+ * @param {'fire'|'bonus'|'alt'|'dir'|'up'} key
+ * @returns {string}
+ */
+function _tControlLabel(key) {
+    const labels = _tGetControlLabels();
+    return labels[key] || key;
+}
 
 /**
  * Возвращает runtime-параметры мобильного адаптива для уровня "Обучение".
@@ -158,6 +182,35 @@ function _tEnsureAnyKeyListener() {
     }, true);
 }
 
+function _tGetTouchModButton(mod) {
+    if (!_tIsMobile()) return null;
+    const root = document.getElementById('touch-controls');
+    if (!root) return null;
+    return root.querySelector('.touch-btn[data-mod="' + mod + '"]');
+}
+
+function _tSetTouchHighlight(mod, on) {
+    const btn = _tGetTouchModButton(mod);
+    if (!btn) return;
+    btn.classList.toggle('tutorial-highlight', !!on);
+}
+
+function _tClearTouchHighlights() {
+    _tSetTouchHighlight('dir', false);
+    _tSetTouchHighlight('alt', false);
+}
+
+function _tUpdateTouchHighlights() {
+    if (!_tIsMobile()) return;
+    const wantAlt = _tPhase === TUTORIAL_PHASE.ALT_SHOOT && _tSubPhase === 0 && !altShootMode;
+    const wantDir = (
+        (_tPhase === TUTORIAL_PHASE.BASIC_SHOOT && _tSubPhase === 1 && !_tDirSwitchUsed) ||
+        (_tPhase === TUTORIAL_PHASE.ALT_SHOOT && _tSubPhase === 1)
+    );
+    _tSetTouchHighlight('alt', wantAlt);
+    _tSetTouchHighlight('dir', wantDir);
+}
+
 /**
  * Полный сброс runtime-состояния уровня обучения.
  */
@@ -166,6 +219,7 @@ function resetTutorialLevelState() {
     _tPhase = TUTORIAL_PHASE.HUD;
     _tSubPhase = 0;
     _tOverlay = null;
+    _tOverlayFooter = null;
     _tOverlayTimer = 0;
     _tWaitKey = false;
     _tWaitKeyLock = 0;
@@ -198,9 +252,12 @@ function resetTutorialLevelState() {
     _tJumpWasActive = false;
     _tJumpCount = 0;
     _tPhase3WrongShotTimer = 0;
+    _tDirSwitchUsed = false;
+    _tDirGateActive = false;
     _tWaitContinue = null;
     _tTutorialHeartSpawned = false;
     _tBananaMaskCache = new Map();
+    _tClearTouchHighlights();
     _tLastHudHtml = '';
     _tLastHudLives = -1;
     _tCachedLivesStr = '';
@@ -442,12 +499,14 @@ function _tPlayerIntersectsZone(x, y, w, h) {
 }
 
 /**
- * Включает центральное окно-паузу "нажми Пробел".
+ * Включает центральное окно-паузу.
  * @param {string} text - текст окна.
  * @param {Function|null} onContinue - callback после продолжения.
+ * @param {string|null} footer - строка футера (если нужно).
  */
-function _tSetWaitOverlay(text, onContinue = null) {
+function _tSetWaitOverlay(text, onContinue = null, footer = null) {
     _tOverlay = text;
+    _tOverlayFooter = footer || null;
     _tWaitKey = true;
     _tWaitKeyLock = 0.20;
     _tPendingAnyKey = false;
@@ -568,6 +627,19 @@ function _tSpawnOppositeSideLilacAtPlayerHeight() {
     _tHint = 'Добей сирень на противоположной стороне!';
 }
 
+function _tStartDirSwitchGate() {
+    if (_tDirGateActive) return;
+    _tDirGateActive = true;
+    const labels = _tGetControlLabels();
+    playerBulletDir = 'up';
+    _tOverlay =
+        'Враги слева.\n' +
+        'Нажми ' + labels.dir + ', чтобы менять направление пули без движения.\n' +
+        'Цикл: вверх → влево → вправо → вверх.\n' +
+        'Смотри стрелку направления в HUD.';
+    _tOverlayFooter = '[' + labels.dir + ' — сменить направление]';
+}
+
 /**
  * Спавнит подпоследовательность фазы 2.
  */
@@ -578,9 +650,10 @@ function _tSpawnPhase2SubWave() {
     const baseY = _tHomePlatform.y - Math.max(tutorialPx(26, 16), eW * 0.95);
     const edgePad = tutorialPx(12, 8);
     const yJitter = tutorialPx(8, 5);
+    const labels = _tGetControlLabels();
 
     if (_tSubPhase === 0) {
-        _tHint = 'Пробел/FIRE — стрелять. Враги справа!';
+        _tHint = labels.fire + ' — стрелять. Враги справа!';
         playerBulletDir = 'right';
         _tSpawnLilacWave([
             { x: Math.min(W - eW - edgePad, player.x + W * 0.30), y: baseY },
@@ -590,9 +663,7 @@ function _tSpawnPhase2SubWave() {
     }
 
     if (_tSubPhase === 1) {
-        _tHint = _tIsMobile()
-            ? 'Враги слева! Нажми DIR, чтобы сменить направление, потом стреляй.'
-            : 'Враги слева! Нажми ↓, чтобы сменить направление, потом стреляй.';
+        _tHint = 'Враги слева! Меняй направление ' + labels.dir + ' и стреляй.';
         _tSpawnLilacWave([
             { x: Math.max(edgePad, player.x - W * 0.24), y: baseY },
             { x: Math.max(edgePad, player.x - W * 0.30), y: baseY - yJitter }
@@ -600,9 +671,7 @@ function _tSpawnPhase2SubWave() {
         return;
     }
 
-    _tHint = _tIsMobile()
-        ? 'Враги сверху! Нажми DIR, чтобы переключить стрельбу вверх, и стреляй.'
-        : 'Враги сверху! Смени направление стрельбы вверх и стреляй вверх.';
+    _tHint = 'Враги сверху! Нажимай ' + labels.dir + ', пока в HUD не будет ↑, и стреляй вверх.';
     const topY = _tGroundY - H * 0.56;
     _tSpawnLilacWave([
         { x: W * 0.52, y: topY },
@@ -763,6 +832,7 @@ function _tEnterPhase(phase) {
     hearts = [];
     bananaBonuses = [];
     altShootMode = false;
+    const labels = _tGetControlLabels();
 
     if (phase === TUTORIAL_PHASE.HUD) {
         _tHint = '';
@@ -771,7 +841,7 @@ function _tEnterPhase(phase) {
             '1) Жизни: потеряешь все — проиграешь.\n' +
             '2) Очки растут за убийства.\n' +
             '3) Комбо множит очки.\n\n' +
-            'Нажми Пробел/FIRE, чтобы начать.',
+            'Нажми ' + labels.fire + ', чтобы начать.',
             () => _tEnterPhase(TUTORIAL_PHASE.MOVE)
         );
         return;
@@ -782,8 +852,8 @@ function _tEnterPhase(phase) {
         _tCurrentCharIdx = 0;
         playerBulletDir = 'right';
         _tHint = _tIsMobile()
-            ? 'Джойстик — движение влево/вправо. Наклони вверх (или нажми UP) — прыжок. У Кузи постепенный набор высоты. Удерживай дольше — взлетишь выше!'
-            : '← → — ходить. ↑ — прыгнуть. У Кузи постепенный набор высоты в прыжке. Зажми прыжок — взлетишь выше!';
+            ? ('Джойстик — движение влево/вправо. Наклони вверх (или нажми ' + labels.up + ') — прыжок. У Кузи постепенный набор высоты. Удерживай дольше — взлетишь выше!')
+            : ('← → — ходить. ' + labels.up + ' — прыгнуть. У Кузи постепенный набор высоты в прыжке. Зажми прыжок — взлетишь выше!');
         _tArrow = { x: _tMarkerX, y: _tMarkerY, dir: 'down', label: 'Иди сюда' };
         return;
     }
@@ -791,31 +861,29 @@ function _tEnterPhase(phase) {
     if (phase === TUTORIAL_PHASE.BASIC_SHOOT) {
         _tSwitchToChar('kuzy');
         _tCurrentCharIdx = 0;
+        _tDirSwitchUsed = false;
+        _tDirGateActive = false;
         _tSpawnPhase2SubWave();
         return;
     }
 
     if (phase === TUTORIAL_PHASE.BONUS_SHOOT) {
         _tHint = _tIsMobile()
-            ? 'Подбери пиво — получишь бонусные выстрелы. Переключи их кнопкой BONUS. У Кузи бонусные выстрелы — это фонтан!'
-            : 'Подбери пиво — получишь бонусные выстрелы. Переключи их кнопкой Shift. У Кузи бонусные выстрелы - это фонтан!';
+            ? ('Подбери пиво — получишь бонусные выстрелы. Переключи их кнопкой ' + labels.bonus + '. У Кузи бонусные выстрелы — это фонтан!')
+            : ('Подбери пиво — получишь бонусные выстрелы. Переключи их кнопкой ' + labels.bonus + '. У Кузи бонусные выстрелы - это фонтан!');
         _tSpawnTutorialBottle();
         return;
     }
 
     if (phase === TUTORIAL_PHASE.ALT_SHOOT) {
-        _tSetWaitOverlay(
-            _tIsMobile()
-                ? 'Режим ALT-стрельбы.\nДжойстик — движение.\nВ ALT: удерживай DIR — стрельба вверх.\n\nНажми Пробел/FIRE.'
-                : 'Режим ALT-стрельбы.\nСтрелки двигают и меняют направление.\nВ ALT: удерживай ↓ — стрельба вверх.\n\nНажми Пробел/FIRE.',
-            () => {
-                altShootMode = true;
-                _tFrozen = false;
-                _tHint = 'Уничтожь 3 цели в ALT-режиме.';
-                _tSubPhase = 1;
-                _tSpawnPhase4Wave();
-            }
-        );
+        _tHint = '';
+        _tOverlay =
+            'Режим ALT-стрельбы.\n' +
+            'Нажми ' + labels.alt + ', чтобы включить.\n' +
+            'В ALT направление пули = направление движения.\n' +
+            'Чтобы стрелять вверх — удерживай ' + labels.dir + '.\n' +
+            'Стрельба — ' + labels.fire + '.';
+        _tOverlayFooter = '[' + labels.alt + ' — включить ALT]';
         return;
     }
 
@@ -841,8 +909,8 @@ function _tEnterPhase(phase) {
         _tHint = 'Доберись до верхней платформы ★. Падение не тратит жизни.';
         _tSetWaitOverlay(
             _tIsMobile()
-                ? 'Теперь платформенный сегмент.\nПрыгай по трем ступеням справа.\nДля прыжка — наклони джойстик вверх или нажми UP.\nУпадешь — вернешься без потери жизни.\n\nНажми Пробел/FIRE.'
-                : 'Теперь платформенный сегмент.\nПрыгай по трем ступеням справа.\nУпадешь — вернешься без потери жизни.\n\nНажми Пробел/FIRE.',
+                ? ('Теперь платформенный сегмент.\nПрыгай по трем ступеням справа.\nДля прыжка — наклони джойстик вверх или нажми ' + labels.up + '.\nУпадешь — вернешься без потери жизни.\n\nНажми ' + labels.fire + '.')
+                : ('Теперь платформенный сегмент.\nПрыгай по трем ступеням справа.\nУпадешь — вернешься без потери жизни.\n\nНажми ' + labels.fire + '.'),
             () => {
                 _tUsePlatformPhysics = true;
                 _tFrozen = false;
@@ -1342,7 +1410,9 @@ function _tUpdatePhase1() {
         _tArrow = { x: _tMarkerX, y: _tMarkerY, dir: 'down', label: 'Иди сюда' };
     }
     if (player.x > canvas.width * 0.22) {
-        _tHint = 'Подпрыгни! Зажми ↑ подольше, чтобы прыгнуть выше.';
+        _tHint = _tIsMobile()
+            ? 'Подпрыгни! Удерживай прыжок подольше, чтобы прыгнуть выше.'
+            : ('Подпрыгни! Зажми ' + _tControlLabel('up') + ' подольше, чтобы прыгнуть выше.');
     }
     if (player.isJumping) {
         _tJumpWasActive = true;
@@ -1355,12 +1425,34 @@ function _tUpdatePhase1() {
  * Обновляет фазу 2 (базовая стрельба в 3 подволны).
  */
 function _tUpdatePhase2() {
-    if (enemies.length > 0) return;
-    _tSubPhase++;
-    if (_tSubPhase <= 2) {
+    if (_tSubPhase === 0) {
+        if (enemies.length > 0) return;
+        _tSubPhase = 1;
+        _tDirSwitchUsed = false;
+        _tDirGateActive = false;
         _tSpawnPhase2SubWave();
         return;
     }
+
+    if (_tSubPhase === 1) {
+        if (!_tDirSwitchUsed) {
+            _tStartDirSwitchGate();
+            if (playerBulletDir === 'left') {
+                _tDirSwitchUsed = true;
+                _tDirGateActive = false;
+                _tOverlay = null;
+                _tOverlayFooter = null;
+                _tSpawnPhase2SubWave();
+            }
+            return;
+        }
+        if (enemies.length > 0) return;
+        _tSubPhase = 2;
+        _tSpawnPhase2SubWave();
+        return;
+    }
+
+    if (enemies.length > 0) return;
     _tClearTempPlatform();
     _tEnterPhase(TUTORIAL_PHASE.BONUS_SHOOT);
 }
@@ -1399,6 +1491,18 @@ function _tUpdatePhase3() {
  * Обновляет фазу 4 (альтернативная стрельба).
  */
 function _tUpdatePhase4() {
+    const labels = _tGetControlLabels();
+    if (_tSubPhase === 0) {
+        if (altShootMode) {
+            _tSubPhase = 1;
+            _tFrozen = false;
+            _tOverlay = null;
+            _tOverlayFooter = null;
+            _tHint = 'ALT включен. Направление пули = движение. Для ↑ удерживай ' + labels.dir + '. Уничтожь 3 цели.';
+            _tSpawnPhase4Wave();
+        }
+        return;
+    }
     if (_tSubPhase !== 1) return;
     if (enemies.length > 0) return;
     altShootMode = false;
@@ -1435,12 +1539,13 @@ function _tTryPickBanana(idx) {
 function _tUpdatePhase5(dt) {
     if (_tSubPhase === 0) {
         if (_tTryPickBanana(0)) {
+            const labels = _tGetControlLabels();
             _tArrow = null;
             _tSetWaitOverlay(
                 'Это Макс!\n' +
                 'Его прыжок — одна высокая дуга, удержание не работает.\n' +
                 'Зато он стреляет быстрее, а бонус - это пулемет Максим! (💩).\n\n' +
-                'Нажми Пробел/FIRE.',
+                'Нажми ' + labels.fire + '.',
                 () => {
                     _tSubPhase = 1;
                     _tHint = 'Прыгни 2 раза, чтобы почувствовать разницу.';
@@ -1539,12 +1644,13 @@ function _tUpdatePhase7() {
 function _tUpdatePhase8() {
     if (_tSubPhase === 0) {
         if (_tTryPickBanana(1)) {
+            const labels = _tGetControlLabels();
             _tArrow = null;
             _tSetWaitOverlay(
                 'Это Дрон!\n' +
                 'Его пули — вихрь рыга (🌀).\n' +
                 'Зажми прыжок — он взлетает выше(Дрон умеет летать).\n\n' +
-                'Нажми Пробел/FIRE.',
+                'Нажми ' + labels.fire + '.',
                 () => {
                     _tSubPhase = 1;
                     _tUsePlatformPhysics = false;
@@ -1658,10 +1764,11 @@ function _tUpdatePhase10() {
         'Обучение пройдено!\n' +
         'Ты знаешь всё необходимое.\n' +
         'Теперь тебе открыта кампания.\n\n' +
-        'Нажми Пробел/FIRE.',
+        'Нажми ' + _tControlLabel('fire') + '.',
         () => {
             localStorage.setItem(TUTORIAL_MODE_KEY, '1');
             tutorialRunCompletedSuccessfully = true;
+            _tClearTouchHighlights();
             _tDone = true;
             _tActive = false;
             enemies = [];
@@ -1705,6 +1812,7 @@ function updateTutorialMode(dt) {
     _tHintPulse += dt;
     if (invuln > 0) invuln = Math.max(0, invuln - dt);
     _tUpdateFx(dt);
+    _tUpdateTouchHighlights();
 
     // Пауза "нажми Пробел".
     if (_tWaitKey) {
@@ -1720,6 +1828,7 @@ function updateTutorialMode(dt) {
             _tFrozen = false;
             _tSuppressShootUntilRelease = true;
             _tOverlay = null;
+            _tOverlayFooter = null;
             const cb = _tWaitContinue;
             _tWaitContinue = null;
             if (typeof cb === 'function') cb();
@@ -1964,10 +2073,11 @@ function _tDrawOverlay() {
         ctx.fillText(lines[i], boxX + boxW * 0.5, y);
     }
 
-    if (_tWaitKey) {
+    const footer = _tOverlayFooter || (_tWaitKey ? ('[' + _tControlLabel('fire') + ' — продолжить]') : '');
+    if (footer) {
         ctx.font = `700 ${tutorialPx(18, 14)}px Arial`;
         ctx.fillStyle = '#ffd54f';
-        ctx.fillText('[Пробел/FIRE — продолжить]', boxX + boxW * 0.5, boxY + boxH - tutorialPx(26, 18));
+        ctx.fillText(footer, boxX + boxW * 0.5, boxY + boxH - tutorialPx(26, 18));
     }
     ctx.restore();
 }

@@ -745,7 +745,7 @@ function updateLovlyuMode(dt) {
         lovlyuSpawnedCount >= lovlyuTotalSpawns && lovlyuChars.length === 0 &&
         lovlyuBatchRemaining <= 0 && !lovlyuVictoryShown && lives > 0) {
         lovlyuVictoryShown = true;
-        showLevelComplete();
+        showLovlyuLevelComplete();
     }
 
     // HUD (стандартный стиль, как в других режимах)
@@ -915,6 +915,7 @@ function drawLovlyuMode() {
  * Показывает оверлей победы в уровне "Ловлю".
  */
 function showLovlyuLevelComplete() {
+    levelCompleteShown = true;
     if (typeof window.clearGameInputs === 'function') {
         window.clearGameInputs();
     }
@@ -962,6 +963,7 @@ function showLovlyuLevelComplete() {
 
     const msg = document.createElement('div');
     const caught = Math.floor(score / 10);
+    const caughtText = `${caught} Кузей`;
     msg.innerText = `Поздравляем, уровень "Ловлю" пройден!\nПоймано: ${caughtText}` + (isNew ? ' — Новый рекорд!' : '');
     Object.assign(msg.style, { fontSize: '20px', marginBottom: '18px', color: '#222', opacity: '0', transform: 'translateY(12px)', whiteSpace: 'pre-line' });
 
@@ -981,42 +983,134 @@ function showLovlyuLevelComplete() {
 
     const btnRetry = document.createElement('button');
     btnRetry.innerText = 'Повторить';
-    Object.assign(btnRetry.style, { padding: '10px 16px', fontSize: '16px', cursor: 'pointer' });
-    btnRetry.onclick = () => {
-        if (typeof window.clearGameInputs === 'function') window.clearGameInputs();
-        beginGameRun('lovlyu', true);
-        document.getElementById('menu').style.display = 'none';
-        document.getElementById('game').style.display = 'block';
+    btnRetry.dataset.overlayBtnIdx = '0';
+    Object.assign(btnRetry.style, { padding: '8px 14px', fontSize: '16px', cursor: 'pointer' });
+    btnRetry.onclick = async () => {
+        if (window.BHAudio) window.BHAudio.play('ui_click');
         overlay.remove();
-        if (typeof window.setGameTouchControlsVisible === 'function') window.setGameTouchControlsVisible(true);
+        if (typeof startModeWithIntro === 'function') {
+            await startModeWithIntro('lovlyu', { source: 'retry' });
+        } else {
+            beginGameRun('lovlyu', true);
+        }
     };
 
     const btnMain = document.createElement('button');
     btnMain.innerText = 'Главный экран';
-    Object.assign(btnMain.style, { padding: '10px 16px', fontSize: '16px', cursor: 'pointer' });
-    btnMain.onclick = () => {
-        if (typeof window.clearGameInputs === 'function') window.clearGameInputs();
+    btnMain.dataset.overlayBtnIdx = '1';
+    Object.assign(btnMain.style, { padding: '8px 14px', fontSize: '16px', cursor: 'pointer' });
+    btnMain.onclick = async () => {
+        if (window.BHAudio) window.BHAudio.play('ui_click');
+        if (typeof window.clearGameInputs === 'function') {
+            window.clearGameInputs();
+        }
+        if (typeof clearScheduledEnemySpawns === 'function') clearScheduledEnemySpawns();
         if (typeof resetGameStateForMenu === 'function') resetGameStateForMenu();
         document.getElementById('game').style.display = 'none';
         document.getElementById('menu').style.display = 'block';
-        updateBestScoresDisplay();
-        if (typeof window.setGameTouchControlsVisible === 'function') window.setGameTouchControlsVisible(false);
+        if (typeof window.setGameTouchControlsVisible === 'function') {
+            window.setGameTouchControlsVisible(false);
+        }
         overlay.remove();
+
+        if (typeof refreshModeButtonsByProgress === 'function') {
+            refreshModeButtonsByProgress();
+        }
+        if (window.BHAudio) {
+            window.BHAudio.setMenuActive(true);
+            window.BHAudio.setPaused(false);
+        }
+        if (typeof window.menuNavFocus === 'function') {
+            window.lastGameMode = gameMode;
+            window.restoreMenuFocusAfterGame(window.menuNavFocus);
+        }
     };
 
-    const btnNextLovlyu = document.createElement('button');
-    btnNextLovlyu.innerText = 'Следующий уровень';
-    btnNextLovlyu.disabled = true;
-    Object.assign(btnNextLovlyu.style, { padding: '10px 16px', fontSize: '16px', opacity: '0.6', cursor: 'not-allowed' });
+    const nextCandidate = (typeof CAMPAIGN_LEVEL_ORDER !== 'undefined' && Array.isArray(CAMPAIGN_LEVEL_ORDER))
+        ? (() => {
+            const idx = CAMPAIGN_LEVEL_ORDER.indexOf(gameMode);
+            if (idx < 0 || idx >= CAMPAIGN_LEVEL_ORDER.length - 1) return null;
+            return CAMPAIGN_LEVEL_ORDER[idx + 1] || null;
+        })()
+        : (typeof getNextCampaignMode === 'function' ? getNextCampaignMode(gameMode) : null);
+    let nextMode = null;
+    let nextLocked = false;
+    if (nextCandidate) {
+        if (nextCandidate === 'library') {
+            const libUnlocked = (typeof isModeUnlockedByProgress === 'function')
+                ? isModeUnlockedByProgress('library')
+                : false;
+            if (libUnlocked) {
+                nextMode = 'library';
+            } else {
+                nextLocked = true;
+            }
+        } else if (typeof getNextCampaignMode === 'function') {
+            nextMode = getNextCampaignMode(gameMode);
+            if (!nextMode) nextMode = nextCandidate;
+        } else {
+            nextMode = nextCandidate;
+        }
+    }
+
+    const btnNext = document.createElement('button');
+    btnNext.innerText = 'Следующий уровень';
+    btnNext.dataset.overlayBtnIdx = '2';
+    Object.assign(btnNext.style, { padding: '8px 14px', fontSize: '16px', cursor: 'pointer' });
+
+    const libraryTooltipText = (typeof window.LIBRARY_UNLOCK_TOOLTIP === 'string' && window.LIBRARY_UNLOCK_TOOLTIP)
+        ? window.LIBRARY_UNLOCK_TOOLTIP
+        : 'Для открытия уровня пройди все прошлые уровни кампании и получи достижение "Охотник за трофеями".';
+    const showNextLockedTooltip = () => {
+        if (window.showFloatingTooltip) {
+            window.showFloatingTooltip(btnNext, libraryTooltipText, { maxWidth: 360 });
+        }
+    };
+    const hideNextLockedTooltip = () => {
+        if (window.hideFloatingTooltip) {
+            window.hideFloatingTooltip();
+        }
+    };
+
+    if (nextLocked) {
+        btnNext.setAttribute('aria-disabled', 'true');
+        btnNext.style.opacity = '0.6';
+        btnNext.style.cursor = 'not-allowed';
+        btnNext.onclick = () => {
+            showNextLockedTooltip();
+            setTimeout(() => {
+                if (window.hideFloatingTooltip) window.hideFloatingTooltip();
+            }, 3000);
+        };
+        btnNext.addEventListener('mouseenter', showNextLockedTooltip);
+        btnNext.addEventListener('mouseleave', hideNextLockedTooltip);
+        btnNext.addEventListener('focus', showNextLockedTooltip);
+        btnNext.addEventListener('blur', hideNextLockedTooltip);
+    } else if (nextMode) {
+        btnNext.onclick = async () => {
+            if (window.BHAudio) window.BHAudio.play('ui_click');
+            overlay.remove();
+            if (window.hideFloatingTooltip) window.hideFloatingTooltip();
+            if (typeof startModeWithIntro === 'function') {
+                await startModeWithIntro(nextMode, { source: 'next' });
+            } else {
+                beginGameRun(nextMode, true);
+            }
+        };
+    }
 
     buttons.appendChild(btnRetry);
     buttons.appendChild(btnMain);
-    buttons.appendChild(btnNextLovlyu);
+    if (nextMode || nextLocked) {
+        buttons.appendChild(btnNext);
+    }
+
     box.appendChild(iconsRow);
     box.appendChild(msg);
     box.appendChild(buttons);
     overlay.appendChild(box);
     document.body.appendChild(overlay);
+    btnRetry.classList.add('menu-kb-focus');
 
     requestAnimationFrame(() => {
         msg.style.transition = 'opacity 520ms ease-out, transform 520ms ease-out';
