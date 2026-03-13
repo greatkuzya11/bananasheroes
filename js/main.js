@@ -1922,19 +1922,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
         achGrid.appendChild(table);
         if (achSummary) achSummary.textContent = `Разблокировано: ${unlockedCount} / ${totalCount}`;
-
-        // Add dev controls
-        const devRowId = 'ach-dev-row';
-        if (!document.getElementById(devRowId)) {
-            const devRow = document.createElement('div'); devRow.id = devRowId; devRow.style.marginTop = '12px'; devRow.style.textAlign = 'center';
-            const grantBtn = document.createElement('button'); grantBtn.textContent = 'Grant normal_bukins_saved'; grantBtn.onclick = () => { if (window.BHAchievements) BHAchievements.grant('normal_bukins_saved'); };
-            const grant2Btn = document.createElement('button'); grant2Btn.textContent = 'Grant normal_fresh_air'; grant2Btn.style.marginLeft = '4px'; grant2Btn.onclick = () => { if (window.BHAchievements) BHAchievements.grant('normal_fresh_air'); };
-            const grant3Btn = document.createElement('button'); grant3Btn.textContent = 'Grant normal_no_bonus'; grant3Btn.style.marginLeft = '4px'; grant3Btn.onclick = () => { if (window.BHAchievements) BHAchievements.grant('normal_no_bonus'); };
-            const resetBtn = document.createElement('button'); resetBtn.textContent = 'Reset'; resetBtn.style.marginLeft = '8px'; resetBtn.onclick = () => { localStorage.removeItem('bh_achievements_v1'); location.reload(); };
-            devRow.appendChild(grantBtn); devRow.appendChild(grant2Btn); devRow.appendChild(grant3Btn); devRow.appendChild(resetBtn);
-            const innerHelp = achOverlay.querySelector('.help-inner');
-            if (innerHelp) innerHelp.appendChild(devRow);
-        }
     }
 
     if (achBtn && achOverlay) {
