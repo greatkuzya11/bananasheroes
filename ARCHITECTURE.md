@@ -30,6 +30,7 @@
 22. [Как добавить новый уровень](#22-как-добавить-новый-уровень)
 23. [Как добавить новую механику](#23-как-добавить-новую-механику)
 24. [Критические технические нюансы](#24-критические-технические-нюансы)
+25. [Юнит-тесты](#25-юнит-тесты)
 
 ---
 
@@ -40,6 +41,21 @@ bananasheroes/
 ├── index.html            ← единственная HTML-страница, всё меню и канвас
 ├── style.css             ← стили меню, оверлеев, тач-контролов
 ├── sw.js                 ← Service Worker (PWA / оффлайн кэш)
+├── package.json          ← npm-манифест (devDeps: vitest, @vitest/coverage-v8, jsdom)
+├── vitest.config.js      ← конфигурация Vitest (environment: jsdom, globals: true)
+├── tests/                ← юнит-тесты (Vitest)
+│   ├── setup/
+│   │   ├── globals.js    ← моки браузерных API и игровых глобалов
+│   │   └── loadScript.js ← загрузчик игровых JS-файлов в тестовый контекст
+│   └── unit/
+│       ├── core.config.test.js          ← 13 тестов: константы и config-функции
+│       ├── core.utils.test.js           ← 11 тестов: rect(), playerHitTest()
+│       ├── core.mobileAdaptive.test.js  ← 20 тестов: BHMobileAdaptive
+│       ├── core.progression.test.js     ← 36 тестов: прогрессия, localStorage
+│       ├── systems.bullets.test.js      ← 21 тест: shootPlayerBullet()
+│       ├── entities.platform.test.js    ← 20 тестов: класс Platform
+│       ├── entities.player.test.js      ← 43 теста: класс Player
+│       └── entities.bosses.test.js      ← 30 тестов: Enemy67, BossO4ko, BossNosok
 ├── audio/                ← .mp3 / .ogg звуки
 ├── img/                  ← все картинки (PNG, JPG)
 │   ├── PNG Sequences/    ← кадры анимаций Кузи (папки по состояниям)
@@ -1032,6 +1048,73 @@ if (img.complete && img.naturalWidth > 0) ready = true;
 ### localStorage недоступен в incognito (Safari)
 
 Все обращения к `localStorage` обёрнуты в `try/catch` в `writeLS/readIntLS/readBoolLS`. Никогда не обращайся к `localStorage` напрямую — используй эти функции.
+
+---
+
+---
+
+## 25. Юнит-тесты
+
+### Технологии
+
+- **Test runner**: [Vitest](https://vitest.dev/) v2.1.x
+- **Среда**: jsdom@25.0.1 — эмулирует браузерный DOM (пиннирована под Node 20.x; jsdom@28+ требует Node ≥20.19.0)
+- **Покрытие**: `@vitest/coverage-v8` — запускается через `npm run coverage`, но показывает 0% из-за ограничения V8: `(0, eval)()` код не инструментируется
+- **Node.js**: проверено на v20.11.1
+
+### Команды
+
+```bash
+npm test            # однократный прогон всех тестов
+npm run test:watch  # watch-режим (пересчёт при изменении файлов)
+npm run coverage    # запуск с отчётом о покрытии
+```
+
+### Архитектура тестов
+
+Игра написана без модульной системы — все переменные и классы глобальные. Тесты не трогают игровые файлы, а загружают их в тестовый контекст через вспомогательный модуль `tests/setup/loadScript.js`:
+
+1. `readFileSync` читает JS-файл
+2. Регулярными выражениями `const ` → `var `, `let ` → `var `, `class Foo` → `var Foo = class Foo`
+3. `(0, eval)(transformedCode)` — код выполняется в `globalThis`, все объявления становятся глобальными
+
+Этот подход позволяет тестировать игровую логику без рефакторинга исходников.
+
+### Моки браузерного окружения (`tests/setup/globals.js`)
+
+Запускается как `setupFiles` перед каждым тестовым файлом. Создаёт:
+
+| Мок | Назначение |
+|---|---|
+| `canvas` + `ctx` | Полный mock Canvas 2D (все методы через `vi.fn()`) |
+| `window.matchMedia` | Возвращает `matches: false` |
+| `window.BHAudio` | Заглушка с `playPlayerShoot`, `play`, `stop` как `vi.fn()` |
+| `window.BHMobileAdaptive` | Заглушка (isActive → false, getScale → 1, frameMul → 1) |
+| Игровые глобалы | `bullets=[], enemies=[], player=null, gameMode='normal', lives=7, bonusShots=0, bonusMode=false, ...` |
+| `Image` | Класс-мок (src-setter ничего не делает) |
+| `requestAnimationFrame` | `vi.fn()` |
+
+**Важный нюанс**: jsdom@25 добавляет `ontouchstart` на `window`, поэтому `maxTouchPoints` и `hasTouch` всегда считаются «touch»-устройством. Тесты, проверяющие desktop-поведение `BHMobileAdaptive`, явно выставляют портретные размеры (`innerWidth=768, innerHeight=1024`).
+
+### Тестовые файлы
+
+| Файл | Тестов | Что покрывается |
+|---|---|---|
+| `core.config.test.js` | 13 | Все константы, `isMobileLandscapeGameplay()`, `getMobileLandscapeAdaptiveScale()`, `isMobileAdaptiveCombatMode()` |
+| `core.utils.test.js` | 11 | `rect()` (7 сценариев: перекрытие, зазор, касание, вложение, нулевые размеры, симметрия), `playerHitTest()` (4 сценария) |
+| `core.mobileAdaptive.test.js` | 20 | Статический конфиг, desktop-режим (портрет, нет тача), mobile landscape (scale, frameMul, balance) |
+| `core.progression.test.js` | 36 | Порядок кампании, `readIntLS`/`readBoolLS`/`writeLS`, флаги прохождения, разблокировки (survival/poimal/stepan), `isModeUnlockedByProgress`, `getModeDisplayName`, `getNextCampaignMode`, миграция прогресса |
+| `systems.bullets.test.js` | 21 | `shootPlayerBullet()` для kuzy/max/dron: параметры пуль, направление, бонусный режим, веер max, звуковые вызовы |
+| `entities.platform.test.js` | 20 | Конструктор (позиция, defaults, options), горизонтальное/вертикальное/статическое движение, ограниченная амплитуда |
+| `entities.player.test.js` | 43 | Конструктор всех трёх персонажей, начальное состояние, параметры прыжка (jumpMinHeight, jumpMaxHeight, jumpHoldMax, rampFactor) |
+| `entities.bosses.test.js` | 30 | Enemy67 (normal и platforms режимы), BossO4ko (конструктор, takeHit, HP-границы), BossNosok (позиция, размер, начальное состояние) |
+| **Итого** | **194** | |
+
+### Ограничение покрытия
+
+`npm run coverage` показывает 0% — это известное ограничение V8-инструментирования: код, загруженный через `(0, eval)()`, не отслеживается V8 Coverage. Сами тесты при этом работают корректно и проверяют поведение функций.
+
+Для получения реального отчёта покрытия потребовалось бы добавить тонкие ES-модуль-обёртки с `export` для каждой функции и импортировать их в тесты вместо `loadScript()` — без изменения самих игровых файлов.
 
 ---
 
