@@ -552,6 +552,9 @@ function applyNosokPlayerDamage() {
     if (invuln > 0) return;
     lives--;
     runHeartsDamageTaken += 1;
+    if (window.BHGlobalAchievements && typeof window.BHGlobalAchievements.addCampaignHpLoss === 'function') {
+        window.BHGlobalAchievements.addCampaignHpLoss(gameMode, 1);
+    }
     combo = 0;
     invuln = INVULN_TIME;
     explosions.push({ x: player.x + player.w * 0.5, y: player.y + player.h * 0.5, timer: 0 });

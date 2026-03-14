@@ -17,6 +17,13 @@ function loop(ts) {
         ) {
             window.BHGlobalAchievements.addActivePlayMs(dt * 1000);
         }
+        if (
+            dt > 0
+            && window.BHGlobalAchievements
+            && typeof window.BHGlobalAchievements.addCampaignPlayMs === 'function'
+        ) {
+            window.BHGlobalAchievements.addCampaignPlayMs(gameMode, dt * 1000);
+        }
     }
     draw();
     animFrameId = requestAnimationFrame(loop);

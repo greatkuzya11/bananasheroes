@@ -523,9 +523,14 @@ function registerCampaignLevelCompletion(mode, levelScore) {
         }
     }
 
-    if (mode === 'library' && !readBoolLS(PROGRESS_KEYS.gameCompletedOnce, false)) {
-        writeLS(PROGRESS_KEYS.gameCompletedOnce, '1');
-        pendingProgressNotices.gameCompleted = true;
+    if (mode === 'library') {
+        if (!readBoolLS(PROGRESS_KEYS.gameCompletedOnce, false)) {
+            writeLS(PROGRESS_KEYS.gameCompletedOnce, '1');
+            pendingProgressNotices.gameCompleted = true;
+        }
+        if (window.BHGlobalAchievements && typeof window.BHGlobalAchievements.markCampaignCompleted === 'function') {
+            window.BHGlobalAchievements.markCampaignCompleted();
+        }
     }
 }
 

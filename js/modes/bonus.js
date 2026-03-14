@@ -26,9 +26,10 @@ let bonusMaxStandReady = false;
 bonusMaxStandImg.onload = () => { bonusMaxStandReady = true; };
 bonusMaxStandImg.src = 'img/max-stand.png';
 
-const BONUS_PRAPOR_LINES = ['Я тебя сука убью!', 'Уважай мою девственность!', 'Хуй В Сраку, В Сраку Хуй}!'];
-const BONUS_MAX_LINES = ['Хуй!', 'Хули Водка Чесаться??', 'Айкакаут!'];
-const BONUS_KUZY_LINES = ['2хуй!!', 'Твои проблемы!'];
+const BONUS_PRAPOR_BASE_LINES = ['Я тебя сука убью!', 'Уважай мою девственность!', 'Хуй В Сраку, В Сраку Хуй}!'];
+const BONUS_MAX_BASE_LINES = ['Хуй!', 'Хули Водка Чесаться??', 'Айкакаут!'];
+const BONUS_KUZY_BASE_LINES = ['2хуй!!', 'Твои проблемы!'];
+const BONUS_SPEECH_DURATION = 4;
 // Соотношения размеров персонажей по референсу heroes.png:
 // Кузя (центр) — база, Прапор (слева) больше, Max (справа) меньше.
 const BONUS_REF_SCALE = Object.freeze({
@@ -57,6 +58,9 @@ let bonusMaxSpeech = null;
 
 let bonusKuzy = null;
 let bonusKuzySpawnTimer = 0;
+let bonusPraporLines = null;
+let bonusMaxLines = null;
+let bonusKuzyLines = null;
 
 let bonusLastW = 0;
 let bonusLastH = 0;
@@ -84,6 +88,71 @@ function bonusShuffle(arr) {
         out[j] = t;
     }
     return out;
+}
+
+function formatBonusTime(ms) {
+    const total = Math.max(0, Math.floor(Number(ms) || 0));
+    const totalSec = Math.floor(total / 1000);
+    const sec = totalSec % 60;
+    const min = Math.floor(totalSec / 60) % 60;
+    const hrs = Math.floor(totalSec / 3600);
+    const ss = String(sec).padStart(2, '0');
+    const mm = String(min).padStart(2, '0');
+    if (hrs > 0) {
+        const hh = String(hrs).padStart(2, '0');
+        return `${hh}:${mm}:${ss}`;
+    }
+    return `${mm}:${ss}`;
+}
+
+function getBonusStatsSnapshot() {
+    let stats = {};
+    if (window.BHGlobalAchievements && typeof window.BHGlobalAchievements.getStats === 'function') {
+        stats = window.BHGlobalAchievements.getStats() || {};
+    }
+    const achievements = window.BHAchievements;
+    const unlocked = achievements && typeof achievements.list === 'function' ? achievements.list().length : 0;
+    const total = achievements && achievements.manifest ? Object.keys(achievements.manifest).length : 0;
+    const percent = total > 0 ? Math.round((unlocked / total) * 100) : 0;
+    return { stats, unlocked, total, percent };
+}
+
+function buildBonusStatLines() {
+    const snap = getBonusStatsSnapshot();
+    const stats = snap.stats || {};
+    const deaths = Math.max(0, Math.floor(stats.campaignDeaths || 0));
+    const hpLoss = Math.max(0, Math.floor(stats.campaignHpLoss || 0));
+    const shotsNormal = Math.max(0, Math.floor(stats.campaignShotsNormal || 0));
+    const shotsBonus = Math.max(0, Math.floor(stats.campaignShotsBonus || 0));
+    const beerPicked = Math.max(0, Math.floor(stats.beerPicked || 0));
+    const bonusPicked = Math.max(0, Math.floor(stats.bonusPicked || 0));
+    const completionMs = Math.max(0, Math.floor(stats.campaignCompletionMs || 0));
+    const completionStr = completionMs > 0 ? formatBonusTime(completionMs) : '—';
+    const prapor = [
+        `Умер на пути к финалу: ${deaths}`,
+        `Потерял сердец: ${hpLoss}`
+    ];
+    const max = [
+        `Время до финала: ${completionStr}`,
+        `Выстрелы: ${shotsNormal} обычных / ${shotsBonus} бонусных`
+    ];
+    const kuzy = [
+        `Пиво собрано: ${beerPicked}`,
+        `Бонусов всего: ${bonusPicked}`,
+        snap.total > 0
+            ? `Достижений: ${snap.unlocked}/${snap.total} (${snap.percent}%)`
+            : `Достижений: ${snap.unlocked}`
+    ];
+    return { prapor, max, kuzy };
+}
+
+function buildBonusSpeechLines() {
+    const stats = buildBonusStatLines();
+    return {
+        prapor: BONUS_PRAPOR_BASE_LINES.concat(stats.prapor),
+        max: BONUS_MAX_BASE_LINES.concat(stats.max),
+        kuzy: BONUS_KUZY_BASE_LINES.concat(stats.kuzy)
+    };
 }
 
 function bonusGetKuzyBaseW() {
@@ -163,6 +232,9 @@ function resetBonusLevelState() {
 
     bonusKuzy = null;
     bonusKuzySpawnTimer = 0;
+    bonusPraporLines = null;
+    bonusMaxLines = null;
+    bonusKuzyLines = null;
 
     bonusLastW = 0;
     bonusLastH = 0;
@@ -332,8 +404,12 @@ function initBonusLevel() {
     initBonusPrapor();
     initBonusMaxNpc();
 
-    bonusPraporSpeech = buildBonusSpeechCycle(BONUS_PRAPOR_LINES, 10, 2);
-    bonusMaxSpeech = buildBonusSpeechCycle(BONUS_MAX_LINES, 10, 2);
+    const speechLines = buildBonusSpeechLines();
+    bonusPraporLines = speechLines.prapor;
+    bonusMaxLines = speechLines.max;
+    bonusKuzyLines = speechLines.kuzy;
+    bonusPraporSpeech = buildBonusSpeechCycle(bonusPraporLines, 10, BONUS_SPEECH_DURATION);
+    bonusMaxSpeech = buildBonusSpeechCycle(bonusMaxLines, 10, BONUS_SPEECH_DURATION);
     scheduleBonusSpeechCycle(bonusPraporSpeech);
     scheduleBonusSpeechCycle(bonusMaxSpeech);
 
@@ -490,7 +566,7 @@ function spawnBonusKuzy(keepTimer = false) {
         animTimer: 0,
         caughtFrame: 0,
         caughtTimer: 0,
-        speechText: bonusPick(BONUS_KUZY_LINES),
+        speechText: bonusPick((bonusKuzyLines && bonusKuzyLines.length > 0) ? bonusKuzyLines : BONUS_KUZY_BASE_LINES),
         speakTimer: 0
     };
 
@@ -582,7 +658,7 @@ function updateBonusKuzy(dt) {
         k.caughtTimer += dt;
         if (k.caughtTimer >= 0.3) {
             bonusTransitionKuzyState(k, 'speak', true);
-            k.speakTimer = 2.0;
+            k.speakTimer = BONUS_SPEECH_DURATION;
         }
         return;
     }

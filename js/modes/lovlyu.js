@@ -715,6 +715,9 @@ function updateLovlyuMode(dt) {
                     // Баланс: стоящий игрок получает 1 урон, прыгающий/летающий получает 2 урона.
                     const dmg = 1;
                     lives -= dmg;
+                    if (window.BHGlobalAchievements && typeof window.BHGlobalAchievements.addCampaignHpLoss === 'function') {
+                        window.BHGlobalAchievements.addCampaignHpLoss(gameMode, dmg);
+                    }
                     combo = 0;
                     lovlyuMagnetComboCount = 0; // Сбрасываем счетчик комбинации для магнита.
                     invuln = INVULN_TIME;

@@ -47,6 +47,9 @@ function shootPlayerBullet(p) {
             bonusMode = false;
         }
     }
+    if (window.BHGlobalAchievements && typeof window.BHGlobalAchievements.addCampaignShot === 'function') {
+        window.BHGlobalAchievements.addCampaignShot(gameMode, isBonus);
+    }
     if (gameMode === 'o4ko' && isBonus) {
         o4koRunBonusShotUsed = true;
     }

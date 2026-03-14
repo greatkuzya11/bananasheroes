@@ -483,6 +483,12 @@
             campaignWinStreak: 0,
             campaignNoDamageWinStreak: 0,
             activePlayMs: 0,
+            campaignPlayMs: 0,
+            campaignCompletionMs: 0,
+            campaignDeaths: 0,
+            campaignHpLoss: 0,
+            campaignShotsNormal: 0,
+            campaignShotsBonus: 0,
             personalRecordsSet: 0,
             campaignWinsByChar: { max: 0, dron: 0, kuzy: 0 },
             campaignWinsByMode: {}
@@ -499,6 +505,12 @@
             'campaignWinStreak',
             'campaignNoDamageWinStreak',
             'activePlayMs',
+            'campaignPlayMs',
+            'campaignCompletionMs',
+            'campaignDeaths',
+            'campaignHpLoss',
+            'campaignShotsNormal',
+            'campaignShotsBonus',
             'personalRecordsSet'
         ];
         numberFields.forEach(key => {
@@ -553,12 +565,14 @@
 
     let globalStats = loadGlobalStats();
     let pendingPlaytimeSaveMs = 0;
+    let pendingCampaignPlaytimeSaveMs = 0;
     let globalSyncLock = false;
 
     function persistGlobalStats(force = false) {
-        if (force || pendingPlaytimeSaveMs >= 1000) {
+        if (force || pendingPlaytimeSaveMs >= 1000 || pendingCampaignPlaytimeSaveMs >= 1000) {
             saveGlobalStats(globalStats);
             pendingPlaytimeSaveMs = 0;
+            pendingCampaignPlaytimeSaveMs = 0;
         }
     }
 
@@ -628,6 +642,51 @@
             persistGlobalStats(true);
             syncGlobalAchievements();
         }
+    }
+
+    function shouldTrackCampaignStats(mode) {
+        if (!isCampaignModeForGlobals(mode)) return false;
+        return !(Number(globalStats.campaignCompletionMs) > 0);
+    }
+
+    function addCampaignPlaytimeMs(mode, ms) {
+        if (!shouldTrackCampaignStats(mode)) return;
+        const step = Number(ms);
+        if (!Number.isFinite(step) || step <= 0) return;
+        globalStats.campaignPlayMs += step;
+        pendingCampaignPlaytimeSaveMs += step;
+        persistGlobalStats(false);
+    }
+
+    function addCampaignShot(mode, isBonus) {
+        if (!shouldTrackCampaignStats(mode)) return;
+        if (isBonus) {
+            globalStats.campaignShotsBonus += 1;
+        } else {
+            globalStats.campaignShotsNormal += 1;
+        }
+        persistGlobalStats(false);
+    }
+
+    function addCampaignHpLoss(mode, count = 1) {
+        if (!shouldTrackCampaignStats(mode)) return;
+        const step = Math.max(0, Math.floor(Number(count) || 0));
+        if (!step) return;
+        globalStats.campaignHpLoss += step;
+        persistGlobalStats(false);
+    }
+
+    function addCampaignDeath(mode) {
+        if (!shouldTrackCampaignStats(mode)) return;
+        globalStats.campaignDeaths += 1;
+        persistGlobalStats(true);
+    }
+
+    function markCampaignCompleted() {
+        if (Number(globalStats.campaignCompletionMs) > 0) return;
+        const completionMs = Math.max(1, Math.floor(Number(globalStats.campaignPlayMs) || 0));
+        globalStats.campaignCompletionMs = completionMs;
+        persistGlobalStats(true);
     }
 
     function addGlobalPersonalRecord(count = 1) {
@@ -700,6 +759,12 @@
             campaignWinStreak: globalStats.campaignWinStreak,
             campaignNoDamageWinStreak: globalStats.campaignNoDamageWinStreak,
             activePlayMs: globalStats.activePlayMs,
+            campaignPlayMs: globalStats.campaignPlayMs,
+            campaignCompletionMs: globalStats.campaignCompletionMs,
+            campaignDeaths: globalStats.campaignDeaths,
+            campaignHpLoss: globalStats.campaignHpLoss,
+            campaignShotsNormal: globalStats.campaignShotsNormal,
+            campaignShotsBonus: globalStats.campaignShotsBonus,
             personalRecordsSet: globalStats.personalRecordsSet,
             campaignWinsByChar: {
                 max: globalStats.campaignWinsByChar.max || 0,
@@ -747,6 +812,21 @@
         },
         addActivePlayMs(ms) {
             addGlobalPlaytimeMs(ms);
+        },
+        addCampaignPlayMs(mode, ms) {
+            addCampaignPlaytimeMs(mode, ms);
+        },
+        addCampaignShot(mode, isBonus) {
+            addCampaignShot(mode, isBonus);
+        },
+        addCampaignHpLoss(mode, count = 1) {
+            addCampaignHpLoss(mode, count);
+        },
+        addCampaignDeath(mode) {
+            addCampaignDeath(mode);
+        },
+        markCampaignCompleted() {
+            markCampaignCompleted();
         },
         addPersonalRecord(count = 1) {
             addGlobalPersonalRecord(count);

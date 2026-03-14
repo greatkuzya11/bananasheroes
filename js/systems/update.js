@@ -1074,6 +1074,9 @@ function update(dt) {
     const applyPlayerDamage = () => {
         lives--;
         runHeartsDamageTaken += 1;
+        if (window.BHGlobalAchievements && typeof window.BHGlobalAchievements.addCampaignHpLoss === 'function') {
+            window.BHGlobalAchievements.addCampaignHpLoss(gameMode, 1);
+        }
         if (gameMode === 'normal') {
             normalRunDamageTaken += 1;
         }

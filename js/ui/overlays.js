@@ -1182,6 +1182,9 @@ function showGameOver() {
                 isNewRecord: isNew
             });
         }
+        if (window.BHGlobalAchievements && typeof window.BHGlobalAchievements.addCampaignDeath === 'function') {
+            window.BHGlobalAchievements.addCampaignDeath(gameMode);
+        }
     } catch (e) { }
     updateBestScoresDisplay();
     try {
