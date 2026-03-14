@@ -136,6 +136,14 @@ class BossNosok {
     freeze(seconds) {
         this.freezeTimer = Math.max(this.freezeTimer, seconds);
         this.isFrozen = true;
+        if (this.knockbackState === 'blast' || this.knockbackState === 'return') {
+            this.knockbackState = 'return';
+            this.knockbackTimer = 0;
+            this.returnFromX = this.x;
+            this.returnFromY = this.y;
+            this.returnToX = this.homeX;
+            this.returnToY = this.baseY;
+        }
         this.freezeLockX = this.x;
         this.freezeLockY = this.y;
         this.vx = 0;
@@ -316,6 +324,16 @@ class BossNosok {
             this.isFrozen = false;
         }
 
+        if (this.isFrozen) {
+            this.vx = 0;
+            this.vy = 0;
+            this.isJumping = false;
+            this.jumpTimer = 0;
+            this.x = Math.max(this.minX, Math.min(this.maxX, this.freezeLockX));
+            this.y = Math.min(this.baseY, this.freezeLockY);
+            return;
+        }
+
         if (this.knockbackState === 'blast') {
             this.knockbackTimer += dt;
             this.vy += canvas.height * 1.05 * dt;
@@ -350,17 +368,6 @@ class BossNosok {
 
         if (ball) {
             this.facingDir = (ball.x < this.x + this.w * 0.5) ? 'left' : 'right';
-        }
-
-        if (this.isFrozen) {
-            this.vx = 0;
-            this.vy = 0;
-            this.isJumping = false;
-            this.jumpTimer = 0;
-            this.x = Math.max(this.minX, Math.min(this.maxX, this.freezeLockX));
-            this.y = Math.min(this.baseY, this.freezeLockY);
-            this.updateAnimation(dt * 0.2);
-            return;
         }
 
         if (ball) {
