@@ -407,6 +407,7 @@ function showTutorialCompleteOverlay() {
 window.showTutorialCompleteOverlay = showTutorialCompleteOverlay;
 
 function showLevelComplete() {
+    levelCompleteShown = true;
     if (typeof window.clearGameInputs === 'function') {
         window.clearGameInputs();
     }
@@ -668,6 +669,7 @@ function showLevelComplete() {
 
     const msg = document.createElement('div');
     // Отдельные победные фразы для специальных режимов
+    const lovlyuCaught = (gameMode === 'lovlyu') ? Math.floor(score / 10) : 0;
     const victoryTexts = {
         normal: 'Поздравляем, уровень "Сирень и Букин" пройден. Букин освобождён.',
         '67': 'Поздравляю, вы победили телепузика!',
@@ -676,12 +678,13 @@ function showLevelComplete() {
         nosok: `Победа! 10/10 голов за ${formatNosokTime(Math.max(1, nosokFinalTimeMs || Math.round(nosokElapsedTime * 1000)))}`,
         stepan: 'Рекордный матч: забивай голы без ограничений!',
         platforms: 'Поздравляем, уровень "Опять Телепузик" пройден!',
-        lovlyu: 'Поздравляем, уровень "Ловлю" пройден!',
+        lovlyu: `Поздравляем, уровень "Ловлю" пройден!\nПоймано: ${lovlyuCaught} Кузей`,
         poimal: 'Рекордный режим "Поймал"!',
         runner: 'Поздравляю, ты научил Дрона курить!',
         library: 'Поздравляем, уровень "Библиотека" пройден!'
     };
     const victoryText = victoryTexts[gameMode] || victoryTexts.normal;
+    msg.style.whiteSpace = (gameMode === 'lovlyu') ? 'pre-line' : '';
     msg.innerText = victoryText + (isNew ? ' — Новый рекорд!' : '');
     Object.assign(msg.style, { fontSize: '20px', marginBottom: '18px', color: '#222', opacity: '0', transform: 'translateY(12px)' });
 
@@ -936,6 +939,7 @@ function showLevelComplete() {
  * Показывает сообщение о завершении уровня платформ и фиксирует рекорд.
  */
 function showLevelCompleteMessage() {
+    levelCompleteShown = true;
     if (typeof window.clearGameInputs === 'function') {
         window.clearGameInputs();
     }

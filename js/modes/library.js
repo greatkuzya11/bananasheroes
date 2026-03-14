@@ -1284,6 +1284,9 @@ function updateLibraryBooksPhysics(dt) {
                     if (!libraryRunJuggleToiletDone && !libraryRunJuggleToiletFailed) {
                         if (playerTouches >= 10) {
                             libraryRunJuggleToiletDone = true;
+                            if (typeof BHAchievements !== 'undefined') {
+                                BHAchievements.grant('library_kind_of_goal');
+                            }
                         } else {
                             libraryRunJuggleToiletFailed = true;
                         }
