@@ -58,6 +58,7 @@ class BossNosok {
         this.isFrozen = false;
         this.freezeLockX = this.x;
         this.freezeLockY = this.y;
+        this.freezeWideBounds = false;
         this.knockbackState = 'none'; // none | blast | return
         this.knockbackTimer = 0;
         this.returnDuration = 4.0;
@@ -136,7 +137,9 @@ class BossNosok {
     freeze(seconds) {
         this.freezeTimer = Math.max(this.freezeTimer, seconds);
         this.isFrozen = true;
-        if (this.knockbackState === 'blast' || this.knockbackState === 'return') {
+        const freezingFromKnockback = (this.knockbackState === 'blast' || this.knockbackState === 'return');
+        this.freezeWideBounds = freezingFromKnockback;
+        if (freezingFromKnockback) {
             this.knockbackState = 'return';
             this.knockbackTimer = 0;
             this.returnFromX = this.x;
@@ -322,6 +325,7 @@ class BossNosok {
             this.isFrozen = this.freezeTimer > 0;
         } else {
             this.isFrozen = false;
+            this.freezeWideBounds = false;
         }
 
         if (this.isFrozen) {
@@ -329,7 +333,11 @@ class BossNosok {
             this.vy = 0;
             this.isJumping = false;
             this.jumpTimer = 0;
-            this.x = Math.max(this.minX, Math.min(this.maxX, this.freezeLockX));
+            if (this.freezeWideBounds) {
+                this.x = Math.max(-this.w * 0.5, Math.min(canvas.width - this.w * 0.05, this.freezeLockX));
+            } else {
+                this.x = Math.max(this.minX, Math.min(this.maxX, this.freezeLockX));
+            }
             this.y = Math.min(this.baseY, this.freezeLockY);
             return;
         }
