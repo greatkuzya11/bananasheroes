@@ -62,7 +62,9 @@
         player_shoot_kuzy:   { src: 'audio/sfx/player_shoot_kuzy.wav', vol: 0.78, pool: 8, cooldownMs: 45, channel: 'sfx' },
         player_shoot_dron:   { src: 'audio/sfx/player_shoot_dron.wav', vol: 0.76, pool: 8, cooldownMs: 45, channel: 'sfx' },
         player_shoot_max:    { src: 'audio/sfx/player_shoot_max.wav', vol: 0.78, pool: 8, cooldownMs: 45, channel: 'sfx' },
-        player_shoot_bonus:  { src: 'audio/sfx/player_shoot_bonus.wav', vol: 0.86, pool: 8, cooldownMs: 50, channel: 'sfx' },
+        player_shoot_kuzy_bonus: { src: 'audio/sfx/player_shoot_kuzy_bonus.wav', vol: 0.86, pool: 8, cooldownMs: 50, channel: 'sfx' },
+        player_shoot_dron_bonus: { src: 'audio/sfx/player_shoot_dron_bonus.wav', vol: 0.86, pool: 8, cooldownMs: 50, channel: 'sfx' },
+        player_shoot_max_bonus:  { src: 'audio/sfx/player_shoot_max_bonus.wav', vol: 0.86, pool: 8, cooldownMs: 50, channel: 'sfx' },
 
         enemy_shoot_lilac:   { src: 'audio/sfx/enemy_shoot_lilac.wav', vol: 0.70, pool: 8, cooldownMs: 70, channel: 'sfx' },
         enemy_shoot_67:      { src: 'audio/sfx/enemy_shoot_67.wav', vol: 0.75, pool: 6, cooldownMs: 70, channel: 'sfx' },
@@ -362,7 +364,9 @@
      */
     function playPlayerShoot(playerType, isBonus) {
         if (isBonus) {
-            play('player_shoot_bonus', { volumeMul: 1.0, duck: 0.92 });
+            if (playerType === 'dron') play('player_shoot_dron_bonus', { volumeMul: 1.0, duck: 0.92 });
+            else if (playerType === 'max') play('player_shoot_max_bonus', { volumeMul: 1.0, duck: 0.92 });
+            else play('player_shoot_kuzy_bonus', { volumeMul: 1.0, duck: 0.92 });
             return;
         }
         if (playerType === 'dron') play('player_shoot_dron', { duck: 0.95 });

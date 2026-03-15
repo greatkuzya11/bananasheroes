@@ -61,6 +61,7 @@ let _tJumpCount = 0;
 let _tPhase3WrongShotTimer = 0;
 let _tDirSwitchUsed = false;
 let _tDirGateActive = false;
+let _tAltShootTaught = false;
 let _tWaitContinue = null;
 let _tTutorialHeartSpawned = false;
 let _tBananaMaskCache = new Map();
@@ -254,6 +255,7 @@ function resetTutorialLevelState() {
     _tPhase3WrongShotTimer = 0;
     _tDirSwitchUsed = false;
     _tDirGateActive = false;
+    _tAltShootTaught = false;
     _tWaitContinue = null;
     _tTutorialHeartSpawned = false;
     _tBananaMaskCache = new Map();
@@ -831,7 +833,7 @@ function _tEnterPhase(phase) {
     bottles = [];
     hearts = [];
     bananaBonuses = [];
-    altShootMode = false;
+    if (!_tAltShootTaught) altShootMode = false;
     const labels = _tGetControlLabels();
 
     if (phase === TUTORIAL_PHASE.HUD) {
@@ -1505,6 +1507,7 @@ function _tUpdatePhase4() {
     }
     if (_tSubPhase !== 1) return;
     if (enemies.length > 0) return;
+    _tAltShootTaught = true;
     altShootMode = false;
     _tSetWaitOverlay(
         'Режим отключен.\nДалее — смена персонажа через банан.',

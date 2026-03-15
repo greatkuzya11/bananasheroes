@@ -1834,11 +1834,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const gBox = document.createElement('div'); gBox.className = 'ach-level-box';
         gBox.appendChild(gHeader);
         const gRow = document.createElement('div'); gRow.className = 'ach-level-row';
-        const gListRow = document.createElement('div'); gListRow.className = 'ach-list-row';
-        gListRow.style.display = 'grid';
-        gListRow.style.gridTemplateColumns = 'repeat(2, minmax(0, 1fr))';
-        gListRow.style.gap = '8px';
-        gListRow.style.alignItems = 'stretch';
+        const gListRow = document.createElement('div'); gListRow.className = 'ach-list-row ach-global-grid';
 
         const global = Object.values(manifest).filter(a => a.mode === 'global');
         
@@ -1880,7 +1876,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 item.setAttribute('tabindex', '0');
                 item.setAttribute('data-ach-id', a.id);
                 item.style.minWidth = '0';
-                item.style.height = '100%';
                 if (!isSecretLocked && a.desc) {
                     item.setAttribute('data-tooltip', a.desc);
                 }
