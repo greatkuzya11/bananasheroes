@@ -1388,8 +1388,16 @@ function _tUpdateHud() {
     const playerName = (typeof charNames !== 'undefined' && charNames[selectedChar]) ? charNames[selectedChar] : selectedChar;
     const modeIndicator = altShootMode ? '<span style="color:orange">🔫ALT</span>' : '';
     if (lives !== _tLastHudLives) {
+        const _prevLives = _tLastHudLives;
         _tCachedLivesStr = "❤️".repeat(lives);
         _tLastHudLives = lives;
+        if (_prevLives !== -1 && hudEl) {
+            hudEl.classList.remove('hud-heart-lose', 'hud-heart-gain');
+            void hudEl.offsetWidth;
+            hudEl.classList.add(lives < _prevLives ? 'hud-heart-lose' : 'hud-heart-gain');
+            clearTimeout(hudHeartAnimTimeout);
+            hudHeartAnimTimeout = setTimeout(() => hudEl.classList.remove('hud-heart-lose', 'hud-heart-gain'), 500);
+        }
     }
     const bonusClass = (bonusMode && bonusShots > 0) ? 'hud-bonus active' : 'hud-bonus';
     const bonusHtml = `<span class="${bonusClass}"><span>Бонус:</span><span class="hud-bonus-value">${Math.max(0, bonusShots)}</span></span>`;

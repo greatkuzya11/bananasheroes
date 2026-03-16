@@ -108,18 +108,20 @@
     };
 
     const MUSIC_BY_MODE = {
-        menu: 'audio/music/menu_theme.wav',
-        normal: 'audio/music/normal_theme.wav',
-        survival: 'audio/music/survival_theme.wav',
+        menu: 'audio/music/bananas_heroes_maintheme.wav',
+        normal: 'audio/music/bukin_theme.mp3',
+        survival: 'audio/music/survival_theme.mp3',
         '67': 'audio/music/m67_theme.wav',
+        mode67: 'audio/music/mode67.wav',
         o4ko: 'audio/music/o4ko_theme.wav',
-        nosok: 'audio/music/nosok_theme.wav',
-        stepan: 'audio/music/nosok_theme.wav',
-        platforms: 'audio/music/platforms_theme.wav',
+        nosok: 'audio/music/rocknergy.mp3',
+        stepan: 'audio/music/rocknergy.mp3',
+        platforms: 'audio/music/platforms_theme.mp3',
         lovlyu: 'audio/music/lovlyu_theme.mp3',
-        poimal: 'audio/music/lovlyu_theme.wav',
+        poimal: 'audio/music/poimal_blues_theme.mp3',
         runner: 'audio/music/runner_theme.wav',
-        library: 'audio/music/library_theme.wav'
+        library: 'audio/music/library_theme.mp3',
+        tutorial: 'audio/music/menu_theme.wav'
     };
 
     /**

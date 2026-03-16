@@ -769,8 +769,16 @@ function updateLovlyuMode(dt) {
         const playerName = charNames[selectedChar] || selectedChar;
         const safeLives = Math.max(0, Math.floor(lives));
         if (safeLives !== lastHudLives) {
+            const _prevLives = lastHudLives;
             cachedLivesStr = "\u2764\uFE0F".repeat(safeLives);
             lastHudLives = safeLives;
+            if (_prevLives !== -1 && hudEl) {
+                hudEl.classList.remove('hud-heart-lose', 'hud-heart-gain');
+                void hudEl.offsetWidth;
+                hudEl.classList.add(safeLives < _prevLives ? 'hud-heart-lose' : 'hud-heart-gain');
+                clearTimeout(hudHeartAnimTimeout);
+                hudHeartAnimTimeout = setTimeout(() => hudEl.classList.remove('hud-heart-lose', 'hud-heart-gain'), 500);
+            }
         }
         const caught = Math.floor(score / 10);
         const phase = getLovlyuPhase();

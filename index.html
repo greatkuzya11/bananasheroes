@@ -636,6 +636,26 @@
             text-shadow: none;
         }
 
+        @keyframes hud-heart-lose {
+            0%   { color: #ff4444; transform: scale(1.25) translateX(-2px); }
+            25%  { transform: scale(1.2) translateX(2px); }
+            50%  { transform: scale(1.1) translateX(-1px); }
+            100% { color: inherit; transform: scale(1); }
+        }
+        @keyframes hud-heart-gain {
+            0%   { color: #66ff99; transform: scale(1.4); }
+            60%  { transform: scale(1.1); }
+            100% { color: inherit; transform: scale(1); }
+        }
+        #hud.hud-heart-lose .hud-lives {
+            display: inline-block;
+            animation: hud-heart-lose 0.5s ease-out forwards;
+        }
+        #hud.hud-heart-gain .hud-lives {
+            display: inline-block;
+            animation: hud-heart-gain 0.5s ease-out forwards;
+        }
+
         #hud .hud-bonus {
             display: inline-flex;
             align-items: baseline;

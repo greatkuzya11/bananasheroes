@@ -148,6 +148,7 @@ let hudEl = null;
 let lastHudHtml = '';
 let lastHudLives = -1;
 let cachedLivesStr = '';
+let hudHeartAnimTimeout = null;
 
 let bukinTablet = null;
 let modes = null;
@@ -312,6 +313,8 @@ function resetGameRuntimeCore() {
     lastHudHtml = '';
     lastHudLives = -1;
     cachedLivesStr = '';
+    clearTimeout(hudHeartAnimTimeout);
+    hudHeartAnimTimeout = null;
 
     if (typeof resetNosokLevelState === 'function') resetNosokLevelState();
     if (typeof resetRunnerLevelState === 'function') resetRunnerLevelState();

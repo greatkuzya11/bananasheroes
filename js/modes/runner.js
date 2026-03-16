@@ -1215,8 +1215,16 @@ function updateRunnerHud() {
 
     const playerName = charNames[selectedChar] || selectedChar;
     if (lives !== lastHudLives) {
+        const _prevLives = lastHudLives;
         cachedLivesStr = '❤️'.repeat(lives);
         lastHudLives = lives;
+        if (_prevLives !== -1 && hudEl) {
+            hudEl.classList.remove('hud-heart-lose', 'hud-heart-gain');
+            void hudEl.offsetWidth;
+            hudEl.classList.add(lives < _prevLives ? 'hud-heart-lose' : 'hud-heart-gain');
+            clearTimeout(hudHeartAnimTimeout);
+            hudHeartAnimTimeout = setTimeout(() => hudEl.classList.remove('hud-heart-lose', 'hud-heart-gain'), 500);
+        }
     }
 
     // 🐢 — индикатор уловки: появляется только когда уловка заряжена или активна.
