@@ -1320,8 +1320,8 @@ function updateNosokHud() {
         ? Math.max(0, Math.floor(nosokGoals))
         : Math.min(nosokTargetGoals, nosokGoals);
     hudHtml = isStepan
-        ? `${playerName} | Жизни: ${cachedLivesStr}<br>Голы: ${shownGoals}   ${bonusHtml}   Пули: ${dirIcon} ${modeIndicator}`
-        : `${playerName} | Жизни: ${cachedLivesStr}<br>Голы: ${shownGoals}/${nosokTargetGoals}   Время: ${timerStr}   ${bonusHtml}   Пули: ${dirIcon} ${modeIndicator}`;
+        ? `${playerName} | Жизни: <span class="hud-lives">${cachedLivesStr}</span><br>Голы: ${shownGoals}   ${bonusHtml}   Пули: ${dirIcon} ${modeIndicator}`
+        : `${playerName} | Жизни: <span class="hud-lives">${cachedLivesStr}</span><br>Голы: ${shownGoals}/${nosokTargetGoals}   Время: ${timerStr}   ${bonusHtml}   Пули: ${dirIcon} ${modeIndicator}`;
     if (hudHtml !== lastHudHtml) {
         hudEl.innerHTML = hudHtml;
         lastHudHtml = hudHtml;

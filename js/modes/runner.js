@@ -1230,7 +1230,7 @@ function updateRunnerHud() {
     const energyStr = runnerEnergyActive ? `   ⚡ ${Math.ceil(runnerEnergyTimer)}с` : '';
     const cigarStr = runnerCigarXLActive ? `   🚬x2 ${Math.ceil(runnerCigarXLTimer)}с` : '';
 
-    const hudHtml = `${playerName} | Жизни: ${cachedLivesStr}<br>Очки: ${Math.max(0, Math.floor(score))}   Цель: 🚬 по прапору${trickStr}${energyStr}${cigarStr}`;
+    const hudHtml = `${playerName} | Жизни: <span class="hud-lives">${cachedLivesStr}</span><br>Очки: ${Math.max(0, Math.floor(score))}   Цель: 🚬 по прапору${trickStr}${energyStr}${cigarStr}`;
     if (hudHtml !== lastHudHtml) {
         hudEl.innerHTML = hudHtml;
         lastHudHtml = hudHtml;

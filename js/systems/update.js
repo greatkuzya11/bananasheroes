@@ -1235,7 +1235,7 @@ function update(dt) {
         const bonusClass = (bonusMode && bonusShots > 0) ? 'hud-bonus active' : 'hud-bonus';
         const bonusHtml = `<span class="${bonusClass}"><span>Бонус:</span><span class="hud-bonus-value">${Math.max(0, bonusShots)}</span></span>`;
         let hudHtml = '';
-        hudHtml = `${playerName} | Жизни: ${cachedLivesStr}<br>Очки: ${score}   Комбо: ${combo}   ${bonusHtml}   Пули: ${dirIcon} ${modeIndicator}${o4koPhaseInfo}`;
+        hudHtml = `${playerName} | Жизни: <span class="hud-lives">${cachedLivesStr}</span><br>Очки: ${score}   Комбо: ${combo}   ${bonusHtml}   Пули: ${dirIcon} ${modeIndicator}${o4koPhaseInfo}`;
         if (typeof debugMode !== 'undefined' && debugMode) {
             hudHtml += `<br>DEBUG: Фаза ${normalPhase}   Врагов: ${enemies.length}`;
         }

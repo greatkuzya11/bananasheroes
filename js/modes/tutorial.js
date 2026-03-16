@@ -1397,7 +1397,7 @@ function _tUpdateHud() {
     const scoreLabel = mobile ? 'О:' : 'Очки:';
     const comboLabel = mobile ? 'К:' : 'Комбо:';
     const bulletsLabel = mobile ? 'П:' : 'Пули:';
-    const html = `${playerName} | Жизни: ${_tCachedLivesStr}<br>${scoreLabel} ${score}   ${comboLabel} ${combo}   ${bonusHtml}   ${bulletsLabel} ${dirIcon} ${modeIndicator}${phaseHtml}`;
+    const html = `${playerName} | Жизни: <span class="hud-lives">${_tCachedLivesStr}</span><br>${scoreLabel} ${score}   ${comboLabel} ${combo}   ${bonusHtml}   ${bulletsLabel} ${dirIcon} ${modeIndicator}${phaseHtml}`;
     if (html !== _tLastHudHtml) {
         hudEl.innerHTML = html;
         _tLastHudHtml = html;

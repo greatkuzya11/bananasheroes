@@ -777,7 +777,7 @@ function updateLovlyuMode(dt) {
         const magnetInfo = lovlyuMagnetActive ? `   🧲 ${Math.ceil(lovlyuMagnetTimer)}с` : '';
         const lightningInfo = lovlyuLightningActive ? `   ⚡ ${Math.ceil(lovlyuLightningTimer)}с` : '';
         const caughtText = (gameMode === 'poimal') ? `${caught}` : `${caught}/${lovlyuTotalSpawns}`;
-        let hudHtml = `${playerName} | Жизни: ${cachedLivesStr}<br>Очки: ${score}   Комбо: ${combo}   Поймано: ${caughtText}   Фаза: ${phase}${magnetInfo}${lightningInfo}`;
+        let hudHtml = `${playerName} | Жизни: <span class="hud-lives">${cachedLivesStr}</span><br>Очки: ${score}   Комбо: ${combo}   Поймано: ${caughtText}   Фаза: ${phase}${magnetInfo}${lightningInfo}`;
         if (hudHtml !== lastHudHtml) {
             hudEl.innerHTML = hudHtml;
             lastHudHtml = hudHtml;
