@@ -778,7 +778,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const prevH = canvas.height || window.innerHeight;
         canvas.width = window.innerWidth;
         canvas.height = window.innerHeight;
-        // Поддержка корректного позиционирования объектов в режиме "Носок" после ресайза.
+        // Поддержка корректного позиционирования объектов в режиме "нАсок" после ресайза.
         if (gameMode === 'nosok' || gameMode === 'stepan') {
             if (typeof setupNosokGoal === 'function') {
                 setupNosokGoal();
@@ -1710,7 +1710,7 @@ document.addEventListener('DOMContentLoaded', () => {
             { id: '67', icon: '📺', title: 'Телепузик' },
             { id: 'mode67', icon: '🤖', title: 'Режим 67' },
             { id: 'o4ko', icon: '🎯', title: 'Очко' },
-            { id: 'nosok', icon: '🧦', title: 'Носок' },
+            { id: 'nosok', icon: '🧦', title: 'нАсок' },
             { id: 'stepan', icon: '⚽', title: 'Степан' },
             { id: 'platforms', icon: '🪵', title: 'Опять Телепузик' },
             { id: 'lovlyu', icon: '🫴', title: 'Ловлю' },

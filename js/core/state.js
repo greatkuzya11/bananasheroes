@@ -1,4 +1,4 @@
-// Глобальное изменяемое состояние игры
+﻿// Глобальное изменяемое состояние игры
 let canvas = null;
 let ctx = null;
 
@@ -38,7 +38,7 @@ let mode67RunDamageTaken = 0;
 let mode67RunElapsedSec = 0;
 let mode67RunEnemyBulletsFired = 0;
 let mode67RunBulletRuleBroken = false;
-// Статистика текущего раунда для ачивок уровня "Носок".
+// Статистика текущего раунда для ачивок уровня "нАсок".
 let nosokRunAnyShotFired = false;
 let nosokRunPoopExplodedAfterWin = false;
 let stepanRunExitWith67FromPause = false;
@@ -153,7 +153,7 @@ let hudHeartAnimTimeout = null;
 let bukinTablet = null;
 let modes = null;
 
-// Состояние режима "Носок"
+// Состояние режима "нАсок"
 let nosokBall = null;
 let nosokGoalSensor = null;
 let nosokCrossbar = null;

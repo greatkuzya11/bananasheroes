@@ -429,7 +429,7 @@ function showLevelComplete() {
     }
 
     // Показываем оверлей; после победы по боссу урон игроку уже не применяется.
-    // В режиме "Носок" рекорд считается по минимальному времени, в остальных — по очкам.
+    // В режиме "нАсок" рекорд считается по минимальному времени, в остальных — по очкам.
     const isNosokVictory = gameMode === 'nosok';
     let isNew = false;
     if (isNosokVictory) {
@@ -1105,7 +1105,7 @@ function updateBestScoresDisplay() {
         { id: 'survival', name: 'Выживание' },
         { id: '67', name: 'Телепузик' },
         { id: 'o4ko', name: 'Очко' },
-        { id: 'nosok', name: 'Носок' },
+        { id: 'nosok', name: 'нАсок' },
         { id: 'stepan', name: 'Степан' },
         { id: 'platforms', name: 'Опять Телепузик' },
         { id: 'lovlyu', name: 'Ловлю' },
@@ -1271,7 +1271,7 @@ function showGameOver() {
         '67': 'Телепузик',
         mode67: 'Режим 67',
         o4ko: 'Очко',
-        nosok: 'Носок',
+        nosok: 'нАсок',
         stepan: 'Степан',
         platforms: 'Опять Телепузик',
         lovlyu: 'Ловлю',

@@ -1,4 +1,4 @@
-﻿// ==== РЕЖИМ "НОСОК" ====
+﻿// ==== РЕЖИМ "нАсок" ====
 
 /**
  * Форматирует миллисекунды в строку `MM:SS.cc`.
@@ -25,7 +25,7 @@ function isStepanMode() {
 }
 
 /**
- * Возвращает runtime-параметры мобильного адаптива для уровня "Носок".
+ * Возвращает runtime-параметры мобильного адаптива для уровня "нАсок".
  * @param {number} dt - время кадра.
  * @returns {{active:boolean,scale:number,frameMul:number,speedMul:number}}
  */
@@ -39,7 +39,7 @@ function getNosokAdaptiveRuntime(dt) {
 }
 
 /**
- * Масштабирует размеры бонуса для мобильной landscape-версии уровня "Носок".
+ * Масштабирует размеры бонуса для мобильной landscape-версии уровня "нАсок".
  * @param {number} w - базовая ширина.
  * @param {number} h - базовая высота.
  * @param {number} minW - минимальная ширина.
@@ -56,7 +56,7 @@ function getNosokScaledSize(w, h, minW, minH) {
 }
 
 /**
- * Возвращает отступ от нижней границы экрана для геометрии уровня "Носок".
+ * Возвращает отступ от нижней границы экрана для геометрии уровня "нАсок".
  * @returns {number}
  */
 function getNosokGroundInset() {
@@ -69,7 +69,7 @@ function getNosokGroundInset() {
 }
 
 /**
- * Возвращает профиль мобильного баланса для уровня "Носок".
+ * Возвращает профиль мобильного баланса для уровня "нАсок".
  * @returns {{enemyFireRate:number,enemyProjectileSpeed:number,enemyMoveSpeed:number,dropFallSpeed:number,bossMoveSpeed:number,homing:number,targetFallSpeed:number}}
  */
 function getNosokMobileBalance() {
@@ -90,7 +90,7 @@ function getNosokMobileBalance() {
 }
 
 /**
- * Возвращает ключ хранения лучшего времени режима "Носок".
+ * Возвращает ключ хранения лучшего времени режима "нАсок".
  * @returns {string}
  */
 function getNosokBestTimeKey() {
@@ -98,7 +98,7 @@ function getNosokBestTimeKey() {
 }
 
 /**
- * Сбрасывает runtime-состояние уровня "Носок".
+ * Сбрасывает runtime-состояние уровня "нАсок".
  */
 function resetNosokLevelState() {
     nosokBall = null;
@@ -197,7 +197,7 @@ function setupNosokGoal() {
 }
 
 /**
- * Инициализирует уровень "Носок".
+ * Инициализирует уровень "нАсок".
  */
 function initNosokLevel() {
     resetNosokLevelState();
@@ -253,7 +253,7 @@ function spawnNosokGoalConfetti(count) {
 }
 
 /**
- * Спавнит бонусы сверху экрана в режиме "Носок".
+ * Спавнит бонусы сверху экрана в режиме "нАсок".
  * @param {'beer'|'heart'|'ice'|'dynamite'|'random'} type - тип бонуса.
  */
 function spawnNosokDrop(type = 'random') {
@@ -319,7 +319,7 @@ function spawnNosokDrop(type = 'random') {
 }
 
 /**
- * Обновляет таймеры дропа бонусов для режима "Носок".
+ * Обновляет таймеры дропа бонусов для режима "нАсок".
  * @param {number} dt - время кадра.
  */
 function updateNosokDropTimers(dt) {
@@ -546,7 +546,7 @@ function segmentCircleHit(x1, y1, x2, y2, cx, cy, r) {
 }
 
 /**
- * Применяет урон игроку в режиме "Носок".
+ * Применяет урон игроку в режиме "нАсок".
  */
 function applyNosokPlayerDamage() {
     if (invuln > 0) return;
@@ -654,7 +654,7 @@ function handleStepanGoalAchievements() {
 }
 
 /**
- * Обновляет физику и коллизии мяча в режиме "Носок".
+ * Обновляет физику и коллизии мяча в режиме "нАсок".
  * @param {number} dt - время кадра.
  */
 function updateNosokBall(dt) {
@@ -671,7 +671,7 @@ function updateNosokBall(dt) {
 
     const ball = nosokBall;
     const gravity = canvas.height * 1.45;
-    // В режиме "Носок" мяч держим немного выше земли, чтобы по нему удобнее попадать.
+    // В режиме "нАсок" мяч держим немного выше земли, чтобы по нему удобнее попадать.
     const groundY = canvas.height - getNosokGroundInset() - Math.max(10, Math.round(player.h * 0.12));
     if (typeof ball.noOwnGoalTimer === 'number' && ball.noOwnGoalTimer > 0) {
         ball.noOwnGoalTimer = Math.max(0, ball.noOwnGoalTimer - dt);
@@ -932,7 +932,7 @@ function updateNosokBall(dt) {
 }
 
 /**
- * Обновляет пули игрока для режима "Носок":
+ * Обновляет пули игрока для режима "нАсок":
  * пули взаимодействуют с мячом и могут уничтожать пули босса-носка.
  * @param {number} dt - время кадра.
  */
@@ -1137,7 +1137,7 @@ function updateNosokEnemyBullets(dt) {
 }
 
 /**
- * Не дает игроку и боссу пересекать друг друга в режиме "Носок".
+ * Не дает игроку и боссу пересекать друг друга в режиме "нАсок".
  */
 function resolveNosokPlayerBossOverlap() {
     if (!bossNosok) return;
@@ -1171,7 +1171,7 @@ function resolveNosokPlayerBossOverlap() {
 }
 
 /**
- * Обновляет бонусы и их подбор в режиме "Носок".
+ * Обновляет бонусы и их подбор в режиме "нАсок".
  * @param {number} dt - время кадра.
  */
 function updateNosokDrops(dt) {
@@ -1298,7 +1298,7 @@ function updateNosokEffects(dt) {
 }
 
 /**
- * Обновляет HUD режима "Носок".
+ * Обновляет HUD режима "нАсок".
  */
 function updateNosokHud() {
     if (!hudEl) hudEl = document.getElementById('hud');
@@ -1337,7 +1337,7 @@ function updateNosokHud() {
 }
 
 /**
- * Полное обновление режима "Носок".
+ * Полное обновление режима "нАсок".
  * @param {number} dt - время кадра.
  */
 function updateNosokMode(dt) {

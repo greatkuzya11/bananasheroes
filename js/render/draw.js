@@ -146,7 +146,7 @@ function draw() {
         ctx.fillRect(0, 0, canvas.width, canvas.height);
     }
 
-    // Ворота "Носок": сетка, штанги, перекладина рисуются позже (после игрока и мяча)
+    // Ворота "нАсок": сетка, штанги, перекладина рисуются позже (после игрока и мяча)
 
     // Рисуем платформы в режиме платформ
     if (gameMode === 'platforms') {
@@ -471,7 +471,7 @@ function draw() {
         }
     });
 
-    // Рисуем спец-бонусы уровня "Носок": лед и динамит.
+    // Рисуем спец-бонусы уровня "нАсок": лед и динамит.
     nosokSpecialBonuses.forEach(b => {
         const size = b.h || 44;
         if (b.type === 'ice' && iceCubeImg && iceCubeImg.complete) {
@@ -516,7 +516,7 @@ function draw() {
         drawStyledBossHpBar('Босс: Очко', bossO4ko.hp, bossO4ko.maxHp, 24);
     }
 
-    // Отрисовываем босса уровня "Носок".
+    // Отрисовываем босса уровня "нАсок".
     if (bossNosok) {
         if (gameMode === 'nosok' && nosokGoals >= nosokTargetGoals) {
             const w = Math.max(36, bossNosok.w * 0.88);
@@ -611,7 +611,7 @@ function draw() {
         drawStyledBossHpBar('Босс: Сосиска', boss.hp, boss.maxHp || 11, 24);
     }
 
-    // Рисуем футбольный мяч режима "Носок" (между игроком и штангами — мяч внутри ворот).
+    // Рисуем футбольный мяч режима "нАсок" (между игроком и штангами — мяч внутри ворот).
     if ((gameMode === 'nosok' || gameMode === 'stepan') && nosokBall) {
         ctx.save();
         ctx.translate(nosokBall.x, nosokBall.y);
@@ -786,7 +786,7 @@ function draw() {
         drawSpeechBalloonAdaptive(sb, gameMode);
     });
     if (gameMode === 'nosok' || gameMode === 'stepan') {
-        // Верхнее табло режима "Носок": голы и таймер.
+        // Верхнее табло режима "нАсок": голы и таймер.
         const timerStr = formatNosokTime(Math.round(nosokElapsedTime * 1000));
         const panelW = Math.max(250, canvas.width * 0.32);
         const panelH = 54;

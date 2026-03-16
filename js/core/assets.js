@@ -371,7 +371,7 @@ let bukinImgReady = false;
 bukinImg.onload = () => { bukinImgReady = true; };
 bukinImg.src = "img/bukintablet.png";
 
-// Спрайты босса "Носок" (8 кадров)
+// Спрайты босса "нАсок" (8 кадров)
 const nosokImgs = [];
 let nosokSpritesReady = 0;
 for (let i = 1; i <= 8; i++) {
@@ -381,7 +381,7 @@ for (let i = 1; i <= 8; i++) {
     nosokImgs.push(img);
 }
 
-// Прозрачная текстура сетки ворот уровня "Носок"
+// Прозрачная текстура сетки ворот уровня "нАсок"
 const goalNetImg = new Image();
 let goalNetReady = false;
 goalNetImg.onload = () => { goalNetReady = true; };
@@ -426,7 +426,7 @@ function createIceCubeTexture() {
     return img;
 }
 
-// Реальные PNG-текстуры уровня "Носок" (без canvas/fallback)
+// Реальные PNG-текстуры уровня "нАсок" (без canvas/fallback)
 const soccerBallImg = new Image();
 soccerBallImg.src = "img/nosok/soccer_ball.png";
 const stinkySockImg = new Image();
@@ -434,7 +434,7 @@ stinkySockImg.src = "img/nosok/stinky_sock.png";
 const rottenFishImg = new Image();
 rottenFishImg.src = "img/nosok/rotten_fish.png";
 const iceCubeImg = createIceCubeTexture();
-// Бонус "Динамит" в режиме "Носок":
+// Бонус "Динамит" в режиме "нАсок":
 // используем тот же PNG, что и у пули-бомбы врага 67 (🧨).
 const dynamiteImg = new Image();
 dynamiteImg.src = "img/emoji/1f9e8.png";
