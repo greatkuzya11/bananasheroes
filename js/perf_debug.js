@@ -555,6 +555,7 @@
         setEnemy67RenderMode: (m) => { enemy67RenderMode = m; },
         // Возвращает выбранный вариант спрайта врага 67
         enemy67SpriteVariant: () => enemy67SpriteVariant,
+        setEnemy67SpriteVariant: (v) => { enemy67SpriteVariant = (v === 'alt') ? 'alt' : 'default'; },
         // Возвращает PNG-иконку для эмодзи
         getEmojiBitmap,
         // Хук начала измерения обновления пуль

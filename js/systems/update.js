@@ -726,6 +726,9 @@ function update(dt) {
                 if (enemy67.hp <= 0) {
                     if (gameMode === 'platforms') {
                         platformRunBossKilledAtOneHp = (lives === 1);
+                        if (typeof togglePlatformsBossSpriteModeAfterBossKill === 'function') {
+                            togglePlatformsBossSpriteModeAfterBossKill();
+                        }
                     }
                     if (gameMode === '67') {
                         const playerCenterX = player.x + player.w * 0.5;

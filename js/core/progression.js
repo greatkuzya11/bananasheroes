@@ -63,7 +63,8 @@ const PROGRESS_KEYS = Object.freeze({
     mode67NoticeShown: 'bh_mode67_notice_shown_v1',
     tutorialDone: 'bh_tutorial_done_v1',
     levelCompletedPrefix: 'bh_level_completed_v1_',
-    completionFlagsMigrated: 'bh_completion_flags_migrated_v1'
+    completionFlagsMigrated: 'bh_completion_flags_migrated_v1',
+    platformsBossSpriteMode: 'bh_platforms_boss_sprite_mode_v1'
 });
 
 /**
@@ -161,6 +162,40 @@ function setLevelCompleted(mode) {
 function isLevelCompleted(mode) {
     if (!isCampaignMode(mode)) return false;
     return readBoolLS(getLevelCompletedKey(mode), false);
+}
+
+/**
+ * Сохраняет активный набор спрайтов босса для режима "Опять Телепузик".
+ * @param {'tp'|'sheet'} mode - режим рендера босса.
+ * @returns {'tp'|'sheet'}
+ */
+function setPlatformsBossSpriteMode(mode) {
+    const nextMode = (mode === 'sheet') ? 'sheet' : 'tp';
+    writeLS(PROGRESS_KEYS.platformsBossSpriteMode, nextMode);
+    return nextMode;
+}
+
+/**
+ * Возвращает сохраненный набор спрайтов босса для режима "Опять Телепузик".
+ * @returns {'tp'|'sheet'}
+ */
+function getPlatformsBossSpriteMode() {
+    try {
+        const raw = localStorage.getItem(PROGRESS_KEYS.platformsBossSpriteMode);
+        return (raw === 'sheet') ? 'sheet' : 'tp';
+    } catch (err) {
+        return 'tp';
+    }
+}
+
+/**
+ * Переключает набор спрайтов босса для следующего запуска режима "Опять Телепузик".
+ * Вызывается сразу после смерти босса.
+ * @returns {'tp'|'sheet'}
+ */
+function togglePlatformsBossSpriteModeAfterBossKill() {
+    const currentMode = getPlatformsBossSpriteMode();
+    return setPlatformsBossSpriteMode(currentMode === 'sheet' ? 'tp' : 'sheet');
 }
 
 /**
@@ -624,6 +659,7 @@ function resetCampaignProgressState() {
     pendingProgressNotices.mode67Unlock = false;
     writeLS(PROGRESS_KEYS.mode67Unlocked, '0');
     writeLS(PROGRESS_KEYS.mode67NoticeShown, '0');
+    writeLS(PROGRESS_KEYS.platformsBossSpriteMode, 'tp');
     // Полный сброс прогресса: обучение снова считается не пройденным.
     writeLS(PROGRESS_KEYS.tutorialDone, '0');
     resetCampaignSessionForMenu();
@@ -706,4 +742,6 @@ window.consumePendingSurvivalNotice = consumePendingSurvivalNotice;
 window.consumePendingPoimalNotice = consumePendingPoimalNotice;
 window.consumePendingStepanNotice = consumePendingStepanNotice;
 window.consumePendingGameCompletedNotice = consumePendingGameCompletedNotice;
+window.getPlatformsBossSpriteMode = getPlatformsBossSpriteMode;
+window.togglePlatformsBossSpriteModeAfterBossKill = togglePlatformsBossSpriteModeAfterBossKill;
 window.resetCampaignProgressState = resetCampaignProgressState;

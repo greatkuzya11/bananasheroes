@@ -549,6 +549,15 @@ function initRunWorldByMode(mode) {
             player.x = canvas.width / 2 - player.w / 2;
         }
         if (bossPlatform) {
+            const platformsBossSpriteMode = (typeof getPlatformsBossSpriteMode === 'function')
+                ? getPlatformsBossSpriteMode()
+                : 'tp';
+            if (window.BHBulletPerf) {
+                window.BHBulletPerf.setEnemy67RenderMode(platformsBossSpriteMode);
+                if (typeof window.BHBulletPerf.setEnemy67SpriteVariant === 'function') {
+                    window.BHBulletPerf.setEnemy67SpriteVariant('default');
+                }
+            }
             enemy67 = new Enemy67(player.x, player.y, true);
             platform67HitCount = 0;
             platformRunBossMaxHp = Math.max(0, Math.floor(enemy67.maxHp || enemy67.hp || 0));
