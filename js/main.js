@@ -1512,8 +1512,22 @@ document.addEventListener('DOMContentLoaded', () => {
     const modeButtons = document.querySelectorAll('.mode');
     const tutorialBtn = document.getElementById('btnTutorial');
     const audioToggleBtn = document.getElementById('audio-toggle-btn');
+    const progressTransferBtn = document.getElementById('progress-transfer-btn');
     const resetProgressBtn = document.getElementById('reset-progress-btn');
     const bonusLevelBtn = document.getElementById('bonus-level-btn');
+    const progressTransferOverlay = document.getElementById('progress-transfer-overlay');
+    const progressTransferExportTabBtn = document.getElementById('progress-transfer-tab-export');
+    const progressTransferImportTabBtn = document.getElementById('progress-transfer-tab-import');
+    const progressTransferExportPanel = document.getElementById('progress-transfer-panel-export');
+    const progressTransferImportPanel = document.getElementById('progress-transfer-panel-import');
+    const progressTransferExportField = document.getElementById('progress-transfer-export-field');
+    const progressTransferImportField = document.getElementById('progress-transfer-import-field');
+    const progressTransferCopyBtn = document.getElementById('progress-transfer-copy-btn');
+    const progressTransferImportBtn = document.getElementById('progress-transfer-import-btn');
+    const progressTransferCloseBtn = document.getElementById('progress-transfer-close-btn');
+    const progressTransferStatusEl = document.getElementById('progress-transfer-status');
+    let progressTransferCurrentTab = 'export';
+    let progressTransferInputEditing = false;
     const updateAudioToggleButtonLabel = () => {
         if (!audioToggleBtn) return;
         const enabled = !(window.BHAudio && typeof window.BHAudio.isEnabled === 'function')
@@ -1522,6 +1536,151 @@ document.addEventListener('DOMContentLoaded', () => {
         audioToggleBtn.textContent = enabled ? '🔊 Звук: ВКЛ' : '🔇 Звук: ВЫКЛ';
         audioToggleBtn.title = enabled ? 'Выключить все звуки' : 'Включить все звуки';
     };
+
+    function isProgressTransferOpen() {
+        return !!progressTransferOverlay && progressTransferOverlay.style.display === 'block';
+    }
+
+    function getProgressTransferApi() {
+        if (!window.BHProgressTransfer) {
+            throw new Error('Перенос прогресса сейчас недоступен.');
+        }
+        const api = window.BHProgressTransfer;
+        const requiredMethods = [
+            'createSnapshot',
+            'serializeSnapshot',
+            'parseSnapshot',
+            'applySnapshot',
+            'clearTransferableStorage'
+        ];
+        const missingMethod = requiredMethods.find(name => typeof api[name] !== 'function');
+        if (missingMethod) {
+            throw new Error('Перенос прогресса сейчас недоступен.');
+        }
+        return api;
+    }
+
+    function setProgressTransferStatus(text, tone = '') {
+        if (!progressTransferStatusEl) return;
+        progressTransferStatusEl.textContent = text || '';
+        if (tone) progressTransferStatusEl.dataset.tone = tone;
+        else delete progressTransferStatusEl.dataset.tone;
+    }
+
+    function getActiveProgressTransferTabBtn() {
+        return progressTransferCurrentTab === 'import'
+            ? progressTransferImportTabBtn
+            : progressTransferExportTabBtn;
+    }
+
+    function getProgressTransferNavItems() {
+        const items = [getActiveProgressTransferTabBtn()];
+        if (progressTransferCurrentTab === 'import') {
+            if (progressTransferImportField) items.push(progressTransferImportField);
+            if (progressTransferImportBtn) items.push(progressTransferImportBtn);
+        } else {
+            if (progressTransferExportField) items.push(progressTransferExportField);
+            if (progressTransferCopyBtn) items.push(progressTransferCopyBtn);
+        }
+        if (progressTransferCloseBtn) items.push(progressTransferCloseBtn);
+        return items.filter(Boolean);
+    }
+
+    function clearProgressTransferMenuFocus() {
+        [
+            progressTransferExportTabBtn,
+            progressTransferImportTabBtn,
+            progressTransferExportField,
+            progressTransferImportField,
+            progressTransferCopyBtn,
+            progressTransferImportBtn,
+            progressTransferCloseBtn
+        ].forEach(el => el && el.classList.remove('menu-kb-focus'));
+    }
+
+    function setProgressTransferMenuFocus(target, opts = {}) {
+        if (!target) return;
+        const shouldFocus = opts.focus !== false;
+        const shouldSelect = !!opts.select;
+        try {
+            clearProgressTransferMenuFocus();
+            target.classList.add('menu-kb-focus');
+            if (shouldFocus && typeof target.focus === 'function') target.focus();
+            if (shouldSelect && typeof target.select === 'function') target.select();
+        } catch (err) { }
+    }
+
+    function getProgressTransferFocusedIndex() {
+        const items = getProgressTransferNavItems();
+        const activeEl = document.activeElement;
+        let idx = items.findIndex(el => el.classList.contains('menu-kb-focus'));
+        if (idx < 0 && activeEl) idx = items.indexOf(activeEl);
+        return idx >= 0 ? idx : 0;
+    }
+
+    function focusProgressTransferField(tab, opts = {}) {
+        const target = tab === 'import' ? progressTransferImportField : progressTransferExportField;
+        progressTransferInputEditing = !!opts.editing;
+        setProgressTransferMenuFocus(target, { focus: true, select: !!opts.select });
+    }
+
+    function refreshProgressTransferExportField() {
+        if (!progressTransferExportField) return;
+        const api = getProgressTransferApi();
+        const snapshot = api.createSnapshot();
+        progressTransferExportField.value = api.serializeSnapshot(snapshot);
+    }
+
+    function setProgressTransferTab(tab, opts = {}) {
+        progressTransferCurrentTab = tab === 'import' ? 'import' : 'export';
+        progressTransferInputEditing = false;
+        const exportActive = progressTransferCurrentTab === 'export';
+
+        if (progressTransferExportTabBtn) {
+            progressTransferExportTabBtn.classList.toggle('active', exportActive);
+            progressTransferExportTabBtn.setAttribute('aria-selected', exportActive ? 'true' : 'false');
+        }
+        if (progressTransferImportTabBtn) {
+            progressTransferImportTabBtn.classList.toggle('active', !exportActive);
+            progressTransferImportTabBtn.setAttribute('aria-selected', exportActive ? 'false' : 'true');
+        }
+        if (progressTransferExportPanel) progressTransferExportPanel.classList.toggle('active', exportActive);
+        if (progressTransferImportPanel) progressTransferImportPanel.classList.toggle('active', !exportActive);
+
+        if (exportActive) {
+            try {
+                refreshProgressTransferExportField();
+                setProgressTransferStatus('Скопируй этот код и перенеси его на другое устройство.');
+            } catch (err) {
+                if (progressTransferExportField) progressTransferExportField.value = '';
+                setProgressTransferStatus(err?.message || 'Не удалось подготовить код прогресса.', 'error');
+            }
+        } else {
+            setProgressTransferStatus('Вставь код прогресса и нажми "Загрузить прогресс".');
+        }
+
+        if (opts.focusTarget === 'tab') {
+            setProgressTransferMenuFocus(getActiveProgressTransferTabBtn(), { focus: true });
+        } else {
+            focusProgressTransferField(progressTransferCurrentTab);
+        }
+    }
+
+    function openProgressTransferOverlay(initialTab = 'export') {
+        if (!progressTransferOverlay) return;
+        progressTransferOverlay.style.display = 'block';
+        document.querySelectorAll('.menu-kb-focus').forEach(x => x.classList.remove('menu-kb-focus'));
+        setProgressTransferTab(initialTab, { focusTarget: 'field' });
+    }
+
+    function closeProgressTransferOverlay() {
+        if (!progressTransferOverlay) return;
+        progressTransferOverlay.style.display = 'none';
+        progressTransferInputEditing = false;
+        clearProgressTransferMenuFocus();
+        setProgressTransferStatus('');
+        menuNavFocus('transfer', 0);
+    }
 
     // --- Achievements prototype UI (minimal, harmless) ---
     const achBtn = document.getElementById('ach-btn');
@@ -2019,13 +2178,137 @@ document.addEventListener('DOMContentLoaded', () => {
             updateAudioToggleButtonLabel();
         };
     }
+    if (progressTransferBtn && progressTransferOverlay) {
+        progressTransferBtn.onclick = () => {
+            audioPlay('ui_click');
+            openProgressTransferOverlay('export');
+        };
+        progressTransferExportTabBtn?.addEventListener('click', () => {
+            audioPlay('ui_click');
+            setProgressTransferTab('export', { focusTarget: 'tab' });
+        });
+        progressTransferImportTabBtn?.addEventListener('click', () => {
+            audioPlay('ui_click');
+            setProgressTransferTab('import', { focusTarget: 'tab' });
+        });
+        progressTransferCloseBtn?.addEventListener('click', () => {
+            audioPlay('ui_click');
+            closeProgressTransferOverlay();
+        });
+        progressTransferOverlay.addEventListener('click', (event) => {
+            if (event.target !== progressTransferOverlay) return;
+            audioPlay('ui_click');
+            closeProgressTransferOverlay();
+        });
+        progressTransferCopyBtn?.addEventListener('click', async () => {
+            audioPlay('ui_click');
+            const raw = progressTransferExportField?.value || '';
+            if (!raw.trim()) {
+                audioPlay('ui_error');
+                setProgressTransferStatus('Сначала подготовь код прогресса для выгрузки.', 'error');
+                return;
+            }
+
+            try {
+                if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+                    await navigator.clipboard.writeText(raw);
+                    audioPlay('ui_confirm');
+                    setProgressTransferStatus('Код прогресса скопирован в буфер обмена.', 'success');
+                    return;
+                }
+                throw new Error('clipboard_unavailable');
+            } catch (err) {
+                try {
+                    progressTransferExportField?.focus();
+                    progressTransferExportField?.select();
+                    const copied = typeof document.execCommand === 'function' && document.execCommand('copy');
+                    if (copied) {
+                        audioPlay('ui_confirm');
+                        setProgressTransferStatus('Код прогресса скопирован в буфер обмена.', 'success');
+                    } else {
+                        setProgressTransferStatus('Автокопирование не сработало. Код выделен - скопируй его вручную.', 'error');
+                    }
+                } catch (fallbackErr) {
+                    audioPlay('ui_error');
+                    setProgressTransferStatus('Автокопирование не сработало. Выдели код и скопируй его вручную.', 'error');
+                }
+            }
+        });
+        progressTransferExportField?.addEventListener('focus', () => {
+            progressTransferInputEditing = false;
+            clearProgressTransferMenuFocus();
+            progressTransferExportField.classList.add('menu-kb-focus');
+        });
+        progressTransferExportField?.addEventListener('pointerdown', () => {
+            progressTransferInputEditing = false;
+            clearProgressTransferMenuFocus();
+            progressTransferExportField.classList.add('menu-kb-focus');
+        });
+        progressTransferImportField?.addEventListener('focus', () => {
+            clearProgressTransferMenuFocus();
+            progressTransferImportField.classList.add('menu-kb-focus');
+        });
+        progressTransferImportField?.addEventListener('pointerdown', () => {
+            progressTransferInputEditing = true;
+            clearProgressTransferMenuFocus();
+            progressTransferImportField.classList.add('menu-kb-focus');
+            setProgressTransferStatus('Поле ввода активно. Вставь код и нажми Escape для возврата к навигации.');
+        });
+        progressTransferImportField?.addEventListener('blur', () => {
+            progressTransferInputEditing = false;
+        });
+        progressTransferImportBtn?.addEventListener('click', () => {
+            audioPlay('ui_click');
+            const raw = progressTransferImportField?.value || '';
+            let parsed;
+
+            try {
+                parsed = getProgressTransferApi().parseSnapshot(raw);
+            } catch (err) {
+                audioPlay('ui_error');
+                setProgressTransferStatus(err?.message || 'Не удалось прочитать код прогресса.', 'error');
+                return;
+            }
+
+            const ok = window.confirm('Загрузить прогресс с другого устройства? Локальный прогресс, рекорды, достижения и игровые настройки на этом устройстве будут полностью заменены.');
+            if (!ok) return;
+
+            try {
+                getProgressTransferApi().applySnapshot(parsed);
+                audioPlay('ui_confirm');
+                location.reload();
+            } catch (err) {
+                audioPlay('ui_error');
+                setProgressTransferStatus(err?.message || 'Не удалось загрузить прогресс на этом устройстве.', 'error');
+            }
+        });
+        progressTransferImportField?.addEventListener('input', () => {
+            if (progressTransferCurrentTab !== 'import') return;
+            if (progressTransferStatusEl?.dataset?.tone === 'error') {
+                setProgressTransferStatus('Вставь код прогресса и нажми "Загрузить прогресс".');
+            }
+        });
+    }
     if (resetProgressBtn) {
         resetProgressBtn.onclick = () => {
             audioPlay('ui_click');
-            const ok = window.confirm('Сбросить прогресс кампании? Библиотека и Bonus снова будут закрыты.');
+            let api;
+            try {
+                api = getProgressTransferApi();
+            } catch (err) {
+                audioPlay('ui_error');
+                window.alert(err?.message || 'Сброс прогресса сейчас недоступен.');
+                return;
+            }
+            const ok = window.confirm('Сбросить локальный прогресс, рекорды, достижения и игровые настройки на этом устройстве? Раскладка сенсорных кнопок не изменится.');
             if (!ok) return;
-            localStorage.clear();
-            location.reload();
+            try {
+                api.clearTransferableStorage();
+                location.reload();
+            } catch (err) {
+                audioPlay('ui_error');
+                window.alert(err?.message || 'Не удалось сбросить прогресс.');
+            }
         };
     }
     if (bonusLevelBtn) {
@@ -2157,7 +2440,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // снимая его со всех остальных — чтобы не было двух одновременных фокусов.
     document.addEventListener('mouseover', e => {
         const el = e.target.closest(
-            '.char, .mode, #ach-btn, #help-btn, #audio-toggle-btn, #bonus-level-btn, #reset-progress-btn, #btnTutorial, #help-back-btn, ' +
+            '.char, .mode, #ach-btn, #help-btn, #audio-toggle-btn, #bonus-level-btn, #progress-transfer-btn, #reset-progress-btn, #btnTutorial, #help-back-btn, ' +
             'button[data-pause-idx], button[data-overlay-btn-idx]'
         );
         if (!el || el.disabled) return;
@@ -2304,11 +2587,12 @@ document.addEventListener('DOMContentLoaded', () => {
         const achBtnEl = document.getElementById('ach-btn');
         const audioBtnEl = document.getElementById('audio-toggle-btn');
         const bonusBtnEl = document.getElementById('bonus-level-btn');
+        const transferBtnEl = document.getElementById('progress-transfer-btn');
         const resetBtnEl = document.getElementById('reset-progress-btn');
         const tutorialBtnEl = document.getElementById('btnTutorial');
         // Снимаем подсветку со всех элементов меню
         [...cEls, ...mEls].forEach(el => el.classList.remove('menu-kb-focus'));
-        [helpBtnEl, achBtnEl, audioBtnEl, bonusBtnEl, resetBtnEl, tutorialBtnEl].forEach(el => el && el.classList.remove('menu-kb-focus'));
+        [helpBtnEl, achBtnEl, audioBtnEl, bonusBtnEl, transferBtnEl, resetBtnEl, tutorialBtnEl].forEach(el => el && el.classList.remove('menu-kb-focus'));
         if (section === 'char') {
             if (cEls[idx]) cEls[idx].classList.add('menu-kb-focus');
         } else if (section === 'mode') {
@@ -2323,6 +2607,8 @@ document.addEventListener('DOMContentLoaded', () => {
             if (bonusBtnEl && bonusBtnEl.style.display !== 'none' && !bonusBtnEl.disabled) {
                 bonusBtnEl.classList.add('menu-kb-focus');
             }
+        } else if (section === 'transfer') {
+            if (transferBtnEl) transferBtnEl.classList.add('menu-kb-focus');
         } else if (section === 'reset') {
             if (resetBtnEl) resetBtnEl.classList.add('menu-kb-focus');
         } else if (section === 'tutorial') {
@@ -2391,6 +2677,68 @@ document.addEventListener('DOMContentLoaded', () => {
                 e.preventDefault();
             } else if (e.key === 'Enter' || e.key === ' ') {
                 pauseBtns[curIdx]?.click();
+                e.preventDefault();
+            }
+            return;
+        }
+
+        // ==== TRANSFER OVERLAY: keyboard/gamepad navigation ====
+        if (isProgressTransferOpen()) {
+            const navItems = getProgressTransferNavItems();
+            const focusedIdx = getProgressTransferFocusedIndex();
+            const focusedEl = navItems[focusedIdx] || navItems[0] || null;
+            const editingImportField = progressTransferCurrentTab === 'import'
+                && progressTransferInputEditing
+                && document.activeElement === progressTransferImportField;
+
+            if (editingImportField) {
+                if (e.key === 'Escape') {
+                    progressTransferInputEditing = false;
+                    setProgressTransferStatus('Вставь код прогресса и нажми "Загрузить прогресс".');
+                    setProgressTransferMenuFocus(progressTransferImportField, { focus: true });
+                    e.preventDefault();
+                }
+                return;
+            }
+
+            if (e.key === 'Escape') {
+                closeProgressTransferOverlay();
+                e.preventDefault();
+                return;
+            }
+            if (!focusedEl) return;
+
+            if (e.key === 'ArrowDown') {
+                const nextIdx = (focusedIdx + 1) % navItems.length;
+                setProgressTransferMenuFocus(navItems[nextIdx], { focus: true });
+                e.preventDefault();
+                return;
+            }
+            if (e.key === 'ArrowUp') {
+                const prevIdx = (focusedIdx - 1 + navItems.length) % navItems.length;
+                setProgressTransferMenuFocus(navItems[prevIdx], { focus: true });
+                e.preventDefault();
+                return;
+            }
+            if ((e.key === 'ArrowLeft' || e.key === 'ArrowRight')
+                && (focusedEl === progressTransferExportTabBtn || focusedEl === progressTransferImportTabBtn)) {
+                const nextTab = progressTransferCurrentTab === 'export' ? 'import' : 'export';
+                setProgressTransferTab(nextTab, { focusTarget: 'tab' });
+                e.preventDefault();
+                return;
+            }
+            if (e.key === 'Enter' || e.key === ' ') {
+                if (focusedEl === progressTransferExportField) {
+                    progressTransferInputEditing = false;
+                    setProgressTransferStatus('Код выделен. Нажми Ctrl+C или кнопку "Копировать код".');
+                    setProgressTransferMenuFocus(progressTransferExportField, { focus: true, select: true });
+                } else if (focusedEl === progressTransferImportField) {
+                    progressTransferInputEditing = true;
+                    setProgressTransferStatus('Поле ввода активно. Вставь код и нажми Escape для возврата к навигации.');
+                    setProgressTransferMenuFocus(progressTransferImportField, { focus: true });
+                } else {
+                    focusedEl.click();
+                }
                 e.preventDefault();
             }
             return;
@@ -2530,6 +2878,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const achBtnEl = document.getElementById('ach-btn');
         const audioBtnEl = document.getElementById('audio-toggle-btn');
         const bonusBtnEl = document.getElementById('bonus-level-btn');
+        const transferBtnEl = document.getElementById('progress-transfer-btn');
         const resetBtnEl = document.getElementById('reset-progress-btn');
         const tutorialBtnEl = document.getElementById('btnTutorial');
         const modesContainer = document.getElementById('modes');
@@ -2543,10 +2892,12 @@ document.addEventListener('DOMContentLoaded', () => {
         const fAch = achBtnEl && achBtnEl.classList.contains('menu-kb-focus');
         const fAudio = audioBtnEl && audioBtnEl.classList.contains('menu-kb-focus');
         const fBonus = bonusBtnEl && bonusBtnEl.classList.contains('menu-kb-focus');
+        const fTransfer = transferBtnEl && transferBtnEl.classList.contains('menu-kb-focus');
         const fReset = resetBtnEl && resetBtnEl.classList.contains('menu-kb-focus');
         const fTutorial = tutorialBtnEl && tutorialBtnEl.classList.contains('menu-kb-focus');
         if (fTutorial)   { section = 'tutorial'; idx = 0; }
         else if (fReset) { section = 'reset'; idx = 0; }
+        else if (fTransfer) { section = 'transfer'; idx = 0; }
         else if (fBonus) { section = 'bonus'; idx = 0; }
         else if (fAudio) { section = 'audio'; idx = 0; }
         else if (fHelp)  { section = 'help';  idx = 0; }
@@ -2593,9 +2944,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (bonusBtnEl && bonusBtnEl.style.display !== 'none' && !bonusBtnEl.disabled) {
                     menuNavFocus('bonus', 0);
                 } else {
-                    menuNavFocus('reset', 0);
+                    menuNavFocus('transfer', 0);
                 }
             } else if (section === 'bonus') {
+                menuNavFocus('transfer', 0);
+            } else if (section === 'transfer') {
                 menuNavFocus('reset', 0);
             } else if (section === 'reset') {
                 menuNavFocus('mode', mEls.length - 1); // циклируем обратно
@@ -2615,12 +2968,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 menuNavFocus('tutorial', 0);
             } else if (section === 'bonus') {
                 menuNavFocus('audio', 0);
-            } else if (section === 'reset') {
+            } else if (section === 'transfer') {
                 if (bonusBtnEl && bonusBtnEl.style.display !== 'none' && !bonusBtnEl.disabled) {
                     menuNavFocus('bonus', 0);
                 } else {
                     menuNavFocus('audio', 0);
                 }
+            } else if (section === 'reset') {
+                menuNavFocus('transfer', 0);
             }
             e.preventDefault();
         } else if (e.key === 'Enter' || e.key === ' ') {
@@ -2637,6 +2992,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 audioBtnEl?.click();
             } else if (section === 'bonus') {
                 bonusBtnEl?.click();
+            } else if (section === 'transfer') {
+                transferBtnEl?.click();
             } else if (section === 'reset') {
                 resetBtnEl?.click();
             } else if (section === 'tutorial') {
