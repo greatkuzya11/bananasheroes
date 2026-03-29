@@ -67,6 +67,102 @@ describe('BHProgressTransfer.serializeSnapshot() / parseSnapshot()', () => {
   })
 })
 
+describe('BHProgressTransfer.serializeTransferCode() / parseTransferCode()', () => {
+  it('returns an opaque transfer code with the expected prefix', () => {
+    const snapshot = {
+      app: 'bananasheroes',
+      kind: 'progress-transfer',
+      version: 1,
+      exportedAt: '2026-03-29T00:00:00.000Z',
+      payload: {
+        bh_achievements_v1: '{"win":1}',
+        bh_game_completed_once_v1: '1'
+      }
+    }
+
+    const code = window.BHProgressTransfer.serializeTransferCode(snapshot)
+    const parsed = window.BHProgressTransfer.parseTransferCode(code)
+
+    expect(code.startsWith('BHT1.')).toBe(true)
+    expect(code).not.toContain('{')
+    expect(code).not.toContain('bh_achievements_v1')
+    expect(parsed).toEqual(snapshot)
+  })
+
+  it('supports legacy plain JSON import', () => {
+    const snapshot = {
+      app: 'bananasheroes',
+      kind: 'progress-transfer',
+      version: 1,
+      exportedAt: '2026-03-29T00:00:00.000Z',
+      payload: {
+        bh_audio_enabled_v1: '1'
+      }
+    }
+
+    const legacyRaw = window.BHProgressTransfer.serializeSnapshot(snapshot)
+
+    expect(window.BHProgressTransfer.parseTransferCode(legacyRaw)).toEqual(snapshot)
+  })
+
+  it('supports opaque code split across multiple lines', () => {
+    const snapshot = {
+      app: 'bananasheroes',
+      kind: 'progress-transfer',
+      version: 1,
+      exportedAt: '2026-03-29T00:00:00.000Z',
+      payload: {
+        bh_audio_enabled_v1: '1',
+        bh_achievements_v1: '{"win":1}'
+      }
+    }
+
+    const code = window.BHProgressTransfer.serializeTransferCode(snapshot)
+    const wrappedCode = `${code.slice(0, 18)}\n${code.slice(18, 53)} \n${code.slice(53)}`
+
+    expect(window.BHProgressTransfer.parseTransferCode(wrappedCode)).toEqual(snapshot)
+  })
+
+  it('keeps excluded keys out of the opaque export', () => {
+    localStorage.setItem('bh_achievements_v1', '{"a":1}')
+    localStorage.setItem('bh_touch_fire_pos_v1', '{"left":50}')
+    localStorage.setItem('bh_mobile_controls_hint_seen_v2', '1')
+
+    const code = window.BHProgressTransfer.serializeTransferCode(
+      window.BHProgressTransfer.createSnapshot()
+    )
+    const parsed = window.BHProgressTransfer.parseTransferCode(code)
+
+    expect(parsed.payload).toEqual({
+      bh_achievements_v1: '{"a":1}'
+    })
+  })
+
+  it('rejects damaged opaque code without mutating storage', () => {
+    localStorage.setItem('bh_achievements_v1', '{"old":1}')
+
+    expect(() => window.BHProgressTransfer.parseTransferCode('BHT1.!')).toThrow()
+    expect(localStorage.getItem('bh_achievements_v1')).toBe('{"old":1}')
+  })
+
+  it('rejects altered opaque code without mutating storage', () => {
+    localStorage.setItem('bh_achievements_v1', '{"old":1}')
+    const code = window.BHProgressTransfer.serializeTransferCode({
+      app: 'bananasheroes',
+      kind: 'progress-transfer',
+      version: 1,
+      exportedAt: '2026-03-29T00:00:00.000Z',
+      payload: {
+        bh_achievements_v1: '{"new":1}'
+      }
+    })
+    const alteredCode = `${code}A`
+
+    expect(() => window.BHProgressTransfer.parseTransferCode(alteredCode)).toThrow()
+    expect(localStorage.getItem('bh_achievements_v1')).toBe('{"old":1}')
+  })
+})
+
 describe('BHProgressTransfer.clearTransferableStorage()', () => {
   it('clears only transferable keys', () => {
     localStorage.setItem('bh_achievements_v1', '{"a":1}')

@@ -1548,8 +1548,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const api = window.BHProgressTransfer;
         const requiredMethods = [
             'createSnapshot',
-            'serializeSnapshot',
-            'parseSnapshot',
+            'serializeTransferCode',
+            'parseTransferCode',
             'applySnapshot',
             'clearTransferableStorage'
         ];
@@ -1628,12 +1628,15 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!progressTransferExportField) return;
         const api = getProgressTransferApi();
         const snapshot = api.createSnapshot();
-        progressTransferExportField.value = api.serializeSnapshot(snapshot);
+        const rawCode = api.serializeTransferCode(snapshot);
+        progressTransferExportField.dataset.rawTransferCode = rawCode;
+        progressTransferExportField.value = rawCode;
     }
 
     function setProgressTransferTab(tab, opts = {}) {
         progressTransferCurrentTab = tab === 'import' ? 'import' : 'export';
         progressTransferInputEditing = false;
+        if (progressTransferOverlay) progressTransferOverlay.scrollTop = 0;
         const exportActive = progressTransferCurrentTab === 'export';
 
         if (progressTransferExportTabBtn) {
@@ -1650,13 +1653,13 @@ document.addEventListener('DOMContentLoaded', () => {
         if (exportActive) {
             try {
                 refreshProgressTransferExportField();
-                setProgressTransferStatus('Скопируй этот код и перенеси его на другое устройство.');
+                setProgressTransferStatus('Скопируй этот код переноса и вставь его на другом устройстве.');
             } catch (err) {
                 if (progressTransferExportField) progressTransferExportField.value = '';
-                setProgressTransferStatus(err?.message || 'Не удалось подготовить код прогресса.', 'error');
+                setProgressTransferStatus(err?.message || 'Не удалось подготовить код переноса.', 'error');
             }
         } else {
-            setProgressTransferStatus('Вставь код прогресса и нажми "Загрузить прогресс".');
+            setProgressTransferStatus('Вставь код переноса и нажми "Загрузить прогресс".');
         }
 
         if (opts.focusTarget === 'tab') {
@@ -1669,6 +1672,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function openProgressTransferOverlay(initialTab = 'export') {
         if (!progressTransferOverlay) return;
         progressTransferOverlay.style.display = 'block';
+        progressTransferOverlay.scrollTop = 0;
         document.querySelectorAll('.menu-kb-focus').forEach(x => x.classList.remove('menu-kb-focus'));
         setProgressTransferTab(initialTab, { focusTarget: 'field' });
     }
@@ -2202,10 +2206,10 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         progressTransferCopyBtn?.addEventListener('click', async () => {
             audioPlay('ui_click');
-            const raw = progressTransferExportField?.value || '';
+            const raw = progressTransferExportField?.dataset?.rawTransferCode || progressTransferExportField?.value || '';
             if (!raw.trim()) {
                 audioPlay('ui_error');
-                setProgressTransferStatus('Сначала подготовь код прогресса для выгрузки.', 'error');
+                setProgressTransferStatus('Сначала подготовь код переноса для выгрузки.', 'error');
                 return;
             }
 
@@ -2213,7 +2217,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
                     await navigator.clipboard.writeText(raw);
                     audioPlay('ui_confirm');
-                    setProgressTransferStatus('Код прогресса скопирован в буфер обмена.', 'success');
+                    setProgressTransferStatus('Код переноса скопирован в буфер обмена.', 'success');
                     return;
                 }
                 throw new Error('clipboard_unavailable');
@@ -2224,13 +2228,13 @@ document.addEventListener('DOMContentLoaded', () => {
                     const copied = typeof document.execCommand === 'function' && document.execCommand('copy');
                     if (copied) {
                         audioPlay('ui_confirm');
-                        setProgressTransferStatus('Код прогресса скопирован в буфер обмена.', 'success');
+                        setProgressTransferStatus('Код переноса скопирован в буфер обмена.', 'success');
                     } else {
-                        setProgressTransferStatus('Автокопирование не сработало. Код выделен - скопируй его вручную.', 'error');
+                        setProgressTransferStatus('Автокопирование не сработало. Код выделен, скопируй его вручную.', 'error');
                     }
                 } catch (fallbackErr) {
                     audioPlay('ui_error');
-                    setProgressTransferStatus('Автокопирование не сработало. Выдели код и скопируй его вручную.', 'error');
+                    setProgressTransferStatus('Автокопирование не сработало. Выдели код переноса и скопируй его вручную.', 'error');
                 }
             }
         });
@@ -2252,7 +2256,7 @@ document.addEventListener('DOMContentLoaded', () => {
             progressTransferInputEditing = true;
             clearProgressTransferMenuFocus();
             progressTransferImportField.classList.add('menu-kb-focus');
-            setProgressTransferStatus('Поле ввода активно. Вставь код и нажми Escape для возврата к навигации.');
+            setProgressTransferStatus('Поле ввода активно. Вставь код переноса и нажми Escape для возврата к навигации.');
         });
         progressTransferImportField?.addEventListener('blur', () => {
             progressTransferInputEditing = false;
@@ -2263,10 +2267,10 @@ document.addEventListener('DOMContentLoaded', () => {
             let parsed;
 
             try {
-                parsed = getProgressTransferApi().parseSnapshot(raw);
+                parsed = getProgressTransferApi().parseTransferCode(raw);
             } catch (err) {
                 audioPlay('ui_error');
-                setProgressTransferStatus(err?.message || 'Не удалось прочитать код прогресса.', 'error');
+                setProgressTransferStatus(err?.message || 'Не удалось прочитать код переноса.', 'error');
                 return;
             }
 
@@ -2285,7 +2289,7 @@ document.addEventListener('DOMContentLoaded', () => {
         progressTransferImportField?.addEventListener('input', () => {
             if (progressTransferCurrentTab !== 'import') return;
             if (progressTransferStatusEl?.dataset?.tone === 'error') {
-                setProgressTransferStatus('Вставь код прогресса и нажми "Загрузить прогресс".');
+                setProgressTransferStatus('Вставь код переноса и нажми "Загрузить прогресс".');
             }
         });
     }
@@ -2694,7 +2698,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (editingImportField) {
                 if (e.key === 'Escape') {
                     progressTransferInputEditing = false;
-                    setProgressTransferStatus('Вставь код прогресса и нажми "Загрузить прогресс".');
+                    setProgressTransferStatus('Вставь код переноса и нажми "Загрузить прогресс".');
                     setProgressTransferMenuFocus(progressTransferImportField, { focus: true });
                     e.preventDefault();
                 }
@@ -2730,11 +2734,11 @@ document.addEventListener('DOMContentLoaded', () => {
             if (e.key === 'Enter' || e.key === ' ') {
                 if (focusedEl === progressTransferExportField) {
                     progressTransferInputEditing = false;
-                    setProgressTransferStatus('Код выделен. Нажми Ctrl+C или кнопку "Копировать код".');
+                    setProgressTransferStatus('Код переноса выделен. Нажми Ctrl+C или кнопку "Копировать код".');
                     setProgressTransferMenuFocus(progressTransferExportField, { focus: true, select: true });
                 } else if (focusedEl === progressTransferImportField) {
                     progressTransferInputEditing = true;
-                    setProgressTransferStatus('Поле ввода активно. Вставь код и нажми Escape для возврата к навигации.');
+                    setProgressTransferStatus('Поле ввода активно. Вставь код переноса и нажми Escape для возврата к навигации.');
                     setProgressTransferMenuFocus(progressTransferImportField, { focus: true });
                 } else {
                     focusedEl.click();

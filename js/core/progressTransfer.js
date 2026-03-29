@@ -2,12 +2,17 @@
     const APP_ID = 'bananasheroes';
     const SNAPSHOT_KIND = 'progress-transfer';
     const SNAPSHOT_VERSION = 1;
+    const TRANSFER_CODE_PREFIX = 'BHT1.';
+    const TRANSFER_OBFUSCATION_KEY = 'bananasheroes-transfer-v1';
     const EXCLUDED_KEYS = Object.freeze([
         'bh_mobile_controls_hint_seen_v2'
     ]);
     const EXCLUDED_PREFIXES = Object.freeze([
         'bh_touch_'
     ]);
+    const textEncoder = typeof TextEncoder === 'function' ? new TextEncoder() : null;
+    const textDecoder = typeof TextDecoder === 'function' ? new TextDecoder() : null;
+    const obfuscationKeyBytes = utf8ToBytes(TRANSFER_OBFUSCATION_KEY);
 
     function getStorageOrThrow() {
         try {
@@ -22,6 +27,87 @@
 
     function isPlainObject(value) {
         return !!value && Object.prototype.toString.call(value) === '[object Object]';
+    }
+
+    function utf8ToBytes(value) {
+        const stringValue = String(value);
+        if (textEncoder) return textEncoder.encode(stringValue);
+
+        const binary = unescape(encodeURIComponent(stringValue));
+        const bytes = new Uint8Array(binary.length);
+        for (let i = 0; i < binary.length; i++) {
+            bytes[i] = binary.charCodeAt(i);
+        }
+        return bytes;
+    }
+
+    function bytesToUtf8(bytes) {
+        if (textDecoder) return textDecoder.decode(bytes);
+
+        let binary = '';
+        for (let i = 0; i < bytes.length; i++) {
+            binary += String.fromCharCode(bytes[i]);
+        }
+
+        try {
+            return decodeURIComponent(escape(binary));
+        } catch (err) {
+            throw new Error('Не удалось прочитать код переноса. Проверь, что он вставлен целиком.');
+        }
+    }
+
+    function encodeBase64(binary) {
+        if (typeof btoa === 'function') return btoa(binary);
+        if (typeof Buffer !== 'undefined') return Buffer.from(binary, 'binary').toString('base64');
+        throw new Error('Не удалось подготовить код переноса на этом устройстве.');
+    }
+
+    function decodeBase64(base64) {
+        if (typeof atob === 'function') return atob(base64);
+        if (typeof Buffer !== 'undefined') return Buffer.from(base64, 'base64').toString('binary');
+        throw new Error('Не удалось прочитать код переноса. Проверь, что он вставлен целиком.');
+    }
+
+    function bytesToBase64Url(bytes) {
+        let binary = '';
+        for (let i = 0; i < bytes.length; i++) {
+            binary += String.fromCharCode(bytes[i]);
+        }
+        return encodeBase64(binary)
+            .replace(/\+/g, '-')
+            .replace(/\//g, '_')
+            .replace(/=+$/g, '');
+    }
+
+    function base64UrlToBytes(raw) {
+        if (typeof raw !== 'string' || !raw || !/^[A-Za-z0-9\-_]+$/.test(raw)) {
+            throw new Error('Не удалось прочитать код переноса. Проверь, что он вставлен целиком.');
+        }
+
+        let padded = raw.replace(/-/g, '+').replace(/_/g, '/');
+        while (padded.length % 4) padded += '=';
+
+        let binary = '';
+        try {
+            binary = decodeBase64(padded);
+        } catch (err) {
+            throw new Error('Не удалось прочитать код переноса. Проверь, что он вставлен целиком.');
+        }
+
+        const bytes = new Uint8Array(binary.length);
+        for (let i = 0; i < binary.length; i++) {
+            bytes[i] = binary.charCodeAt(i);
+        }
+        return bytes;
+    }
+
+    function obfuscateBytes(bytes) {
+        const result = new Uint8Array(bytes.length);
+        for (let i = 0; i < bytes.length; i++) {
+            const mask = obfuscationKeyBytes[i % obfuscationKeyBytes.length] ^ ((i * 31 + 17) & 0xff);
+            result[i] = bytes[i] ^ mask;
+        }
+        return result;
     }
 
     function isTransferableKey(key) {
@@ -106,17 +192,43 @@
 
     function parseSnapshot(raw) {
         if (typeof raw !== 'string' || !raw.trim()) {
-            throw new Error('Вставь код прогресса перед загрузкой.');
+            throw new Error('Вставь код переноса перед загрузкой.');
         }
 
         let parsed;
         try {
-            parsed = JSON.parse(raw);
+            parsed = JSON.parse(raw.trim());
         } catch (err) {
-            throw new Error('Не удалось прочитать код прогресса. Проверь, что вставлен полный JSON.');
+            throw new Error('Не удалось прочитать код переноса. Проверь, что он вставлен целиком.');
         }
 
         return normalizeSnapshot(parsed);
+    }
+
+    function serializeTransferCode(snapshot) {
+        const compactSnapshot = JSON.stringify(normalizeSnapshot(snapshot));
+        const obfuscated = obfuscateBytes(utf8ToBytes(compactSnapshot));
+        return TRANSFER_CODE_PREFIX + bytesToBase64Url(obfuscated);
+    }
+
+    function parseTransferCode(raw) {
+        if (typeof raw !== 'string' || !raw.trim()) {
+            throw new Error('Вставь код переноса перед загрузкой.');
+        }
+
+        const trimmed = raw.trim();
+        const compact = trimmed.replace(/\s+/g, '');
+        if (!compact.startsWith(TRANSFER_CODE_PREFIX)) {
+            return parseSnapshot(trimmed);
+        }
+
+        const encodedBody = compact.slice(TRANSFER_CODE_PREFIX.length);
+        if (!encodedBody) {
+            throw new Error('Не удалось прочитать код переноса. Проверь, что он вставлен целиком.');
+        }
+
+        const decodedJson = bytesToUtf8(obfuscateBytes(base64UrlToBytes(encodedBody)));
+        return parseSnapshot(decodedJson);
     }
 
     function clearTransferableStorage() {
@@ -157,6 +269,8 @@
         createSnapshot,
         serializeSnapshot,
         parseSnapshot,
+        serializeTransferCode,
+        parseTransferCode,
         applySnapshot,
         clearTransferableStorage,
         isTransferableKey
