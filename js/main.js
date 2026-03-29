@@ -1188,10 +1188,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 window.BHAudio.setPaused(false);
             }
             setTouchControlsVisible(false);
-            // Save the last game mode before resetting state
-            if (typeof window !== 'undefined') {
-                window.lastGameMode = gameMode;
-            }
+            // Save the last game mode before resetting state.
+            lastGameMode = gameMode;
             // Restore keyboard focus to last played mode after character selection
             if (typeof window.restoreMenuFocusAfterGame === 'function') {
                 window.restoreMenuFocusAfterGame(menuNavFocus);
@@ -2752,4 +2750,96 @@ if (typeof window !== 'undefined') {
             if (focused === bonusBackBtn) { ev.preventDefault(); bonusBackBtn.click(); return; }
         }
     }
+
+    function dispatchAndroidEscape() {
+        const keyDown = new KeyboardEvent('keydown', {
+            key: 'Escape',
+            bubbles: true,
+            cancelable: true
+        });
+        const keyUp = new KeyboardEvent('keyup', {
+            key: 'Escape',
+            bubbles: true,
+            cancelable: true
+        });
+        document.dispatchEvent(keyDown);
+        document.dispatchEvent(keyUp);
+    }
+
+    function isElementVisible(el) {
+        return !!(el && window.getComputedStyle(el).display !== 'none');
+    }
+
+    function exitToMainMenuFromAndroid() {
+        if (typeof window.clearGameInputs === 'function') {
+            window.clearGameInputs();
+        }
+        if (typeof clearScheduledEnemySpawns === 'function') clearScheduledEnemySpawns();
+        if (typeof clearLevelIntroOverlayState === 'function') clearLevelIntroOverlayState();
+        if (typeof resetGameStateForMenu === 'function') resetGameStateForMenu();
+
+        const gameEl = document.getElementById('game');
+        const menuEl = document.getElementById('menu');
+        if (gameEl) gameEl.style.display = 'none';
+        if (menuEl) menuEl.style.display = 'block';
+        if (typeof window.setGameTouchControlsVisible === 'function') {
+            window.setGameTouchControlsVisible(false);
+        }
+        if (typeof window.menuNavFocus === 'function') {
+            lastGameMode = gameMode;
+            window.restoreMenuFocusAfterGame(window.menuNavFocus);
+        }
+    }
+
+    window.BHAndroidApp = {
+        handleBackButton() {
+            const menuEl = document.getElementById('menu');
+            const helpEl = document.getElementById('help-screen');
+            const achEl = document.getElementById('achievements-overlay');
+            const bonusEl = document.getElementById('bonus-screen');
+            const bonusBackEl = document.getElementById('bonus-back-btn');
+            const pauseEl = document.getElementById('pauseOverlay');
+            const levelCompleteEl = document.getElementById('level-complete-overlay');
+            const gameOverEl = document.getElementById('game-over-overlay');
+            const introEl = document.getElementById('level-intro-overlay');
+
+            if (bonusEl && bonusEl.style.display === 'flex' && bonusBackEl) {
+                bonusBackEl.click();
+                return true;
+            }
+
+            if (isElementVisible(helpEl) || isElementVisible(achEl) || pauseEl) {
+                dispatchAndroidEscape();
+                return true;
+            }
+
+            const resultOverlay = levelCompleteEl || gameOverEl;
+            if (resultOverlay) {
+                const mainButton = resultOverlay.querySelector('button[data-overlay-btn-idx="1"]');
+                if (mainButton) {
+                    mainButton.click();
+                } else {
+                    exitToMainMenuFromAndroid();
+                }
+                return true;
+            }
+
+            if (introEl) {
+                exitToMainMenuFromAndroid();
+                return true;
+            }
+
+            if (running && !levelCompleteShown && !gameOverShown) {
+                dispatchAndroidEscape();
+                return true;
+            }
+
+            if (!isElementVisible(menuEl)) {
+                exitToMainMenuFromAndroid();
+                return true;
+            }
+
+            return false;
+        }
+    };
 }

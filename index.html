@@ -2168,7 +2168,7 @@
 
 <script>
 // ==== Service Worker (кеш ресурсов) ====
-if ('serviceWorker' in navigator) {
+if ('serviceWorker' in navigator && location.protocol !== 'file:') {
     window.addEventListener('load', function () {
         navigator.serviceWorker.register('./sw.js')
             .catch(function (err) { console.warn('SW registration failed:', err); });

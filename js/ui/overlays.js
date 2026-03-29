@@ -390,7 +390,7 @@ function showTutorialCompleteOverlay() {
             refreshModeButtonsByProgress();
         }
         if (typeof window.menuNavFocus === 'function') {
-            window.lastGameMode = gameMode;
+            lastGameMode = gameMode;
             window.restoreMenuFocusAfterGame(window.menuNavFocus);
         }
     };
@@ -762,9 +762,7 @@ function showLevelComplete() {
         }
         if (typeof window.menuNavFocus === 'function') {
             // Save the last game mode before restoring menu focus
-            if (typeof window !== 'undefined') {
-                window.lastGameMode = gameMode;
-            }
+            lastGameMode = gameMode;
             // Restore keyboard focus to last played mode after character selection
             window.restoreMenuFocusAfterGame(window.menuNavFocus);
         }
@@ -1055,7 +1053,7 @@ function showLevelCompleteMessage() {
         if (typeof window.setGameTouchControlsVisible === 'function') {
             window.setGameTouchControlsVisible(false);
         }
-        window.lastGameMode = gameMode;
+        lastGameMode = gameMode;
         window.restoreMenuFocusAfterGame(window.menuNavFocus);
         overlay.remove();
     };
@@ -1335,7 +1333,7 @@ function showGameOver() {
             window.setGameTouchControlsVisible(false);
         }
         overlay.remove();
-        window.lastGameMode = gameMode;
+        lastGameMode = gameMode;
         window.restoreMenuFocusAfterGame(window.menuNavFocus);
     };
 

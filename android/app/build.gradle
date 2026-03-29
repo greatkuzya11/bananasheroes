@@ -1,0 +1,67 @@
+apply plugin: 'com.android.application'
+
+def webRoot = file("${rootProject.projectDir}/..")
+def generatedAssetsDir = file("$buildDir/generated/web-assets")
+def generatedWwwDir = file("$generatedAssetsDir/www")
+
+task syncWebAssets(type: Copy) {
+    into(generatedWwwDir)
+
+    from(webRoot) {
+        include 'index.html', 'style.css', 'sw.js', 'favicon.ico', 'favicon.svg'
+    }
+    from(new File(webRoot, 'js')) {
+        into 'js'
+    }
+    from(new File(webRoot, 'img')) {
+        into 'img'
+    }
+    from(new File(webRoot, 'audio')) {
+        into 'audio'
+    }
+
+    doFirst {
+        delete generatedWwwDir
+    }
+}
+
+android {
+    compileSdkVersion 33
+
+    defaultConfig {
+        applicationId "com.bananasheroes.app"
+        minSdkVersion 23
+        targetSdkVersion 33
+        versionCode 1
+        versionName "1.0.0"
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+        }
+    }
+
+    sourceSets {
+        main {
+            manifest.srcFile 'src/main/AndroidManifest.xml'
+            java.srcDirs = ['src/main/java']
+            assets.srcDirs = ['src/main/assets', generatedAssetsDir]
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+
+    lintOptions {
+        abortOnError false
+    }
+}
+
+afterEvaluate {
+    tasks.matching { task -> task.name =~ /merge.*Assets/ }.all { task ->
+        task.dependsOn syncWebAssets
+    }
+}
