@@ -8,7 +8,7 @@
  * Для сброса кеша при деплое достаточно поменять CACHE_VERSION.
  */
 
-const CACHE_VERSION = 'bh-v1';
+const CACHE_VERSION = 'bh-v2';
 const CACHE_ASSETS  = CACHE_VERSION + '-assets'; // img + audio
 const CACHE_CODE    = CACHE_VERSION + '-code';   // js + css + html
 
@@ -32,7 +32,6 @@ const PRECACHE_URLS = [
     './img/kuzy_shoot.png',
     './img/dron.png',
     './img/dron_bullet.png',
-    './img/max.png',
     './img/max-stand.png',
     './img/max_bullet.png',
 ];
@@ -41,7 +40,7 @@ const PRECACHE_URLS = [
 self.addEventListener('install', event => {
     event.waitUntil(
         caches.open(CACHE_ASSETS)
-            .then(cache => cache.addAll(PRECACHE_URLS))
+            .then(cache => precacheUrls(cache, PRECACHE_URLS))
             .then(() => self.skipWaiting())
     );
 });
@@ -101,6 +100,21 @@ async function cacheFirst(request, cacheName) {
         // Сеть недоступна и кеша нет — ничего не можем сделать
         return new Response('Offline', { status: 503 });
     }
+}
+
+async function precacheUrls(cache, urls) {
+    await Promise.all(urls.map(async (url) => {
+        try {
+            const request = new Request(url, { cache: 'reload' });
+            const response = await fetch(request);
+            if (!response || !response.ok) {
+                throw new Error(`HTTP ${response ? response.status : 'ERR'}`);
+            }
+            await cache.put(request, response);
+        } catch (err) {
+            console.warn('[sw] precache skipped:', url, err);
+        }
+    }));
 }
 
 /**
